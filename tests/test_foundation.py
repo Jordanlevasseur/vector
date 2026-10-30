@@ -46,6 +46,12 @@ class FoundationTests(unittest.TestCase):
     def test_unknown_future_migration_is_not_downgraded(self):
         db=connect(self.config);db.execute('PRAGMA user_version=999');db.close()
         with self.assertRaises(ValueError): connect(self.config)
+        raw=sqlite3.connect(self.config.data_dir/'vector.sqlite3')
+        raw.execute('PRAGMA user_version=-1');raw.close()
+        with self.assertRaises(ValueError):connect(self.config)
+        raw=sqlite3.connect(self.config.data_dir/'vector.sqlite3')
+        self.assertEqual(raw.execute('PRAGMA user_version').fetchone()[0],-1)
+        raw.close()
 
     def test_symlink_and_helix_scopes_rejected(self):
         for path in ('/home/mint/VECTOR/helix/memory','/home/mint/VECTOR','relative'):

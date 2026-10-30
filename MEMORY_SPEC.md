@@ -32,3 +32,7 @@ Directory creation and the VECTOR identity marker are fsynced before database us
 so a successful database operation does not rely on an unsynced startup marker.
 Software crash/rollback checks passed; physical power-loss/drive failure was not
 performed and is not certified by those checks.
+Write connections explicitly enable recursive triggers to protect originals against
+SQLite's implicit DELETE during REPLACE. Corrupt/negative schema versions fail
+closed. The local backup directory is on the same disk by default; it is not
+independent disaster recovery, and physical disk loss has not been qualified.

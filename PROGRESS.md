@@ -69,3 +69,12 @@ were checked byte-for-byte against the source. The user's 28,715-byte master
 directive is the first real archived submission in the private default database,
 was retrieved through FTS and verified byte-identical, and has a unique local
 backup. It was not automatically converted into facts or claimed as model learning.
+
+## Final database guard correction
+A host regression reproduced SQLite REPLACE implicitly deleting an original despite
+ordinary delete triggers. VECTOR write connections now enable recursive triggers,
+so REPLACE is rejected and original bytes remain unchanged. Negative/corrupt schema
+versions are also rejected before migration rather than selecting a negative list
+index. Both source and clean-installed full suites passed again: 43/43 each.
+The deliberate pre-fix failure and restricted-runner ownership errors are retained
+separately from the successful host results.

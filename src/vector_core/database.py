@@ -28,11 +28,13 @@ def connect(config):
         db.enable_load_extension(False)
         db.execute('PRAGMA trusted_schema=OFF')
         db.execute('PRAGMA foreign_keys=ON')
+        # REPLACE performs an implicit DELETE; recursive triggers must protect it.
+        db.execute('PRAGMA recursive_triggers=ON')
         db.execute('PRAGMA synchronous=FULL')
         db.execute('PRAGMA cache_size=-4096')
         identity=db.execute('PRAGMA application_id').fetchone()[0]
         version=db.execute('PRAGMA user_version').fetchone()[0]
-        if identity not in (0,APPLICATION_ID) or version>len(MIGRATIONS):
+        if identity not in (0,APPLICATION_ID) or not 0<=version<=len(MIGRATIONS):
             raise ValueError('Unknown database identity/version.')
         if identity==0 and db.execute("SELECT count(*) FROM sqlite_master WHERE type='table'").fetchone()[0]:
             raise ValueError('Unrelated database; migration refused.')

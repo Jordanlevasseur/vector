@@ -44,3 +44,8 @@ and denied process creation. These are syscall observations, not a packet-captur
 study, hostile-host certification or verification of an inference daemon. Separate
 inference/display profiles have not been activated or qualified. No host-wide
 firewall, shared service or Linux security setting was changed.
+VECTOR write connections enable recursive triggers: SQLite REPLACE must not bypass
+immutable-table DELETE guards. Actual regression tests verified rejection with
+original bytes unchanged. Future/negative migration versions are refused without
+rewriting the version. Direct hostile-owner database edits remain outside the
+supported write interface and cannot be prevented by in-database triggers alone.

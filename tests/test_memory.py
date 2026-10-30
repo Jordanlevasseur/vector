@@ -47,7 +47,10 @@ class MemoryTests(unittest.TestCase):
             self.assertEqual(self.memory.db.execute('SELECT count(*) FROM '+table).fetchone()[0],0)
 
     def test_originals_and_history_cannot_be_updated_or_deleted(self):
-        self.memory.ingest(Submission(b'keep','keep'))
+        record=self.memory.ingest(Submission(b'keep','keep'))
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.memory.db.execute('INSERT OR REPLACE INTO blobs VALUES (?,?,?)',(record['sha256'],b'evil',4))
+        self.assertEqual(self.memory.original(record['event_id']),b'keep')
         for table in ('blobs','sources','events','audit'):
             with self.assertRaises(sqlite3.IntegrityError): self.memory.db.execute('DELETE FROM '+table)
         with self.assertRaises(sqlite3.IntegrityError): self.memory.db.execute("UPDATE blobs SET body=X'00'")
