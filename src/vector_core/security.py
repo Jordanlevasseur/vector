@@ -16,7 +16,7 @@ DENIED = ('socket','socketpair','connect','bind','listen','accept','accept4',
 class SecurityError(RuntimeError):
     pass
 
-def activate():
+def activate(*,pipe_fds=(),display_fd=None):
     if sys.platform != 'linux':
         raise SecurityError('Linux seccomp required; startup refused.')
     for fd in (0,1,2):
@@ -25,7 +25,21 @@ def activate():
                 raise SecurityError('Socket standard streams forbidden.')
         except OSError:
             pass
-    os.closerange(3, resource.getrlimit(resource.RLIMIT_NOFILE)[0])
+    retained=set(pipe_fds)
+    for fd in retained:
+        if type(fd) is not int or fd<3 or not stat.S_ISFIFO(os.fstat(fd).st_mode):raise SecurityError('Only explicit IPC pipes may be retained.')
+    if display_fd is not None:
+        if type(display_fd) is not int or display_fd<3:raise SecurityError('Invalid display descriptor.')
+        view=socket.fromfd(display_fd,socket.AF_UNIX,socket.SOCK_STREAM)
+        try:
+            peer=view.getpeername()
+            if not isinstance(peer,str) or not peer.lstrip('\0').startswith('/tmp/.X11-unix/X'):raise SecurityError('Only a preconnected local X11 display is permitted.')
+        finally:view.close()
+        retained.add(display_fd)
+    start=3
+    for fd in sorted(retained):
+        os.closerange(start,fd);start=fd+1
+    os.closerange(start,resource.getrlimit(resource.RLIMIT_NOFILE)[0])
     try:
         libc = ctypes.CDLL('libc.so.6', use_errno=True)
         lib = ctypes.CDLL('libseccomp.so.2', use_errno=True)
@@ -34,6 +48,10 @@ def activate():
         lib.seccomp_syscall_resolve_name.argtypes = [ctypes.c_char_p]
         lib.seccomp_syscall_resolve_name.restype = ctypes.c_int
         lib.seccomp_rule_add.argtypes = [ctypes.c_void_p,ctypes.c_uint32,ctypes.c_int,ctypes.c_uint]
+        class Compare(ctypes.Structure):
+            _fields_=[('arg',ctypes.c_uint),('op',ctypes.c_uint),('a',ctypes.c_uint64),('b',ctypes.c_uint64)]
+        lib.seccomp_rule_add_array.argtypes=[ctypes.c_void_p,ctypes.c_uint32,ctypes.c_int,ctypes.c_uint,ctypes.POINTER(Compare)]
+        lib.seccomp_attr_set.argtypes=[ctypes.c_void_p,ctypes.c_uint,ctypes.c_uint32]
         lib.seccomp_load.argtypes = [ctypes.c_void_p]
         lib.seccomp_release.argtypes = [ctypes.c_void_p]
         if libc.prctl(38,1,0,0,0):
@@ -42,9 +60,14 @@ def activate():
         if not context:
             raise SecurityError('Kernel policy allocation failed.')
         try:
+            if lib.seccomp_attr_set(context,4,1):raise SecurityError('Thread-synchronized filtering unavailable.')
             for name in DENIED:
                 number = lib.seccomp_syscall_resolve_name(name.encode())
-                if number < 0 or lib.seccomp_rule_add(context,0x00050000|errno.EPERM,number,0):
+                if display_fd is not None and name in ('sendto','sendmsg','sendmmsg','recvfrom','recvmsg','recvmmsg'):
+                    comparison=Compare(0,1,display_fd,0)
+                    added=lib.seccomp_rule_add_array(context,0x50000|errno.EPERM,number,1,ctypes.byref(comparison)) if number>=0 else -1
+                else:added=lib.seccomp_rule_add(context,0x00050000|errno.EPERM,number,0) if number>=0 else -1
+                if number < 0 or added:
                     raise SecurityError('Required syscall rule unavailable: '+name)
             if lib.seccomp_load(context):
                 raise SecurityError('Kernel policy load failed.')

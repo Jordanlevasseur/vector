@@ -126,3 +126,16 @@ power-loss qualification, million-record claim, model reasoning or GUI acceptanc
 Stage 5A activation remains blocked by the absence of a qualified dedicated inference
 profile/runtime/managed model. The existing deny-all-sockets/process policy remains
 mandatory. Portability does not qualify that new security profile or release readiness.
+
+## Stage 5 foundation batch
+Preserved b8cdbfc and re-ran all 67 baseline tests successfully. Added replaceable
+bounded inference adapters, a separately isolated Ollama broker with verified
+namespace/cgroup controls, original-grounded context/ranking, strict source citations,
+bounded operational reasoning/uncertainty records, explicitly labelled simulation
+for tests, human-approved atomic knowledge proposals and deterministic SI/Decimal
+tools. Full actual-host regression: 81 passed, zero skips (150.740 s).
+Actual PID exhaustion and worker-descendant cleanup passed. Dedicated Ollama 0.40.12
+discovered local qwen2.5-coder:0.5b without loading weights or contacting the shared
+service. Actual model generation and desktop workflows remain unqualified at this
+checkpoint. All new durable state uses Stage 4.5 registered contracts. See
+INTELLIGENCE_SPEC.md. HELIX and other independent repositories were not modified.
