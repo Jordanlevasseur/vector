@@ -151,3 +151,21 @@ CREATE INDEX records_target ON persistent_records(contract,json_extract(payload,
 CREATE INDEX records_event ON persistent_records(contract,json_extract(payload,'$.event_id'));
 CREATE INDEX claims_subject_time ON claims(subject_id,created,id);
 ''')
+
+MIGRATIONS.append('''
+INSERT INTO persistence_contracts VALUES
+ ('languages',1,'Extensible curriculum profiles, not language proficiency'),
+ ('linguistic_records',1,'Versioned source-attested linguistic interpretations'),
+ ('linguistic_links',1,'Explicit interpreted cross-language concept relationships'),
+ ('literary_editions',1,'Original-linked bibliography and rights'),
+ ('literary_runs',1,'Incremental literary processing and errors');
+CREATE TABLE literary_units(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),
+ ordinal INTEGER NOT NULL,kind TEXT NOT NULL,start_char INTEGER NOT NULL CHECK(start_char>=0),
+ end_char INTEGER NOT NULL CHECK(end_char>start_char AND end_char-start_char<=4000),
+ digest TEXT NOT NULL,method TEXT NOT NULL,UNIQUE(event_id,method,ordinal));
+CREATE INDEX literary_event ON literary_units(event_id,ordinal);
+CREATE VIRTUAL TABLE literary_search USING fts5(text,content='',tokenize='unicode61');
+CREATE TABLE literary_pronunciations(word TEXT NOT NULL,variant TEXT NOT NULL,phones TEXT NOT NULL,event_id TEXT NOT NULL REFERENCES events(id),start_char INTEGER NOT NULL,end_char INTEGER NOT NULL,PRIMARY KEY(event_id,word,variant));
+CREATE INDEX literary_word ON literary_pronunciations(word);
+CREATE INDEX records_language ON persistent_records(contract,json_extract(payload,'$.language'));
+''')

@@ -124,6 +124,7 @@ class Desktop:
         self.memory_since=ttk.Entry(filters,width=20);self.memory_until=ttk.Entry(filters,width=20)
         for label,entry in [('Since (ISO + zone)',self.memory_since),('Until',self.memory_until)]:ttk.Label(filters,text=label).pack(side='left');entry.pack(side='left')
         ttk.Button(filters,text='Recall memories',command=self.recall_memories).pack(side='left')
+        self.knowledge_rights=tk.StringVar(value='');ttk.Label(tab,textvariable=self.knowledge_rights,wraplength=950).pack(fill='x')
         self.knowledge=ttk.Treeview(tab,columns=('title','detail','identity'),show='headings',height=12)
         for name,width in [('title',240),('detail',420),('identity',220)]:self.knowledge.heading(name,text=name.title());self.knowledge.column(name,width=width)
         self.knowledge.pack(fill='both',expand=True,pady=8);self.knowledge.bind('<<TreeviewSelect>>',self.select_source);self.knowledge.bind('<Double-1>',lambda event:self.view_source())
@@ -136,6 +137,7 @@ class Desktop:
         controls=ttk.Frame(tab);controls.pack(fill='x');self.scope=ttk.Entry(controls,width=20);self.scope.insert(0,'personal');self.scope.grid(row=0,column=0,sticky='w')
         self.exclusive=tk.BooleanVar();ttk.Checkbutton(controls,text='Comparable exclusive claims',variable=self.exclusive).grid(row=0,column=1,columnspan=2,sticky='w')
         for index,(label,command) in enumerate([('Archive text',self.archive_text),('Import file',self.import_file),('Learn statements',self.learn_text),('AI proposal from selected source',self.extract_proposal),('Review proposals',self.proposals)]):ttk.Button(controls,text=label,command=command).grid(row=1+index//3,column=index%3,sticky='w',padx=3,pady=4)
+        ttk.Button(tab,text='Literary library / linguistics',command=self.open_library).pack(anchor='w')
         ttk.Button(tab,text='Deferred extraction queue',command=lambda:self.paged_records('Deferred learning','learning_queue',lambda r:r['status']+' — '+r['event_id'],lambda r:self.call('show',{'event_id':r['event_id']},self.show_result))).pack(anchor='w')
         ttk.Button(tab,text='Reconcile selected evidence',command=lambda:self.source_operation('reconcile')).pack(anchor='w')
         ttk.Button(tab,text='Selected source learning history',command=lambda:self.source_operation('learning_history')).pack(anchor='w')
@@ -191,6 +193,7 @@ class Desktop:
             self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
         self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question},self.answer)
     def answer(self,record):
+        for notice in (record.get('context') or {}).get('display_notices',[]):self.show_chat(notice['notice'])
         outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['status'])
         if record.get('context') is None:
             self.show_chat('This saved request was interrupted or failed before evidence construction. No model answer was accepted.');return
@@ -244,6 +247,7 @@ class Desktop:
         window=self.tk.Toplevel(self.root);window.title('VECTOR result');window.geometry('800x550')
         text=ScrolledText(window,wrap='word');text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(result,ensure_ascii=False,indent=2));text.configure(state='disabled')
     def fill(self,rows,kind):
+        self.knowledge_rights.set(next((r['rights_notice'] for r in rows if r.get('rights_notice')),''))
         self.knowledge.delete(*self.knowledge.get_children());self.rows={}
         for row in rows:
             identity=row.get('event_id') or row.get('id');item=self.knowledge.insert('', 'end',values=(row.get('name') or row.get('submission_name') or row.get('subject'),row.get('excerpt') or (str(row.get('predicate',''))+' '+str(row.get('value',''))),identity))
@@ -319,6 +323,9 @@ class Desktop:
         self.ttk.Button(controls,text='Next page / restart',command=load).pack(side='right')
         listing.bind('<<ListboxSelect>>',lambda event:approve.configure(state='normal' if selected()==state['reviewed'] and selected() else 'disabled'))
         load()
+    def open_library(self):
+        from vector_core.library_desktop import LiteraryDesktop
+        self.library_window=LiteraryDesktop(self)
     def create_project(self):self.call('project_create',{'name':self.project_name.get()},lambda r:self.open_project(r['id']))
     def projects(self):
         def loaded(result):

@@ -28,6 +28,17 @@ def latest(memory,contract,key):
 
 def validate_record(db,contract,key,p):
     """Also used on portable imports, before activation of externally supplied state."""
+    if contract=='capabilities' and key=='english-pronunciation':
+        required={'event_id','license_event_id','sha256','offset','entries','complete','source_url','method'}
+        if not isinstance(p,dict) or set(p)!=required:raise ValueError('Invalid pronunciation capability record.')
+        for field in ('event_id','license_event_id'):
+            identity(p[field])
+            row=db.execute('SELECT sha256 FROM events WHERE id=?',(p[field],)).fetchone()
+            if not row or (field=='event_id' and row[0]!=p['sha256']):raise ValueError('Missing or mismatched dictionary source/license.')
+        if any(type(p[k]) is not int or p[k]<0 for k in ('offset','entries')) or type(p['complete']) is not bool:raise ValueError('Invalid dictionary checkpoint.')
+    if contract in {'languages','linguistic_records','linguistic_links','literary_editions','literary_runs'}:
+        from vector_core.literature import validate_record as literary_validate
+        return literary_validate(db,contract,key,p)
     if contract not in {'project_sources','project_items','memory_links','learning_queue'}:return
     if not isinstance(p,dict):raise ValueError('Invalid organization record.')
     def event(value):

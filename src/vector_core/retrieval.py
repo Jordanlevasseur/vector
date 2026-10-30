@@ -12,7 +12,7 @@ def timestamp(value):
     return moment.astimezone(timezone.utc).isoformat(timespec='microseconds')
 
 
-def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None,project_id=None,category=None):
+def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None,project_id=None,category=None,omit_literary=False):
     if not isinstance(query,str) or len(query)>512:
         raise ValueError('Query must be text up to 512 characters.')
     if type(limit) is not int or not 1<=limit<=100: raise ValueError('Result limit must be 1-100.')
@@ -29,6 +29,8 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
         parameters.append(project_id)
     if category in ('semantic','procedural'):
         conditions.append("EXISTS (SELECT 1 FROM claims c WHERE c.event_id=e.id"+(" AND (c.kind='procedure' OR c.predicate='procedure')" if category=='procedural' else '')+")")
+    if type(omit_literary) is not bool:raise ValueError('Invalid literary retrieval flag.')
+    if omit_literary:conditions.append('NOT EXISTS (SELECT 1 FROM literary_units u WHERE u.event_id=e.id)')
     ranked=bool(tokens)
     if ranked:
         conditions.append('text_search MATCH ?')
@@ -59,7 +61,7 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
     score='bm25(text_search)' if ranked else '0.0'
     join='JOIN text_search ON text_search.rowid=t.rowid ' if ranked else ''
     sql=('SELECT e.id AS event_id,e.source_id,e.sha256,e.occurred,e.submission_name AS name,'
-         'substr(t.text,1,500) AS excerpt,'+score+' AS rank '
+         "json_extract(e.metadata,'$.resource_type') AS resource_type,substr(t.text,1,500) AS excerpt,"+score+' AS rank '
          'FROM texts t JOIN events e ON e.id=t.event_id '+join+
          'WHERE '+' AND '.join(conditions)+
          (' ORDER BY rank,e.occurred DESC,e.id' if ranked else ' ORDER BY e.occurred DESC,e.id')+' LIMIT ?')
@@ -75,6 +77,11 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
         start=max(0,match.start()-120) if match else 0
         result['start']=start;result['end']=min(len(original),start+500)
         result['excerpt']=original[start:result['end']]
+        if result.get('resource_type')=='literary-work':
+            row=memory.db.execute("SELECT json_extract(payload,'$.metadata.rights.status') FROM persistent_records WHERE contract='literary_editions' AND json_extract(payload,'$.event_id')=? LIMIT 1",(result['event_id'],)).fetchone()
+            if row and row[0]=='provider-unrestricted-us':
+                from vector_core.literature import PG_NOTICE
+                result['rights_notice']=PG_NOTICE
         results.append(result)
     return results
 

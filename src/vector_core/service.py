@@ -21,6 +21,9 @@ class Application:
     def handle(self,operation,p):
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('library_'):
+            from vector_core.library_service import dispatch
+            return dispatch(self,operation,p)
         if operation=='health':
             return {'core_policy':getattr(self,'policy',{'status':'Direct library caller owns the OS boundary; use the supported CLI/desktop.'}),'schema':memory.db.execute('PRAGMA user_version').fetchone()[0],'data_directory':str(memory.config.data_dir),
                     'inference':self.transport.report if self.transport and self.transport.qualified else {'available':False,'reason':self.startup_error or 'No isolated worker selected.'},

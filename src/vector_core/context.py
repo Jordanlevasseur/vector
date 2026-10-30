@@ -29,10 +29,17 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     queries=[' '.join(terms)] if terms else []
     queries+=terms[:4]
     for query in queries:
-        for result in search(memory,query[:512],limit=min(20,limit*2),project_id=project_id if project_only else None):
+        for result in search(memory,query[:512],limit=min(20,limit*2),project_id=project_id if project_only else None,omit_literary=True):
             score=sum(term.casefold() in result['excerpt'].casefold() for term in terms)
             previous=candidates.get(result['event_id'])
             if previous is None:candidates[result['event_id']]={**result,'overlap':score}
+    from vector_core.literature import Library
+    library=Library(memory);linguistic=[]
+    for query in queries:
+        for result in library.search(query[:512],limit=min(12,limit*2)):
+            if project_only and not memory.db.execute("SELECT 1 FROM persistent_records WHERE contract='project_sources' AND record_key=?",(project_id+':'+result['event_id'],)).fetchone():continue
+            score=sum(term.casefold() in result['excerpt'].casefold() for term in terms)
+            if result['event_id'] not in candidates:candidates[result['event_id']]={**result,'overlap':score}
     # Exact entity resolution and bounded one-hop/source-comparison expansion.
     # Never interpret relation labels as independently established truth.
     def add_event(event_id,anchor=0):
@@ -58,6 +65,21 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
             add_event(claim['event_id'],claim['start_char'])
             if claim['object_id']:
                 for other in memory.db.execute('SELECT event_id,start_char FROM claims WHERE subject_id=? ORDER BY created DESC,id LIMIT 4',(claim['object_id'],)):add_event(other['event_id'],other['start_char'])
+    for term in terms[:4]:
+        for node in library.concepts(term,limit=4)['items']:
+            if node['status']!='approved-interpretation':continue
+            expanded=[node]
+            for relation in node['relationships'][:4]:
+                target=relation['right'] if relation['left']==node['id'] else relation['left']
+                from vector_core.projects import latest
+                related=latest(memory,'linguistic_records',target)
+                if related['status']=='approved-interpretation':expanded.append(related)
+            for record in expanded[:5]:
+                if record['id'] in {r['id'] for r in linguistic}:continue
+                for a in record['attestations']:
+                    if memory.read_text_span(a['event_id'],a['start'],a['end'])!=a['quote']:raise ValueError('Invalid linguistic context attestation.')
+                    add_event(a['event_id'],a['start'])
+                linguistic.append({**record,'interpretation_status':'Source-attested human interpretation, not independently verified fact.'})
     project_records=[]
     if project_id:
         rows=memory.db.execute("SELECT payload FROM persistent_records r WHERE contract='project_items' AND json_extract(payload,'$.project_id')=? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='project_items' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 20",(project_id,)).fetchall()
@@ -126,11 +148,17 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     if relationships:optional('evidence_relationships',relationships[:12])
     if prior:optional('continuity',prior)
     if project_records:optional('project_records',project_records)
+    if linguistic:optional('linguistic_records',linguistic[:8])
     if project_id:optional('project',{'id':project_id,'selection':'project-only' if project_only else 'project preferred; global sources allowed'})
     unanswered=[]
     if not context['sources']:unanswered.append('Matching originals were omitted by the selected context budget; increase the budget or narrow the question.' if candidates else 'No matching source evidence found in the selected bounded search.')
     if context['conflicts']:unanswered.append('Comparable source disagreement remains unresolved; user overrides are assumptions.')
     if unanswered:optional('unanswered_questions',unanswered)
     context['truncated']|=len(ordered)>len(context['sources'])
-    return {'context':context,'bytes':len(canonical(context).encode()),'seconds':time.perf_counter()-started,
+    notices=[]
+    from vector_core.literature import PG_NOTICE
+    for event_id in selected:
+        row=memory.db.execute("SELECT json_extract(payload,'$.metadata.rights.status') AS status,json_extract(payload,'$.rights_event_id') AS evidence FROM persistent_records WHERE contract='literary_editions' AND json_extract(payload,'$.event_id')=? LIMIT 1",(event_id,)).fetchone()
+        if row and row['status']=='provider-unrestricted-us':notices.append({'event_id':event_id,'notice':PG_NOTICE,'rights_event_id':row['evidence']})
+    return {'display_notices':notices,'context':context,'bytes':len(canonical(context).encode()),'seconds':time.perf_counter()-started,
             'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'ranking':'explicit project preference, literal overlap, FTS rank, stable ID; exact-entity/one-hop expansion; not semantic ranking'}
