@@ -161,11 +161,15 @@ class Desktop:
         self.root.after(30,self.poll)
     def show_chat(self,text):self.chat.configure(state='normal');self.chat.insert('end',text+'\n\n');self.chat.see('end');self.chat.configure(state='disabled')
     def send_chat(self):
-        question=self.question.get().strip()
-        if not question:return
+        question=self.question.get()
+        if not question.strip():return
+        if self.client.pending:
+            self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
         self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question},self.answer)
     def answer(self,record):
         outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['status'])
+        if record.get('context') is None:
+            self.show_chat('This saved request was interrupted or failed before evidence construction. No model answer was accepted.');return
         if outcome['answer']:
             for statement in outcome['answer']['statements']:
                 self.show_chat(statement['text']+'\n['+statement['kind']+']')
@@ -251,14 +255,39 @@ class Desktop:
         if not self.selected_event:self.dialog.showinfo('Select a source','Select an archived source in Knowledge first.');return
         self.call('extract_proposal',{'event_id':self.selected_event,'scope':self.scope.get()},self.show_result)
     def proposals(self):
-        def review(result):
-            pending=[r['payload'] for r in result['items'] if r['payload']['status']=='pending']
-            if not pending:self.dialog.showinfo('Knowledge proposals','No pending model proposals in this page.');return
-            self.show_result(pending)
-            identity=self.simple.askstring('Review proposal','Enter the proposal ID after inspecting the displayed evidence and fields:')
-            if identity in [r['id'] for r in pending] and self.dialog.askyesno('Approve claims','Apply all claims atomically as unverified, source-linked interpretations?'):
-                self.call('approve_proposal',{'id':identity,'approved':True},self.show_result)
-        self.call('proposals',{},review)
+        window=self.tk.Toplevel(self.root);window.title('Review source-linked proposals');window.geometry('760x430')
+        self.ttk.Label(window,text='Inspect the original quotes and proposed fields before approving. Claims remain unverified.').pack(anchor='w',padx=10,pady=10)
+        listing=self.tk.Listbox(window);listing.pack(fill='both',expand=True,padx=10)
+        state={'rows':[],'after':0,'reviewed':None}
+        controls=self.ttk.Frame(window);controls.pack(fill='x',padx=10,pady=10)
+        def load():
+            def loaded(result):
+                state.update(rows=[r for r in result['items'] if r['status']=='pending'],after=result['next_cursor'],reviewed=None)
+                listing.delete(0,'end')
+                for record in state['rows']:listing.insert('end',record['origin']+' — '+record['id'])
+                approve.configure(state='disabled')
+                if not result['items']:state['after']=0
+            self.call('proposals',{'after':state['after']},loaded)
+        def selected():
+            indices=listing.curselection()
+            return state['rows'][indices[0]]['id'] if indices else None
+        def inspect():
+            identity=selected()
+            if not identity:return
+            def inspected(detail):
+                self.show_result(detail);state['reviewed']=identity
+                if selected()==identity:approve.configure(state='normal')
+            self.call('proposal_detail',{'id':identity},inspected)
+        def apply():
+            identity=selected()
+            if identity!=state['reviewed']:return
+            if self.dialog.askyesno('Approve reviewed claims','Apply all reviewed claims atomically as unverified source-linked interpretations?'):
+                self.call('approve_proposal',{'id':identity,'approved':True},self.show_result);approve.configure(state='disabled')
+        self.ttk.Button(controls,text='Inspect exact original evidence',command=inspect).pack(side='left')
+        approve=self.ttk.Button(controls,text='Approve reviewed proposal',command=apply,state='disabled');approve.pack(side='left',padx=6)
+        self.ttk.Button(controls,text='Next page / restart',command=load).pack(side='right')
+        listing.bind('<<ListboxSelect>>',lambda event:approve.configure(state='normal' if selected()==state['reviewed'] and selected() else 'disabled'))
+        load()
     def create_project(self):self.call('project_create',{'name':self.project_name.get()},self.show_result)
     def projects(self):
         def loaded(result):

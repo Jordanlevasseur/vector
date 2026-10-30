@@ -44,3 +44,17 @@ class LauncherTests(unittest.TestCase):
         self.assertIn('Exec="/private/vector/bin/vector-desktop"',text)
         for option in ('--choose-models','--managed','--choose-data'):self.assertIn(option,text)
         self.assertNotIn('sh -c',text)
+
+class ProposalReviewTests(unittest.TestCase):
+    def test_review_returns_exact_original_before_explicit_application(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with Memory(Config.load(data_dir=str(Path(folder)/'data'))) as memory:
+                app=Application(memory);event=app.handle('ingest',{'text':'Pump | speed | 20 rpm'})
+                draft={'event_id':event['event_id'],'start':0,'end':len('Pump | speed | 20 rpm'),'subject':'Pump','predicate':'speed','value':'20 rpm','scope':'lab'}
+                proposal=app.handle('propose',{'drafts':[draft],'origin':'EXPLICIT TEST FIXTURE'})
+                summary=app.handle('proposals',{})
+                self.assertEqual(summary['items'][0]['id'],proposal['id'])
+                detail=app.handle('proposal_detail',{'id':proposal['id']})
+                self.assertEqual(detail['original_quotes'][0]['quote'],'Pump | speed | 20 rpm')
+                with self.assertRaises(PermissionError):app.handle('approve_proposal',{'id':proposal['id']})
+                self.assertEqual(app.handle('approve_proposal',{'id':proposal['id'],'approved':True})['status'],'applied')

@@ -88,3 +88,15 @@ class StreamingTests(unittest.TestCase):
         with patch('vector_core.inference_worker.http.client.HTTPConnection',return_value=Connection()):
             with self.assertRaises(GenerationFailure) as error:stream_generation({'options':{'num_predict':32}},1)
         self.assertEqual(error.exception.partial,'partial')
+
+class StructuredFormatTests(unittest.TestCase):
+    def test_adapter_requests_fixed_answer_schema_and_records_format(self):
+        class Fixture:
+            qualified=True;runtime_version='explicit fixture'
+            payload=None
+            def request(self,payload,*args):
+                self.payload=payload
+                return {'done':True,'done_reason':'stop','response':'{}','prompt_eval_count':10,'model_digest':'fixture'}
+        fixture=Fixture();result=OllamaAdapter(fixture).generate('prompt',GenerationConfig(model='fixture'),response_kind='answer-v1')
+        self.assertEqual(fixture.payload['response_kind'],'answer-v1');self.assertEqual(result['response_format'],'answer-v1')
+        self.assertEqual(result['text'],'{}')  # Syntax control never supplies or certifies answer content.

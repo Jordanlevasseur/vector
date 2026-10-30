@@ -74,3 +74,17 @@ truncation markers. Model performance/accuracy remains a separate actual-host te
 its expectations are controlled outside model output and it can exercise a complete
 real-model managed export/restore before generation. This simple task does not
 establish general multi-step reasoning ability, even if a model passes it.
+
+Fixed `answer-v1` and `claims-v1` JSON schemas can constrain decoder syntax. They do
+not contain source text, supply citation values, certify entailment, or relax the
+independent validators. The model still generates every answer/citation field;
+untrusted schemas or commands are not accepted from model output. Actual model
+reports record the response format so plain-JSON and schema-guided trials are not
+misrepresented as identical configurations.
+
+User questions are durably committed as pending conversation versions before
+retrieval/generation. Completion appends a version under the same identity. A hard
+exit leaves the pending question recoverable, never a fabricated answer. Ordinary
+history shows only each turn's latest version; full version history remains portable.
+Proposal review retrieves exact original quotes before explicit approval, and no
+manual copying of proposal identifiers is required in the desktop.

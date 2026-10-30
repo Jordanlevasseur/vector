@@ -3,6 +3,7 @@
 Run separate invocations for independent workers. No simulated inference is used.
 """
 import argparse
+from contextlib import nullcontext
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -14,6 +15,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument('--models-directory',required=True);parser.add_argument('--model',required=True)
     parser.add_argument('--timeout',type=float,default=240);parser.add_argument('--roundtrip',action='store_true')
+    parser.add_argument('--work-directory',help='Retain a NEW private test installation and archive for diagnosis; existing paths are refused.')
     args=parser.parse_args(argv)
     from vector_core.inference import GenerationConfig
     config=GenerationConfig(args.model,4096,512,args.timeout).validate()
@@ -31,7 +33,15 @@ def main(argv=None):
         from vector_core.service import Application
         from vector_core.assistant import ask
         from vector_core.portable import export_vector,restore_vector
-        with tempfile.TemporaryDirectory(prefix='vector_real_qualification_') as directory:
+        if args.work_directory:
+            from vector_core.storage import safe_path
+            retained=safe_path(args.work_directory)
+            Config.load(data_dir=str(retained/'data'))
+            if retained.exists():raise FileExistsError('Existing qualification work is preserved; choose a new directory.')
+            retained.mkdir(parents=True,mode=0o700)
+            workspace=nullcontext(str(retained));report['retained_test_directory']=str(retained)
+        else:workspace=tempfile.TemporaryDirectory(prefix='vector_real_qualification_')
+        with workspace as directory:
             root=Path(directory);source=Config.load(data_dir=str(root/'data'))
             expected={}
             with Memory(source) as memory:

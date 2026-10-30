@@ -82,3 +82,30 @@ class IntelligenceTests(unittest.TestCase):
     def test_generation_configuration_limits(self):
         for kwargs in ({'timeout_seconds':float('nan')},{'output_tokens':100000},{'context_tokens':1},{'seed':-1}):
             with self.assertRaises(ValueError):GenerationConfig(**kwargs).validate()
+
+class InteractionDurabilityTests(unittest.TestCase):
+    def test_abrupt_model_process_exit_preserves_pending_user_question(self):
+        import os,subprocess,sys
+        with tempfile.TemporaryDirectory() as folder:
+            data=Path(folder)/'data'
+            script='''
+import os,sys
+from vector_core.security import activate
+activate()
+from vector_core.memory import Memory,Submission
+from vector_core.config import Config
+from vector_core.assistant import ask
+class ExplicitCrashFixture:
+ simulated=True
+ def generate(self,*args,**kwargs):os._exit(86)
+with Memory(Config.load(data_dir=sys.argv[1])) as memory:
+ memory.ingest(Submission(b'Pump flow is 12 L/s.','fixture'))
+ ask(memory,'Pump flow',adapter=ExplicitCrashFixture(),conversation_id='1'*32)
+'''
+            env={**os.environ,'PYTHONPATH':str(Path(__file__).resolve().parents[1]/'src')}
+            child=subprocess.run([sys.executable,'-c',script,str(data)],env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(child.returncode,86,child.stderr)
+            with Memory(Config.load(data_dir=str(data))) as memory:
+                row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='conversations' ORDER BY rowid DESC LIMIT 1").fetchone()
+                record=json.loads(row[0]);self.assertEqual(record['question'],'Pump flow');self.assertEqual(record['outcome']['status'],'pending')
+                self.assertIsNone(record['outcome']['generation']);self.assertTrue(memory.verify()['passed'])

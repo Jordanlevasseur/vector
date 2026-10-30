@@ -47,8 +47,16 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
     from vector_core.reasoning import plan
     task_plan=plan(question)
     started=time.perf_counter();trace=[{'stage':'task-decomposition','plan':task_plan}]
+    identity=uuid4().hex;created=now();key=conversation_id+':'+identity
+    pending={'id':identity,'conversation_id':conversation_id,'project_id':project_id,'question':question,'created':created,
+             'context':None,'outcome':{'status':'pending','answer':None,'generation':None,'errors':[]},'trace':trace,'plan':task_plan}
+    put(memory,'conversations',key,pending)  # Durable user input precedes retrieval and model execution.
     budget=config.prompt_bytes-len(INSTRUCTIONS.encode())-200
-    built=build_context(memory,question,budget_bytes=budget,scope=scope)
+    try:built=build_context(memory,question,budget_bytes=budget,scope=scope)
+    except Exception as error:
+        pending['outcome'].update(status='failed',errors=[str(error)[:1000]])
+        put(memory,'conversations',key,pending)
+        raise
     context=built['context'];trace.append({'stage':'retrieval','sources':len(context['sources']),'seconds':built['seconds']})
     prompt=INSTRUCTIONS+canonical(context)
     outcome={'status':'evidence-only','answer':None,'generation':None,'errors':[]}
@@ -58,7 +66,7 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
             if cancellation and cancellation.cancelled:
                 outcome['errors'].append('Cancelled.');outcome['status']='cancelled';break
             try:
-                generated=adapter.generate(prompt,config,cancellation)
+                generated=adapter.generate(prompt,config,cancellation,response_kind='answer-v1')
                 import hashlib
                 trace.append({'stage':'raw-generation','attempt':attempt+1,'text':generated['text'][:8192],
                               'sha256':hashlib.sha256(generated['text'].encode()).hexdigest(),'truncated':len(generated['text'])>8192,
@@ -84,8 +92,8 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
     else:
         outcome['status']='insufficient-evidence'
         outcome['errors'].append('No matching archived evidence; no model generation attempted.')
-    record={'id':uuid4().hex,'conversation_id':conversation_id,'project_id':project_id,'question':question,'created':now(),
+    record={'id':identity,'conversation_id':conversation_id,'project_id':project_id,'question':question,'created':created,
             'context':built,'outcome':outcome,'trace':trace,'seconds':time.perf_counter()-started,
             'plan':task_plan,'limits':'Citations are byte/source checked. Semantic entailment and model inferences are not independently certified facts.'}
-    put(memory,'conversations',conversation_id+':'+record['id'],record)
+    put(memory,'conversations',key,record)
     return record

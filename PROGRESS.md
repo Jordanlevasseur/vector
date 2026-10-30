@@ -166,3 +166,27 @@ expectations and raw/partial-generation evidence. Current real-model requalifica
 and performance evidence are recorded separately after this implementation batch.
 The application remains an experimental build, not release-ready or generally
 qualified for multi-source reasoning or scientific engineering decisions.
+
+## Structured output and interaction durability
+Added fixed answer-v1/claims-v1 decoder schemas after actual Qwen output copied the
+evidence-context object instead of answering. Schemas constrain syntax only; all
+source IDs, hashes, spans, quotes, scopes, independent task expectations and human
+approval checks remain enforced. No citations or answer values are filled in by the
+controller. Raw/partial output evidence remains explicitly marked and bounded.
+Questions now commit a pending version before retrieval/inference; a real abrupt-
+exit test verifies recovery without any fabricated response. History shows the latest
+turn version while preserving all versions. Proposal review displays exact original
+quotes before enabling explicit approval, with selection instead of manual ID entry.
+
+Full actual-host source suite: 95 passed/no skips (180.197 s). Frozen offline wheel:
+all 33 modules byte-identical to source. Independent installed suite: 94 passed,
+1 optional cryptography test skipped (168.665 s); host encryption passed. No running
+application was upgraded during final frozen model trials.
+
+Real model accuracy is deliberately separate. Plain-JSON Qwen 0.5B trials returned
+copied context objects and failed answer validation. One storage roundtrip passed
+but its generation phase was invalidated by an in-flight adapter interface change;
+it is not counted as model evidence. A rerun against the frozen installed build
+restored all real weights and produced answer-v1 output with valid source citations,
+but failed the independent verbatim/completeness task. Final consistency results
+and timing are recorded separately. These outcomes are not release qualification.
