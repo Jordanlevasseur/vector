@@ -27,3 +27,16 @@ restore, before/after-COMMIT process crashes, deduplicated repeated events, fail
 batch rollback, corruption detection, append-only controls and all Stage 1 checks.
 No hardware power-loss claim or malicious-administrator authenticity is implied.
 Next: Stage 3 incremental lexical retrieval and measured controlled 10k workload.
+
+## Stage 3 — deterministic retrieval
+Implemented incremental contentless FTS5, source/time/typed metadata filters,
+literal query handling, bounded ranked excerpts with original verification, and
+atomic rebuild from originals. CLI search/rebuild is integrated.
+
+Lenovo full suite: 27/27 passed. Controlled 10,000-record benchmark reconstructed
+100% of originals and returned correct top-1/source attribution for all ID-bearing
+lexical queries. Warm-cache median exact lookup 0.0246 ms; lexical 1.5431 ms;
+13,402,112 database bytes; peak process RSS 34,672 KiB. Ingest 38.12 s; rebuild
+0.454 s. This does not establish general semantic or factual reasoning ability.
+Next: Stage 4 source-linked claims, supported scoped conflict detection and explicit
+auditable operating overrides; originals remain unchanged.

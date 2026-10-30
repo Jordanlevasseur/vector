@@ -21,7 +21,7 @@ def main(argv=None):
     parser.add_argument('--data-dir')
     parser.add_argument('--config')
     commands=parser.add_subparsers(dest='command')
-    for command in ('health','backup','verify','list'): commands.add_parser(command)
+    for command in ('health','backup','verify','list','rebuild'): commands.add_parser(command)
     add=commands.add_parser('add')
     content=add.add_mutually_exclusive_group(required=True)
     content.add_argument('--file');content.add_argument('--text')
@@ -30,6 +30,8 @@ def main(argv=None):
     show=commands.add_parser('show');show.add_argument('event_id');show.add_argument('--text',action='store_true')
     export=commands.add_parser('export');export.add_argument('event_id');export.add_argument('output')
     recovery=commands.add_parser('restore');recovery.add_argument('backup_directory')
+    find=commands.add_parser('search');find.add_argument('query');find.add_argument('--source')
+    find.add_argument('--since');find.add_argument('--until');find.add_argument('--limit',type=int,default=20)
     args=parser.parse_args(argv)
     command=args.command or 'health'
     try:
@@ -47,6 +49,12 @@ def main(argv=None):
             elif command=='backup':result=backup(memory.db,config.data_dir)
             elif command=='verify':result=memory.verify()
             elif command=='list':result=memory.recent()
+            elif command=='search':
+                from vector_core.retrieval import search
+                result=search(memory,args.query,limit=args.limit,source_id=args.source,since=args.since,until=args.until)
+            elif command=='rebuild':
+                from vector_core.retrieval import rebuild
+                result=rebuild(memory)
             elif command=='add':
                 raw=read_file(args.file,config.max_source_bytes) if args.file else args.text.encode('utf-8')
                 result=memory.ingest(Submission(raw,args.name or (Path(args.file).name if args.file else 'User submission'),

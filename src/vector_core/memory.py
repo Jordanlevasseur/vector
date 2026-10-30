@@ -84,6 +84,8 @@ class Memory:
                     (event,source,digest,occurred,item.media_type,item.name,metadata,item.parent_id))
                 text,status=extract(item.content,item.media_type)
                 self.db.execute('INSERT INTO texts VALUES (?,?,?)',(event,text,status))
+                from vector_core.retrieval import index_event
+                index_event(self.db,event,text,status)
                 self.db.execute('INSERT INTO audit(occurred,action,detail) VALUES (?,?,?)',
                     (occurred,'submission',canonical({'event_id':event,'sha256':digest,'source_id':source})))
                 results.append({'event_id':event,'source_id':source,'sha256':digest,

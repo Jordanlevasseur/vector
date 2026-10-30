@@ -66,3 +66,8 @@ CREATE TRIGGER sources_no_delete BEFORE DELETE ON sources BEGIN SELECT RAISE(ABO
 CREATE TRIGGER events_no_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT,'append-only events'); END;
 CREATE TRIGGER events_no_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT,'append-only events'); END;
 """)
+
+MIGRATIONS.append("""
+CREATE VIRTUAL TABLE text_search USING fts5(text,content='',tokenize='unicode61');
+INSERT INTO text_search(rowid,text) SELECT rowid,text FROM texts WHERE status='utf8-extracted';
+""")
