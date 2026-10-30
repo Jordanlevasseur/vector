@@ -76,3 +76,14 @@ A reproducible actual-model check is available with
 Add `--roundtrip` to import real local assets, export and restore them before the
 trial. These are bounded temporary-data acceptance runs, not simulated answers,
 not large-model downloads and not proof of general reasoning or release readiness.
+
+
+Lenovo qualification (2026-10-30): 95 source tests passed; installed tests 94
+passed and one optional encryption test skipped (dependency absent). Real Qwen
+0.5B scored 0/3 on the independent two-source verbatim task despite valid citations.
+The tested model profile is context 4096/output 512/timeout 240 seconds; the
+short default deadline may be insufficient for cold model loading on this Lenovo.
+Set budgets explicitly in Settings rather than assuming inference is fast.
+Current desktop/archive/search/manual tools are experimental usable foundations;
+reliable general AI assistance and release readiness have not been established.
+See ACCEPTANCE.md and ROADMAP.md for remaining gates.

@@ -60,3 +60,27 @@ retains its volume safety reserve. Maximum measured collection here is 50,000
 short originals, not 50,000 large files or a general maximum supported capacity.
 A separate regression streams/restores a 24 MiB original and integrates/pages
 1,201 claims without the former 100-claim aggregate cap.
+
+## Intelligence/desktop workload — Lenovo, 2026-10-30
+Frozen implementation dae4abf. Warm synthetic corpus: 1,000 short originals,
+100 literal questions; expected top context source 100/100. Ingest 21.517 s;
+retrieval median/p95 0.243/0.328 ms; context median/p95 8.048/8.949 ms.
+Combined retrieval/context CPU 0.862 s. Database 1,515,520 bytes, FTS pages
+61,440 bytes, benchmark peak RSS 25,520 KiB. 1,000 pure arithmetic calls:
+0.0671 s, excluding durable audit. These are literal retrieval measurements,
+not semantic retrieval or model accuracy.
+
+Actual installed protected local-X11 desktop: startup to ready 6.880 s;
+frontend peak RSS 28,296 KiB, backend RSS 24,520 KiB. Six functioning tabs;
+evidence-only assistant and deterministic 2+2=4 exercised. This measurement used
+temporary data, warm OS and concurrent model testing; no model was loaded in
+that GUI measurement. These figures do not establish usability qualification.
+
+Real Qwen0.5B answer-v1 generation: 151.593–223.070 s for 374–383 output tokens,
+4096 context/512 output/240 s deadline, CPU quota one core, two runtime threads,
+768 MiB worker memory. Cold managed load 47.728 s. Managed asset import 34.170 s,
+first export 133.342 s, restore 60.499 s; complete trial 479.925 s including all
+storage and inference work. Storage timings include ~398 MB actual model data;
+ordinary source retrieval timings exclude inference. Independent task score 0/3.
+Raw benchmark/configuration/model digests are retained in the evidence directory
+listed in PROGRESS.md. No large model or dependency was downloaded.

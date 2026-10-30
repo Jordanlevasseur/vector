@@ -31,3 +31,22 @@ covers a bounded deterministic subset; general scientific reasoning remains open
 Stage 7 has a working local X11 interface, with representative usability/security
 qualification still required. Stage 8 remains a release gate. Stage 9 remains
 unauthorized. No host-wide security relaxation or shared-service reuse is permitted.
+
+
+## Next engineering batches after dae4abf
+1. Add representative independently graded evidence tasks (missing/conflicting
+   evidence, cross-document synthesis, exact instruction following), then qualify
+   a locally available capable model. Current Qwen0.5B scored 0/3 on the narrow
+   two-source task; no model is certified for ordinary scientific reasoning.
+2. Complete project-to-source associations and browsing/pagination, richer
+   assessment/override review, and representative human usability acceptance.
+   Project/conversation persistence works; full research-project organization is
+   unfinished. Local X11/XWayland is the only qualified display transport.
+3. Expand deterministic engineering tools with explicit assumptions, error
+   propagation and independently established domain cases; general algebra and
+   engineering simulation remain outside the current bounded subset.
+4. Qualify installed optional encryption when the dependency is provided locally;
+   perform longer-duration, hostile-host and physical-power-loss acceptance.
+   Current crash tests are process interruption tests, not physical power loss.
+5. Release only after these gates and representative memory/performance/recovery
+   workloads pass. Keep inference optional and evidence-only workflows available.
