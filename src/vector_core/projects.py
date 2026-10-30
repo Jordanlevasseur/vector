@@ -36,7 +36,7 @@ def validate_record(db,contract,key,p):
             row=db.execute('SELECT sha256 FROM events WHERE id=?',(p[field],)).fetchone()
             if not row or (field=='event_id' and row[0]!=p['sha256']):raise ValueError('Missing or mismatched dictionary source/license.')
         if any(type(p[k]) is not int or p[k]<0 for k in ('offset','entries')) or type(p['complete']) is not bool:raise ValueError('Invalid dictionary checkpoint.')
-    if contract in {'languages','linguistic_records','linguistic_links','literary_editions','literary_runs'}:
+    if contract in {'languages','linguistic_records','linguistic_links','literary_editions','literary_runs','literary_analyses'}:
         from vector_core.literature import validate_record as literary_validate
         return literary_validate(db,contract,key,p)
     if contract not in {'project_sources','project_items','memory_links','learning_queue'}:return

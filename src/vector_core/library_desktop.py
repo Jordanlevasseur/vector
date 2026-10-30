@@ -4,7 +4,7 @@ from vector_core.literature import PG_NOTICE
 
 class LiteraryDesktop:
     def __init__(self,app):
-        self.app=app;self.tk=app.tk;self.ttk=app.ttk;self.selected=None;self.units={};self.editions={};self.offset=0;self.unit_cursor=-1;self.current_passage=None
+        self.app=app;self.tk=app.tk;self.ttk=app.ttk;self.selected=None;self.units={};self.editions={};self.offset=0;self.unit_cursor=-1;self.current_passage=None;self.stop_batch=False
         window=self.tk.Toplevel(app.root);self.window=window;window.title('VECTOR — Literary library');window.geometry('1000x700')
         self.notice=self.tk.StringVar(value='Originals and licenses are preserved. Interpretations are not established facts.')
         self.ttk.Label(window,textvariable=self.notice,wraplength=950).pack(fill='x',padx=10,pady=6)
@@ -17,7 +17,7 @@ class LiteraryDesktop:
         notebook=self.ttk.Notebook(window);notebook.pack(fill='both',expand=True,padx=10,pady=6)
         browse=self.ttk.Frame(notebook);notebook.add(browse,text='Works and passages');self.listing=self.tk.Listbox(browse,height=7);self.listing.pack(fill='x');self.listing.bind('<<ListboxSelect>>',self.select)
         actions=self.ttk.Frame(browse);actions.pack(fill='x')
-        for label,command in [('Next titles',self.next_titles),('Source & rights',self.rights),('Process / resume',self.process),('Next passages',self.next_units),('Link to project',self.link_project),('Export original',self.export_original)]:self.ttk.Button(actions,text=label,command=command).pack(side='left',padx=2)
+        for label,command in [('Next titles',self.next_titles),('Source & rights',self.rights),('Process / resume',self.process),('Body observations',self.body_observations),('Next passages',self.next_units),('Link to project',self.link_project),('Export original',self.export_original)]:self.ttk.Button(actions,text=label,command=command).pack(side='left',padx=2)
         from tkinter.scrolledtext import ScrolledText
         self.reader=ScrolledText(browse,wrap='word',height=13,state='disabled');self.reader.pack(fill='both',expand=True)
         analysis=self.ttk.Frame(browse);analysis.pack(fill='x')
@@ -27,6 +27,8 @@ class LiteraryDesktop:
         self.ttk.Button(bar,text='Find linguistic records',command=self.concepts).pack(side='left');self.ttk.Button(bar,text='Inspect selected',command=self.inspect_record).pack(side='left');self.ttk.Button(bar,text='Approve interpretation',command=self.review_record).pack(side='left');self.ttk.Button(bar,text='Link two records',command=self.relate).pack(side='left')
         self.record_list=self.tk.Listbox(notes,selectmode='extended');self.record_list.pack(fill='both',expand=True);self.records=[];self.reviewed=None
         resources=self.ttk.Frame(notebook);notebook.add(resources,text='Processing / resources')
+        self.ttk.Button(resources,text='Process pending editions',command=self.process_pending).pack(anchor='w')
+        self.ttk.Button(resources,text='Stop library batch',command=self.stop).pack(anchor='w')
         self.ttk.Button(resources,text='Processing status and errors',command=lambda:app.paged_records('Literary processing','library_processing',lambda r:r['status']+' — '+r['event_id'],app.show_result)).pack(anchor='w')
         self.ttk.Button(resources,text='Reset derived passage index (originals retained)',command=self.reset_index).pack(anchor='w')
         self.ttk.Button(resources,text='Import licensed CMU dictionary',command=self.dictionary).pack(anchor='w')
@@ -76,21 +78,45 @@ class LiteraryDesktop:
             self.unit_cursor=result['next_cursor'] if result['items'] else -1;self.listing.delete(0,'end');self.editions={};self.units={}
             for i,row in enumerate(result['items']):self.listing.insert('end',str(row['ordinal'])+' — '+row['kind']);self.units[i]=row
         self.app.call('library_units',{'event_id':self.selected['event_id'],'after':self.unit_cursor},loaded)
+    def body_observations(self):
+        if self.selected:self.app.call('library_observations',{'event_id':self.selected['event_id']},self.app.show_result)
     def process(self):
+        self.stop_batch=False
         if not self.selected:return
         event=self.selected['event_id']
         def completed(result):
             self.app.status.set('Literary processing: '+result['status']+' / '+str(result['ordinal'])+' units')
-            if result['status']=='partial' and self.window.winfo_exists():self.window.after(20,lambda:self.app.call('library_process',{'event_id':event},completed))
+            if result['status']=='partial' and not self.stop_batch and self.window.winfo_exists():self.window.after(20,lambda:self.app.call('library_process',{'event_id':event},completed))
         self.app.call('library_process',{'event_id':event},completed)
+    def stop(self):
+        self.stop_batch=True;self.app.client.cancel()
+    def process_pending(self):
+        self.stop_batch=False;state={'after':0,'queue':[]}
+        def step():
+            if self.stop_batch or not self.window.winfo_exists():return
+            if state['queue']:
+                event=state['queue'][0]
+                def processed(result):
+                    self.app.status.set('Library: '+result['status']+' / '+str(result['ordinal'])+' units')
+                    if result['status']!='partial':state['queue'].pop(0)
+                    self.window.after(20,step)
+                self.app.call('library_process',{'event_id':event},processed)
+            else:
+                def page(result):
+                    state['queue']=[r['event_id'] for r in result['items'] if r['status'] in ('pending','partial','failed')]
+                    state['after']=result['next_cursor']
+                    if result['items']:self.window.after(20,step)
+                    else:self.app.status.set('Library processing scan complete; deferred editions remain explicit.')
+                self.app.call('library_processing',{'after':state['after']},page)
+        step()
     def import_pack(self):
         directory=self.app.files.askdirectory(title='Select reviewed offline literature package')
         if not directory or not self.app.dialog.askyesno('Approve local package and rights','Import this reviewed package? PG works are U.S.-only provider assertions; all originals and license evidence are retained. No network request is made.'):return
-        state={'offset':0,'count':0}
+        self.stop_batch=False;state={'offset':0,'count':0,'fingerprint':None}
         def completed(result):
-            state['count']+=len(result['items']);state['offset']=result['next_cursor'];self.app.status.set('Imported / reused '+str(state['count'])+' editions; sources retained.')
-            if not result['complete'] and self.window.winfo_exists():self.window.after(20,step)
-        def step():self.app.call('library_import',{'directory':directory,'offset':state['offset'],'approved':True},completed)
+            state['count']+=len(result['items']);state['offset']=result['next_cursor'];state['fingerprint']=result['fingerprint'];self.app.status.set('Imported / reused '+str(state['count'])+' editions; sources retained.')
+            if not result['complete'] and not self.stop_batch and self.window.winfo_exists():self.window.after(20,step)
+        def step():self.app.call('library_import',{'directory':directory,'offset':state['offset'],'fingerprint':state['fingerprint'],'approved':True},completed)
         step()
     def languages(self):self.app.paged_records('Language curriculum','library_languages',lambda r:r['payload']['name']+' — '+r['payload']['coverage'],self.app.show_result)
     def link_project(self):
@@ -142,11 +168,12 @@ class LiteraryDesktop:
         if self.app.dialog.askyesno('Rebuild derived index','Reset only derived literary passages/postings? All originals, interpretations and histories remain. Reprocess editions afterwards.'):
             self.app.call('library_reset_index',{'approved':True},self.app.show_result)
     def dictionary(self):
+        self.stop_batch=False
         file=self.app.files.askopenfilename(title='Select local CMUdict data');license_file=self.app.files.askopenfilename(title='Select its complete CMU license') if file else None
         if not license_file:return
         def completed(result):
             self.app.status.set('Pronunciation entries: '+str(result['entries']))
-            if not result['complete'] and self.window.winfo_exists():self.window.after(20,step)
+            if not result['complete'] and not self.stop_batch and self.window.winfo_exists():self.window.after(20,step)
         def step():self.app.call('library_dictionary_import',{'file':file,'license_file':license_file,'approved':True},completed)
         if self.app.dialog.askyesno('Import pronunciation resource','Import the dictionary and its license as source data, without model training?'):step()
     def pronunciation(self):

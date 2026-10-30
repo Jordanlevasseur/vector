@@ -51,3 +51,10 @@ All records and source assets participate in existing registered portable state;
 derived indexes have exact schema, safe rebuild and corruption checks. Desktop
 library controls share the fixed offline service boundary. Existing project/source
 links and strict response citation checks are reused, not duplicated.
+
+Each completed work also has a registered literary_analyses record: original-body
+bounds, literal line/block/token counts, bounded casefolded-form candidates with
+exact source spans, and a sampled Unicode script inventory. These are mechanical
+observations, not learned senses or semantic understanding. PG headers/licenses
+remain preserved but are excluded from body statistics. Import cursors bind to the
+exact manifest identity; changed packages require a safe idempotent restart.

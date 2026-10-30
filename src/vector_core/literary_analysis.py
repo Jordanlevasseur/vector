@@ -50,13 +50,13 @@ def import_dictionary(memory,path,license_path,*,approved=False,limit=20000):
     except BaseException:db.rollback();raise
     return state
 
-def pronunciation(memory,word):
+def pronunciation(memory,word,*,verified_source=None):
     state=dictionary_state(memory)
     if not state:return {'word':word,'available':False,'alternatives':[],'reason':'No locally imported licensed pronunciation resource.'}
     if not isinstance(word,str) or len(word)>100:raise ValueError('Invalid word lookup.')
     rows=memory.db.execute('SELECT * FROM literary_pronunciations WHERE event_id=? AND word=? ORDER BY variant',(state['event_id'],word.casefold())).fetchall();alternatives=[]
     for row in rows:
-        original=memory.read_text_span(row['event_id'],row['start_char'],row['end_char'])
+        original=verified_source[1][row['start_char']:row['end_char']] if verified_source and verified_source[0]==row['event_id'] else memory.read_text_span(row['event_id'],row['start_char'],row['end_char'])
         body=original.split(' #',1)[0].strip()
         if ' '.join(body.split()[1:])!=row['phones'] or body.split(' ',1)[0].split('(',1)[0]!=row['word']:raise ValueError('Corrupt pronunciation index; source mismatch.')
         phones=row['phones'].split();vowels=[i for i,p in enumerate(phones) if p[-1:].isdigit()];stress=[phones[i][-1] for i in vowels]
@@ -67,6 +67,7 @@ def pronunciation(memory,word):
 def observe(memory,event_id,start,end):
     if type(start) is not int or type(end) is not int or not 0<=start<end or end-start>4000:raise ValueError('Select an exact passage of at most 4000 characters.')
     original=memory.read_text_span(event_id,start,end);event=memory.event(event_id)
+    dictionary=dictionary_state(memory);verified_source=(dictionary['event_id'],memory.original(dictionary['event_id']).decode('utf-8')) if dictionary else None
     lines=[];cursor=start;stanzas=0;in_stanza=False
     for raw in original.splitlines(keepends=True):
         body=raw.rstrip('\r\n')
@@ -74,7 +75,7 @@ def observe(memory,event_id,start,end):
             if not in_stanza:stanzas+=1
             in_stanza=True
             words=re.findall(r"[^\W_]+(?:['’][^\W_]+)*",body);last=words[-1] if words else None
-            pron=pronunciation(memory,last) if last else {'alternatives':[]}
+            pron=pronunciation(memory,last,verified_source=verified_source) if last else {'alternatives':[]}
             lines.append({'start':cursor,'end':cursor+len(body),'text':body,'last_word':last,'last_word_pronunciations':pron})
         else:in_stanza=False
         cursor+=len(raw)
@@ -85,7 +86,7 @@ def observe(memory,event_id,start,end):
         if len(candidates)>=32:break
         candidates.append({'marker':match.group(),'start':start+match.start(),'end':start+match.end(),'interpretation':'Lexical comparison/argument cue only; figurative use or valid inference not established.'})
     return {'version':VERSION,'event_id':event_id,'sha256':event['sha256'],'start':start,'end':end,'quote':original,
-            'script_evidence':identify(original),'nonblank_lines':len(lines),'stanzas':stanzas,'lines':lines,'tokens':len(words),'repeated_forms':repetitions,'lexical_cues':candidates,
+            'script_evidence':identify(original),'nonblank_lines':len(lines),'stanzas':stanzas,'stanza_count_interpretation':'Blank-line grouping only; prose paragraphs and wrapped editions may not encode poetic stanzas.','lines':lines,'tokens':len(words),'repeated_forms':repetitions,'lexical_cues':candidates,
             'sentence_boundary_candidates':[start+m.end() for m in re.finditer(r'[.!?]+(?=\s|$)',original)][:100],
             'interpretive_status':'Themes, symbolism, narrative, metaphor, irony, grammar and meter require source-linked reviewed interpretations. No automatic literary certainty or model competence claim.'}
 
@@ -99,3 +100,15 @@ def propose_vocabulary(memory,event_id,start,end,language,*,approved=False):
         at=raw.find(word);a={'event_id':event_id,'sha256':event['sha256'],'start':start+at,'end':start+at+len(word),'quote':word}
         results.append(Library(memory).annotate(language,'word_form',word,{'observation':'Literal written form, not an inferred lemma, sense or grammar rule.'},[a],uncertainty='Candidate vocabulary; requires review. Token boundaries are not a universal tokenizer.',approved=True))
     return {'proposals':results,'truncated':len(set(re.findall(r'[^\W_]+',raw)))>len(words),'facts_created':0}
+
+def summarize_body(original,event_id,sha256,start,end):
+    """Literal book-body observations; bounded previews never replace the source."""
+    body=original[start:end];frequency=Counter();first={};total=0
+    for match in re.finditer(r"[^\W_]+(?:['’][^\W_]+)*",body):
+        quote=match.group();key=quote.casefold();frequency[key]+=1;total+=1
+        if len(quote)<=100 and key not in first:first[key]={'quote':quote,'start':start+match.start(),'end':start+match.end()}
+    candidates=[{'form':word,'count':count,**first[word]} for word,count in frequency.most_common(64) if word in first][:32]
+    return {'event_id':event_id,'sha256':sha256,'method':'literal-body-observations-v1','start':start,'end':end,'characters':len(body),
+            'nonblank_lines':sum(bool(line.strip()) for line in body.splitlines()),'blank_line_blocks':len([part for part in re.split(r'\r?\n[ \t]*\r?\n',body) if part.strip()]),
+            'word_form_tokens':total,'word_form_candidates':candidates,'script_sample':identify(body),'status':'mechanical source observations; no inferred lemmas/senses/themes/grammar facts',
+            'limits':'Casefolded lexical-form counts and bounded previews, not universal word segmentation, language identification, semantics or neural learning.'}

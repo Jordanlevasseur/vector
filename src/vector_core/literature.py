@@ -38,6 +38,12 @@ def validate_record(db,contract,key,p):
         if set(p)!={'id','work_id','event_id','rights_event_id','metadata','created'} or key!=identity(p['id']):raise ValueError('Invalid bibliographic record.')
         if event(p['event_id'])!=p['metadata']['sha256'] or event(p['rights_event_id'])!=p['metadata']['metadata_sha256']:raise ValueError('Bibliography/source checksum mismatch.')
         metadata(p['metadata']);text(p['work_id'],64)
+    elif contract=='literary_analyses':
+        if set(p)!={'event_id','sha256','method','start','end','characters','nonblank_lines','blank_line_blocks','word_form_tokens','word_form_candidates','script_sample','status','limits'} or key!=p['event_id'] or event(p['event_id'])!=p['sha256']:raise ValueError('Invalid literary observations.')
+        if any(type(p[k]) is not int or p[k]<0 for k in ('start','end','characters','nonblank_lines','blank_line_blocks','word_form_tokens')) or p['end']<p['start']:raise ValueError('Invalid observation counts.')
+        if not isinstance(p['word_form_candidates'],list) or len(p['word_form_candidates'])>32:raise ValueError('Invalid vocabulary preview.')
+        for item in p['word_form_candidates']:
+            if set(item)!={'form','count','quote','start','end'} or type(item['count']) is not int or item['count']<1 or not isinstance(item['quote'],str) or item['quote'].casefold()!=item['form'] or type(item['start']) is not int or type(item['end']) is not int or not p['start']<=item['start']<item['end']<=p['end'] or len(item['quote'])!=item['end']-item['start']:raise ValueError('Invalid form attestation.')
     elif contract=='literary_runs':
         if set(p)!={'event_id','method','offset','ordinal','status','error','updated'} or key!=p['event_id']:raise ValueError('Invalid processing checkpoint.')
         event(p['event_id'])
@@ -135,12 +141,14 @@ class Library:
         append(self.memory,'literary_editions',key,record,new=True)
         append(self.memory,'literary_runs',original['event_id'],{'event_id':original['event_id'],'method':METHOD,'offset':0,'ordinal':0,'status':'pending','error':'','updated':now()})
         return record
-    def import_pack(self,root,*,offset=0,limit=4,approved=False):
+    def import_pack(self,root,*,offset=0,limit=4,approved=False,fingerprint=None):
         if approved is not True:raise PermissionError('Explicit package import approval required.')
         page(offset,limit);root=safe_path(root);items=[]
         with input_file(root/'manifest.ndjson') as stream:
             before=os.fstat(stream.fileno());header=stream.readline(32769)
             if len(header)>32768:raise ValueError('Package header too large.')
+            current_fingerprint=[before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns,hashlib.sha256(header).hexdigest()]
+            if offset and fingerprint!=current_fingerprint:raise ValueError('Manifest changed or resume identity missing; restart at zero to reuse verified editions safely.')
             parsed=json.loads(header,object_pairs_hook=unique)
             if not isinstance(parsed,dict) or parsed.get('format')!='vector-literary-pack-v1':raise ValueError('Unsupported offline package format.')
             if offset:
@@ -154,7 +162,7 @@ class Library:
                 entry=json.loads(line,object_pairs_hook=unique);items.append(self.import_entry(root,entry,approved=True))
             cursor=stream.tell();complete=not bool(stream.read(1));after=os.fstat(stream.fileno())
             if (before.st_size,before.st_mtime_ns,before.st_ctime_ns)!=(after.st_size,after.st_mtime_ns,after.st_ctime_ns):raise ValueError('Manifest changed during import; committed originals remain.')
-        return {'items':items,'next_cursor':cursor,'complete':complete,'originals_preserved':True}
+        return {'items':items,'next_cursor':cursor,'fingerprint':current_fingerprint,'complete':complete,'originals_preserved':True}
     @write_operation
     def process(self,event_id,*,limit=500,deadline_seconds=5,rebuild=False):
         if type(limit) is not int or not 1<=limit<=1000:raise ValueError('Processing batch must contain 1–1000 units.')
@@ -164,14 +172,17 @@ class Library:
         if not edition:raise ValueError('Not a registered edition.')
         try:prior=latest(self.memory,'literary_runs',event_id)
         except ValueError:prior={'offset':0,'ordinal':0,'status':'pending'}
-        if prior['status']=='complete' and not rebuild:return {**prior,'unchanged_skipped':True}
+        if prior['status']=='complete' and not rebuild and self.db.execute("SELECT 1 FROM persistent_records WHERE contract='literary_analyses' AND record_key=?",(event_id,)).fetchone():return {**prior,'unchanged_skipped':True}
         if event['byte_count']>self.memory.config.max_source_bytes:return append(self.memory,'literary_runs',event_id,{'event_id':event_id,'method':METHOD,'offset':0,'ordinal':0,'status':'deferred','error':'Original exceeds text extraction budget; retained unchanged.','updated':now()})
         raw=self.memory.original(event_id);original=raw.decode('utf-8');offset=0 if rebuild else prior['offset'];ordinal=0 if rebuild else prior['ordinal'];tick=time.monotonic();count=0
-        body_end=len(original)
+        body_start=0;body_end=len(original)
         if json.loads(edition[0])['metadata']['rights']['status']=='provider-unrestricted-us':
             begin=re.search(r'^\*\*\*\s*START OF.*$',original,re.I|re.M);finish=re.search(r'^\*\*\*\s*END OF.*$',original,re.I|re.M)
             if not begin or not finish:raise ValueError('Missing edition body boundaries.')
-            offset=max(offset,original.find('\n',begin.start())+1);body_end=finish.start()
+            body_start=original.find('\n',begin.start())+1;offset=max(offset,body_start);body_end=finish.start()
+        if not self.db.execute("SELECT 1 FROM persistence_contracts WHERE name='literary_analyses'").fetchone():
+            from vector_core.persistence import register
+            register(self.memory,'literary_analyses','Versioned literal source-body observations and attested form candidates')
         self.db.execute('BEGIN IMMEDIATE')
         try:
             if rebuild:
@@ -194,6 +205,9 @@ class Library:
                 self.db.execute('INSERT INTO literary_search(rowid,text) VALUES (?,?)',(rowid,passage))
                 ordinal+=1;count+=1;offset=end
             record={'event_id':event_id,'method':METHOD,'offset':offset,'ordinal':ordinal,'status':'complete' if offset>=body_end else 'partial','error':'','updated':now()}
+            if record['status']=='complete':
+                from vector_core.literary_analysis import summarize_body
+                _insert(self.memory,'literary_analyses',event_id,summarize_body(original,event_id,event['sha256'],body_start,body_end))
             _insert(self.memory,'literary_runs',event_id,record);self.db.commit()
         except BaseException as error:
             self.db.rollback()
@@ -277,4 +291,4 @@ class Library:
         count=self.db.execute("SELECT count(DISTINCT json_extract(payload,'$.work_id')),count(DISTINCT json_extract(payload,'$.metadata.language')) FROM persistent_records WHERE contract='literary_editions'").fetchone()
         authors=self.db.execute("SELECT count(DISTINCT a.value) FROM persistent_records r,json_each(r.payload,'$.metadata.authors') a WHERE r.contract='literary_editions'").fetchone()[0]
         translations=self.db.execute("SELECT count(*) FROM persistent_records WHERE contract='literary_editions' AND json_array_length(payload,'$.metadata.translators')>0").fetchone()[0]
-        return {'editions':rows['editions'],'conservative_work_groups':count[0],'authors':authors,'languages':count[1],'explicit_translated_editions':translations,'passages':self.db.execute('SELECT count(*) FROM literary_units').fetchone()[0],'qualified_language_proficiency':0}
+        return {'editions':rows['editions'],'conservative_work_groups':count[0],'authors':authors,'languages':count[1],'explicit_translated_editions':translations,'passages':self.db.execute('SELECT count(*) FROM literary_units').fetchone()[0],'body_observations':self.db.execute("SELECT count(DISTINCT record_key) FROM persistent_records WHERE contract='literary_analyses'").fetchone()[0],'qualified_language_proficiency':0}

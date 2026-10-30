@@ -1,0 +1,7 @@
+'tis T IH1 Z
+bat B AE1 T
+bow B AW1
+bow(2) B OW1
+cat K AE1 T
+read R EH1 D
+read(2) R IY1 D

@@ -316,3 +316,15 @@ Evidence directory:
 See REPORT.md, final-full-installed.log, release-candidate-source.log,
 final-installed-fingerprint.json, benchmark-final-installed.json,
 desktop-installed.json and default-migration-and-restore.json.
+
+## Stage 5D development checkpoint
+Source baseline e64ed9c preserved. Initial literary architecture edf09b1 passed
+122 actual-host tests. The next batch passed 125 source tests, zero skips
+(233.528 s), including native protected literary GUI, resume identity, original
+poetic structure, source-linked interpretations, corruption rebuild and real
+licensed CMU dictionary subset cases. A real 12-edition pilot plus full 135,166-entry
+CMUdict import passed original integrity and actual portable restoration. It has
+17,255 indexed source passages and 12 body-observation records. These are framework/
+deterministic and real-source results, not 43-language or model proficiency.
+User selected U.S.-only acquisition rights. Larger approved partial-mirror transfer
+is still running; raw downloaded files are not counted as verified imports.

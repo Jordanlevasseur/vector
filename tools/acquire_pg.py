@@ -40,7 +40,7 @@ def select(catalog,target=1500):
 def rsync(root,names,remote,mode):
  if any(not re.fullmatch(r'\d+/pg\d+\.(rdf|txt)',name) for name in names):raise ValueError('Unexpected provider path')
  listing=root/(mode+'-files.txt');listing.write_text(''.join(n+'\n' for n in names))
- common=['/usr/bin/rsync','-r','--relative','--no-links','--no-perms','--ignore-existing','--timeout=30','--contimeout=20','--bwlimit=2048','--max-size='+('1m' if mode=='metadata' else '8m'),'--files-from='+str(listing)]
+ common=['/usr/bin/rsync','-rz','--relative','--no-links','--no-perms','--ignore-existing','--timeout=30','--contimeout=20','--bwlimit=2048','--max-size='+('1m' if mode=='metadata' else '8m'),'--files-from='+str(listing)]
  if mode=='books':
   preview=subprocess.run(common+['--list-only',remote,str(root/'mirror')+'/'],capture_output=True,text=True,timeout=120)
   (root/'books-size-preview.txt').write_text(preview.stdout+preview.stderr)
@@ -79,6 +79,13 @@ def main():
   try:metadata=read_metadata(root/'mirror'/row['Text#']/('pg'+row['Text#']+'.rdf'))
   except (ValueError,OSError,ET.ParseError):continue
   eligible.append((row,metadata))
+ buckets={}
+ for pair in eligible:buckets.setdefault(pair[0]['Language'],[]).append(pair)
+ eligible=[]
+ while any(buckets.values()):
+  for language,values in buckets.items():
+   for _ in range(3 if language=='en' else 1):
+    if values:eligible.append(values.pop(0))
  if args.phase=='books':
   # Explicit known generated UTF-8 names only; no remote directory enumeration/crawl.
   rsync(root,[r['Text#']+'/pg'+r['Text#']+'.txt' for r,m in eligible],'rsync://gutenberg.pglaf.org/gutenberg-epub/','books');return

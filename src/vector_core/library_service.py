@@ -16,7 +16,7 @@ def dispatch(app,operation,p):
         record=library.edition(p['id']);record['rights_notice']=PG_NOTICE if record['metadata']['rights']['status']=='provider-unrestricted-us' else record['metadata']['rights']['basis']
         return record
     if operation=='library_import':
-        result=library.import_pack(p['directory'],offset=p.get('offset',0),limit=p.get('limit',2),approved=p.get('approved',False))
+        result=library.import_pack(p['directory'],offset=p.get('offset',0),limit=p.get('limit',2),approved=p.get('approved',False),fingerprint=p.get('fingerprint'))
         if app.session['project_id'] and result['items']:
             from vector_core.projects import Projects
             Projects(memory).link_many(app.session['project_id'],[item['event_id'] for item in result['items']],approved=True)
@@ -29,6 +29,11 @@ def dispatch(app,operation,p):
         if type(after) is not int or after< -1:raise ValueError('Invalid unit cursor.')
         rows=memory.db.execute('SELECT id,ordinal,kind,start_char,end_char FROM literary_units WHERE event_id=? AND ordinal>? ORDER BY ordinal LIMIT 50',(event['id'],after)).fetchall()
         return {'items':[dict(r) for r in rows],'next_cursor':rows[-1]['ordinal'] if rows else after}
+    if operation=='library_observations':
+        result=latest(memory,'literary_analyses',p['event_id'])
+        for form in result['word_form_candidates']:
+            if memory.read_text_span(result['event_id'],form['start'],form['end'])!=form['quote']:raise ValueError('Invalid lexical observation source.')
+        return result
     if operation=='library_passage':return library.passage(p['id'])
     if operation=='library_observe':
         from vector_core.literary_analysis import observe

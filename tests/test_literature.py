@@ -95,6 +95,23 @@ class LiteraryTests(unittest.TestCase):
   pg={**entry,'provider_id':'pg:999','rights':{**entry['rights'],'status':'provider-unrestricted-us','jurisdiction':'US'}}
   with self.assertRaises(ValueError):verify_rights(pg,(root/'objects'/entry['sha256']).read_bytes(),b'<!DOCTYPE x [<!ENTITY x "untrusted">]><x/>')
 
+ def test_resume_binding_mechanical_observations_and_derived_rebuild(self):
+  root,first=self.fixture('Alpha alpha beta.\n\nSecond stanza.\n');second={**first,'provider_id':'fixture:second','title':'Second independent edition'}
+  header=json.dumps({'format':'vector-literary-pack-v1'})+'\n'
+  (root/'manifest.ndjson').write_text(header+json.dumps(first)+'\n'+json.dumps(second)+'\n')
+  batch=self.library.import_pack(root,limit=1,approved=True);self.assertFalse(batch['complete'])
+  with self.assertRaises(ValueError):self.library.import_pack(root,offset=batch['next_cursor'],fingerprint=['wrong'],approved=True)
+  next_batch=self.library.import_pack(root,offset=batch['next_cursor'],fingerprint=batch['fingerprint'],approved=True);self.assertTrue(next_batch['complete'])
+  event=batch['items'][0]['event_id'];self.process(event)
+  from vector_core.projects import latest
+  summary=latest(self.memory,'literary_analyses',event)
+  self.assertEqual(summary['word_form_tokens'],5);self.assertEqual(summary['nonblank_lines'],2);self.assertEqual(summary['blank_line_blocks'],2)
+  alpha=next(v for v in summary['word_form_candidates'] if v['form']=='alpha');self.assertEqual(alpha['count'],2);self.assertEqual(self.memory.read_text_span(event,alpha['start'],alpha['end']),alpha['quote'])
+  self.memory.db.execute("INSERT INTO literary_search(literary_search) VALUES ('delete-all')")
+  self.assertEqual(self.library.search('alpha'),[])
+  self.library.reset_index(approved=True);self.process(event);self.assertTrue(self.library.search('alpha'))
+  self.assertEqual(self.memory.original(event),b'Alpha alpha beta.\n\nSecond stanza.\n')
+
 class LiteraryCrashTests(unittest.TestCase):
  def test_interrupted_processing_retains_original_and_no_half_committed_passage(self):
   with tempfile.TemporaryDirectory() as folder:
@@ -121,3 +138,58 @@ with Memory(Config.load(data_dir=sys.argv[1])) as memory:
    self.assertEqual(result.returncode,89,result.stderr)
    with Memory(Config.load(data_dir=str(root/'data'))) as memory:
     self.assertEqual(memory.db.execute('SELECT count(*) FROM literary_units').fetchone()[0],0);self.assertEqual(memory.db.execute('SELECT count(*) FROM events').fetchone()[0],2);self.assertTrue(memory.verify()['passed'])
+
+class PronunciationTests(unittest.TestCase):
+ def test_real_licensed_dictionary_subset_retains_ambiguity_and_source_quotes(self):
+  from vector_core.literary_analysis import import_dictionary,pronunciation
+  with tempfile.TemporaryDirectory() as folder:
+   with Memory(Config.load(data_dir=str(Path(folder)/'data'))) as memory:
+    fixtures=Path(__file__).parent/'fixtures'
+    with self.assertRaises(PermissionError):import_dictionary(memory,fixtures/'cmu_subset.txt',fixtures/'CMU_LICENSE.txt')
+    result=import_dictionary(memory,fixtures/'cmu_subset.txt',fixtures/'CMU_LICENSE.txt',approved=True);self.assertTrue(result['complete'])
+    self.assertEqual(pronunciation(memory,'cat')['alternatives'][0]['syllables'],1)
+    read=pronunciation(memory,'read');self.assertEqual({tuple(a['phones']) for a in read['alternatives']},{('R','EH1','D'),('R','IY1','D')})
+    for a in read['alternatives']:self.assertEqual(memory.read_text_span(a['event_id'],a['start'],a['end']),a['quote'])
+    self.assertFalse(pronunciation(memory,'florbleswidget')['available'])
+    self.assertTrue(import_dictionary(memory,fixtures/'cmu_subset.txt',fixtures/'CMU_LICENSE.txt',approved=True)['unchanged_skipped'])
+
+class LiteraryDesktopTests(unittest.TestCase):
+ def test_actual_protected_library_import_processing_reader_and_observations(self):
+  if not os.environ.get('DISPLAY'):self.skipTest('No local display; real literary desktop workflow unverified.')
+  script=r'''
+import argparse,tempfile,json,hashlib,time,socket
+from pathlib import Path
+from vector_core.desktop import bootstrap,Desktop
+with tempfile.TemporaryDirectory() as directory:
+ rootpath=Path(directory);pack=rootpath/'pack';(pack/'objects').mkdir(parents=True)
+ raw=b'First poetic line\nSecond poetic line\n\nAnother stanza.\n';evidence=b'User-authored CC0 fixture';digest=hashlib.sha256(raw).hexdigest();proof=hashlib.sha256(evidence).hexdigest()
+ (pack/'objects'/digest).write_bytes(raw);(pack/'objects'/proof).write_bytes(evidence)
+ entry={'provider_id':'fixture:gui','title':'Explicit GUI fixture','authors':['Fixture author'],'language':'en','edition':'Fixture','publication_date':None,'digital_release':None,'translators':[],'subjects':'Fixture','genre':'poetry','source_url':'urn:fixture:gui','sha256':digest,'bytes':len(raw),'metadata_sha256':proof,'rights':{'status':'cc0','jurisdiction':'fixture','basis':'User authored test data','evidence_url':'urn:fixture','license_url':'urn:fixture'},'acquired':'fixture','print_edition_note':'No print edition','transport':'local'}
+ (pack/'manifest.ndjson').write_text(json.dumps({'format':'vector-literary-pack-v1'})+'\n'+json.dumps(entry)+'\n')
+ args=argparse.Namespace(data_dir=str(rootpath/'data'),choose_data=False,choose_models=False,models_directory=None,managed=False)
+ root,client=bootstrap(args);app=Desktop(root,client);errors=[];app.dialog.showerror=lambda *a,**k:errors.append(a)
+ def wait():
+  end=time.monotonic()+30;idle=0
+  while time.monotonic()<end:
+   root.update();time.sleep(.04)
+   idle=idle+1 if not client.pending else 0
+   if idle>=4:return
+  raise AssertionError('Actual GUI operation timed out')
+ wait();app.open_library();wait();library=app.library_window
+ app.files.askdirectory=lambda **kwargs:str(pack);app.dialog.askyesno=lambda *a,**k:True
+ library.import_pack();wait();library.process_pending();wait()
+ library.titles();wait();assert library.listing.size()==1
+ library.listing.selection_set(0);library.select();wait();library.next_units();wait();assert library.listing.size()>0
+ library.listing.selection_set(0);library.select();wait();assert 'First poetic line\nSecond poetic line' in library.reader.get('1.0','end')
+ library.observe();wait();assert app.last_response['result']['nonblank_lines']==2
+ library.body_observations();wait();assert app.last_response['result']['nonblank_lines']==3
+ for family in (socket.AF_INET,socket.AF_INET6,socket.AF_UNIX):
+  try:socket.socket(family,socket.SOCK_STREAM)
+  except PermissionError:pass
+  else:raise AssertionError('Frontend network permitted')
+ assert not errors,errors
+ app.close();print(json.dumps({'passed':True,'real_literary_gui':True,'network_denied':True}))
+'''
+  env={**os.environ,'PYTHONPATH':str(Path(__file__).resolve().parents[1]/'src')}
+  child=subprocess.run([sys.executable,'-c',script],env=env,capture_output=True,text=True,timeout=70)
+  self.assertEqual(child.returncode,0,child.stderr);self.assertTrue(json.loads(child.stdout)['passed'])
