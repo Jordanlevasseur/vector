@@ -32,8 +32,14 @@ class Config:
 
     def initialize(self):
         root=self.data_dir
+        if Config.load(data_dir=str(root)).data_dir!=root:
+            raise ValueError("Data path must be canonical.")
+        if type(self.max_source_bytes) is not int or not 1024<=self.max_source_bytes<=16*1024*1024:
+            raise ValueError("Invalid source byte limit.")
         if any(p.is_symlink() for p in (root,*root.parents)):
             raise ValueError('Data symbolic links forbidden.')
+        if (root/".restore-incomplete").exists():
+            raise ValueError("Incomplete restore is quarantined; originals were not overwritten.")
         root.mkdir(parents=True,mode=0o700,exist_ok=True)
         if root.stat().st_uid!=os.getuid() or stat.S_IMODE(root.stat().st_mode)&0o077:
             raise ValueError('Data directory must be owned by this user and private (0700).')

@@ -48,3 +48,21 @@ def connect(config):
     except Exception:
         db.close()
         raise
+
+MIGRATIONS.append("""
+CREATE TABLE blobs(sha256 TEXT PRIMARY KEY, body BLOB NOT NULL, byte_count INTEGER NOT NULL CHECK(byte_count=length(body)));
+CREATE TABLE sources(id TEXT PRIMARY KEY, name TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE events(id TEXT PRIMARY KEY, source_id TEXT NOT NULL REFERENCES sources(id),
+ sha256 TEXT NOT NULL REFERENCES blobs(sha256), occurred TEXT NOT NULL,
+ media_type TEXT NOT NULL, submission_name TEXT NOT NULL, metadata TEXT NOT NULL, parent_id TEXT REFERENCES events(id));
+CREATE INDEX events_source_time ON events(source_id,occurred,id);
+CREATE INDEX events_hash ON events(sha256);
+CREATE INDEX events_time ON events(occurred,id);
+CREATE TABLE texts(event_id TEXT PRIMARY KEY REFERENCES events(id), text TEXT, status TEXT NOT NULL);
+CREATE TRIGGER blobs_no_update BEFORE UPDATE ON blobs BEGIN SELECT RAISE(ABORT,'immutable originals'); END;
+CREATE TRIGGER blobs_no_delete BEFORE DELETE ON blobs BEGIN SELECT RAISE(ABORT,'immutable originals'); END;
+CREATE TRIGGER sources_no_update BEFORE UPDATE ON sources BEGIN SELECT RAISE(ABORT,'immutable source'); END;
+CREATE TRIGGER sources_no_delete BEFORE DELETE ON sources BEGIN SELECT RAISE(ABORT,'immutable source'); END;
+CREATE TRIGGER events_no_update BEFORE UPDATE ON events BEGIN SELECT RAISE(ABORT,'append-only events'); END;
+CREATE TRIGGER events_no_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT,'append-only events'); END;
+""")

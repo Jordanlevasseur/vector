@@ -31,3 +31,23 @@ def read_file(path,maximum):
         return b''.join(chunks)
     finally:
         for descriptor in reversed(descriptors): os.close(descriptor)
+
+
+def write_new_file(path,content):
+    """Explicit byte export only, never replacing files or touching HELIX/code."""
+    path=Path(path).expanduser().absolute()
+    protected=(Path('/home/mint/VECTOR/helix'),Path(__file__).resolve().parents[2])
+    if any(path.is_relative_to(p) for p in protected) or '..' in path.parts:
+        raise ValueError('Export target cannot be application source or HELIX.')
+    descriptors=[]
+    try:
+        parent=os.open('/',os.O_RDONLY|os.O_DIRECTORY);descriptors.append(parent)
+        for component in path.parts[1:-1]:
+            parent=os.open(component,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=parent)
+            descriptors.append(parent)
+        fd=os.open(path.name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600,dir_fd=parent)
+        with os.fdopen(fd,'wb') as output:
+            output.write(content);output.flush();os.fsync(output.fileno())
+        os.fsync(parent)
+    finally:
+        for fd in reversed(descriptors):os.close(fd)

@@ -50,6 +50,7 @@ class FoundationTests(unittest.TestCase):
     def test_symlink_and_helix_scopes_rejected(self):
         for path in ('/home/mint/VECTOR/helix/memory','/home/mint/VECTOR','relative'):
             with self.assertRaises(ValueError): Config.load(data_dir=path)
+        with self.assertRaises(ValueError):Config(Path('/home/mint/VECTOR/helix/new-data')).initialize()
         link=self.base/'link';link.symlink_to(self.base,target_is_directory=True)
         with self.assertRaises(ValueError): Config.load(data_dir=str(link/'data'))
 
