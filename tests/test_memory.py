@@ -119,3 +119,43 @@ os._exit(18)
         with Memory(self.config) as reopened:
             self.assertEqual(reopened.original(marker.read_text()),b'committed-original')
             self.assertTrue(reopened.verify()['passed'])
+
+    def test_oversized_corrupt_blob_is_detected_before_loading_original(self):
+        record=self.memory.ingest(Submission(b'abc','source'))
+        self.memory.db.execute('DROP TRIGGER blobs_no_update')
+        self.memory.db.execute('UPDATE blobs SET body=zeroblob(?),byte_count=?',(16*1024*1024+1,16*1024*1024+1))
+        with self.assertRaises(ValueError):self.memory.original(record['event_id'])
+        self.assertFalse(self.memory.verify()['passed'])
+
+    def test_backup_deadline_never_certifies_an_incomplete_copy(self):
+        from unittest.mock import patch
+        self.memory.ingest(Submission(b'keep','source'))
+        with patch('time.monotonic',side_effect=(0,999)):
+            with self.assertRaises(TimeoutError):backup(self.memory.db,self.config.data_dir,timeout_seconds=1)
+        self.assertEqual(list((self.config.data_dir/'backups').glob('*/manifest.json')),[])
+        self.assertTrue(self.memory.verify()['passed'])
+
+    def test_schema_two_backup_upgrades_without_changing_originals(self):
+        from vector_core.database import MIGRATIONS,APPLICATION_ID
+        from vector_core.retrieval import search
+        legacy=Config.load(data_dir=str(self.base/'legacy'))
+        legacy.initialize()
+        db=sqlite3.connect(legacy.data_dir/'vector.sqlite3',isolation_level=None)
+        db.executescript('BEGIN;'+MIGRATIONS[0]+MIGRATIONS[1]+
+                        f'PRAGMA application_id={APPLICATION_ID};PRAGMA user_version=2;COMMIT;')
+        raw=b'Original upgrade source contains 42 pascals.'
+        digest=hashlib.sha256(raw).hexdigest()
+        db.execute('INSERT INTO blobs VALUES (?,?,?)',(digest,raw,len(raw)))
+        db.execute('INSERT INTO sources VALUES (?,?,?)',('legacy-source','legacy.txt','2020-01-01T00:00:00+00:00'))
+        db.execute('INSERT INTO events VALUES (?,?,?,?,?,?,?,?)',('legacy-event','legacy-source',digest,
+                   '2020-01-01T00:00:00+00:00','text/plain','legacy.txt','{}',None))
+        db.execute('INSERT INTO texts VALUES (?,?,?)',('legacy-event',raw.decode(),'utf8-extracted'))
+        saved=backup(db,legacy.data_dir);db.close()
+        recovered=Config.load(data_dir=str(self.base/'upgraded-restored'))
+        restore(recovered,saved['directory'])
+        for config in (legacy,recovered):
+            with Memory(config) as upgraded:
+                self.assertEqual(upgraded.db.execute('PRAGMA user_version').fetchone()[0],4)
+                self.assertEqual(upgraded.original('legacy-event'),raw)
+                self.assertEqual(search(upgraded,'upgrade 42')[0]['event_id'],'legacy-event')
+                self.assertTrue(upgraded.verify()['passed'])

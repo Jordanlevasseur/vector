@@ -33,3 +33,25 @@ class CliTests(unittest.TestCase):
             run('restore',saved['directory'],directory=recovered)
             self.assertTrue(run('verify',directory=recovered)['passed'])
             self.assertEqual(run('show',event['event_id'],directory=recovered)['sha256'],event['sha256'])
+
+    def test_guarded_learning_conflict_and_explicit_override_workflow(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);data=root/'data'
+            def run(*args,success=True):
+                result=subprocess.run([sys.executable,'-m','vector_core','--data-dir',str(data),*args],
+                    env=ENV,capture_output=True,text=True,timeout=30)
+                self.assertEqual(result.returncode,0 if success else 1,result.stderr)
+                return json.loads(result.stdout) if success else result.stderr
+            first=root/'first.txt';first.write_text('Valve | state | open')
+            second=root/'second.txt';second.write_text('Valve | state | closed')
+            a=run('learn','--file',str(first),'--scope','test-plant','--exclusive')
+            run('learn','--file',str(second),'--scope','test-plant','--exclusive')
+            self.assertEqual(len(run('conflicts')),1)
+            identity=a['knowledge']['claim_ids'][0]
+            self.assertEqual(run('claim',identity)['value'],'open')
+            run('override',identity,'--value','closed','--scope','test-plant','--reason','Operator correction',success=False)
+            effective=run('override',identity,'--value','closed','--scope','test-plant','--reason','Operator correction','--approve')
+            self.assertEqual(effective['operating_conclusion'],'closed')
+            self.assertEqual(effective['evidence']['value'],'open')
+            self.assertEqual(len(run('conflicts')),1)
+            self.assertTrue(run('verify')['passed'])

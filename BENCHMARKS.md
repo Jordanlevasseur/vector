@@ -30,3 +30,7 @@ recall. Warm cache after ingestion; no cold-cache guarantee.
 
 Separate index size and hardware-specific cold-cache/inference behavior were
 not measured. No 100k/1M corpus or model benchmark was run.
+
+These measurements were taken at the Stage 3 retrieval implementation, before
+Stage 4 knowledge tables and subsequent resource hardening. They are a baseline,
+not a certified latency distribution for every later build, corpus or cold start.

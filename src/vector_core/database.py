@@ -24,6 +24,7 @@ def connect(config):
     db=sqlite3.connect(path,timeout=5,isolation_level=None)
     try:
         db.row_factory=sqlite3.Row
+        db.setlimit(sqlite3.SQLITE_LIMIT_LENGTH,32*1024*1024)
         db.enable_load_extension(False)
         db.execute('PRAGMA trusted_schema=OFF')
         db.execute('PRAGMA foreign_keys=ON')
@@ -70,4 +71,37 @@ CREATE TRIGGER events_no_delete BEFORE DELETE ON events BEGIN SELECT RAISE(ABORT
 MIGRATIONS.append("""
 CREATE VIRTUAL TABLE text_search USING fts5(text,content='',tokenize='unicode61');
 INSERT INTO text_search(rowid,text) SELECT rowid,text FROM texts WHERE status='utf8-extracted';
+""")
+
+MIGRATIONS.append("""
+CREATE TABLE entities(id TEXT PRIMARY KEY,name TEXT NOT NULL,normalized TEXT NOT NULL UNIQUE);
+CREATE TABLE claims(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),
+ start_char INTEGER NOT NULL,end_char INTEGER NOT NULL,quote TEXT NOT NULL,
+ subject_id TEXT NOT NULL REFERENCES entities(id),predicate TEXT NOT NULL,value TEXT NOT NULL,
+ value_key TEXT NOT NULL,scope TEXT NOT NULL,unit TEXT NOT NULL,kind TEXT NOT NULL,
+ exclusive INTEGER NOT NULL,object_id TEXT REFERENCES entities(id),origin TEXT NOT NULL,created TEXT NOT NULL,
+ UNIQUE(event_id,start_char,end_char,subject_id,predicate,value_key,scope,unit,kind,exclusive));
+CREATE INDEX claims_group ON claims(subject_id,predicate,scope,unit,exclusive,value_key);
+CREATE INDEX claims_event ON claims(event_id);
+CREATE INDEX claims_object ON claims(object_id);
+CREATE TABLE assessments(id TEXT PRIMARY KEY,claim_id TEXT NOT NULL REFERENCES claims(id),
+ previous_id TEXT REFERENCES assessments(id),state TEXT NOT NULL,confidence REAL NOT NULL,
+ reason TEXT NOT NULL,actor TEXT NOT NULL,created TEXT NOT NULL);
+CREATE INDEX assessments_claim ON assessments(claim_id,created,id);
+CREATE TABLE assessment_evidence(assessment_id TEXT NOT NULL REFERENCES assessments(id),
+ evidence_id TEXT NOT NULL REFERENCES claims(id),PRIMARY KEY(assessment_id,evidence_id));
+CREATE TABLE overrides(id TEXT PRIMARY KEY,claim_id TEXT NOT NULL REFERENCES claims(id),scope TEXT NOT NULL,
+ value TEXT NOT NULL,reason TEXT NOT NULL,previous_assessment TEXT REFERENCES assessments(id),
+ previous_override TEXT REFERENCES overrides(id),actor TEXT NOT NULL,created TEXT NOT NULL);
+CREATE INDEX overrides_claim ON overrides(claim_id,scope,created,id);
+CREATE TABLE extraction_runs(id TEXT PRIMARY KEY,event_id TEXT NOT NULL REFERENCES events(id),
+ parser TEXT NOT NULL,scope TEXT NOT NULL,status TEXT NOT NULL,detail TEXT NOT NULL,created TEXT NOT NULL);
+CREATE TRIGGER claims_no_update BEFORE UPDATE ON claims BEGIN SELECT RAISE(ABORT,'append-only claims'); END;
+CREATE TRIGGER claims_no_delete BEFORE DELETE ON claims BEGIN SELECT RAISE(ABORT,'append-only claims'); END;
+CREATE TRIGGER assessments_no_update BEFORE UPDATE ON assessments BEGIN SELECT RAISE(ABORT,'versioned assessments'); END;
+CREATE TRIGGER assessments_no_delete BEFORE DELETE ON assessments BEGIN SELECT RAISE(ABORT,'versioned assessments'); END;
+CREATE TRIGGER overrides_no_update BEFORE UPDATE ON overrides BEGIN SELECT RAISE(ABORT,'auditable overrides'); END;
+CREATE TRIGGER overrides_no_delete BEFORE DELETE ON overrides BEGIN SELECT RAISE(ABORT,'auditable overrides'); END;
+CREATE TRIGGER runs_no_update BEFORE UPDATE ON extraction_runs BEGIN SELECT RAISE(ABORT,'append-only extraction'); END;
+CREATE TRIGGER runs_no_delete BEFORE DELETE ON extraction_runs BEGIN SELECT RAISE(ABORT,'append-only extraction'); END;
 """)

@@ -29,3 +29,18 @@ profile change. External network denial remains mandatory.
 Hashes detect tested corruption; they do not authenticate against an attacker able
 to rewrite the database and all backups. Originals have append-only SQL controls,
 not immunity to hostile administrators. Restore must never overwrite existing data.
+
+## Final foundation checks
+Data ancestors must be owned by the current user or root and must not permit
+untrusted-account writes; root-owned sticky temporary directories are permitted.
+This prevents other-account path renaming beneath an otherwise private data root.
+Original byte counts are checked before materialization; raw object and SQLite
+value bounds reject oversized/corrupt inputs. Restore has disk reserve/change
+checks and quarantine; backup deadlines cannot produce a complete manifest.
+
+Actual Lenovo acceptance includes a positive unfiltered socket-creation control,
+followed by kernel denial of IPv4/IPv6/Unix sockets, inherited descriptor closure
+and denied process creation. These are syscall observations, not a packet-capture
+study, hostile-host certification or verification of an inference daemon. Separate
+inference/display profiles have not been activated or qualified. No host-wide
+firewall, shared service or Linux security setting was changed.

@@ -25,15 +25,21 @@ def sync(path):
     try: os.fsync(fd)
     finally: os.close(fd)
 
-def backup(db,root):
+def backup(db,root,timeout_seconds=120):
     parent=root/'backups'
     if parent.is_symlink(): raise ValueError('Backup symbolic links forbidden.')
     parent.mkdir(mode=0o700,exist_ok=True)
     folder=parent/uuid4().hex
     folder.mkdir(mode=0o700)
     path=folder/'archive.sqlite3'
+    import time
+    if not isinstance(timeout_seconds,(int,float)) or not 0<timeout_seconds<=3600:
+        raise ValueError('Backup deadline must be positive and at most one hour.')
+    deadline=time.monotonic()+timeout_seconds
+    def progress(status,remaining,total):
+        if time.monotonic()>deadline:raise TimeoutError('Backup deadline exceeded; incomplete copy not certified.')
     target=sqlite3.connect(path)
-    try: db.backup(target,pages=128)
+    try: db.backup(target,pages=128,progress=progress)
     finally: target.close()
     path.chmod(0o600)
     sync(path)
@@ -76,12 +82,19 @@ def restore(config,directory):
     if not stat.S_ISREG(os.fstat(fd).st_mode):
         os.close(fd)
         raise ValueError("Backup must be a regular file.")
-    try:
-        with os.fdopen(fd,'rb') as original,target.open('xb') as output:
-            for part in iter(lambda: original.read(1024*1024),b''):
-                digest.update(part);output.write(part)
-            output.flush();os.fsync(output.fileno())
-    except Exception: raise
+    import shutil
+    expected=os.fstat(fd).st_size
+    if expected>shutil.disk_usage(root).free-64*1024*1024:
+        os.close(fd)
+        raise ValueError('Insufficient free space for restore plus safety reserve; destination remains quarantined.')
+    with os.fdopen(fd,'rb') as original,target.open('xb') as output:
+        copied=0
+        for part in iter(lambda: original.read(min(1024*1024,expected+1-copied)),b''):
+            copied+=len(part)
+            if copied>expected:raise ValueError('Backup changed during copy; destination quarantined.')
+            digest.update(part);output.write(part)
+        output.flush();os.fsync(output.fileno())
+    if copied!=expected:raise ValueError('Backup changed during copy; destination quarantined.')
     target.chmod(0o600)
     if digest.hexdigest()!=manifest['sha256']:
         raise ValueError('Backup checksum mismatch; destination quarantined, not activated.')

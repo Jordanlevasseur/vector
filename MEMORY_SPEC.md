@@ -21,3 +21,14 @@ One SQLite transaction covers a batch and all derived writes; max 64 events and
 16 MiB aggregate, default 8 MiB per original. Restore copies a verified snapshot
 to a new private data root, validates SQLite/references/all blob hashes, then
 removes its incomplete marker durably. Existing data is never replaced.
+
+Resource hardening checks original byte counts before loading blobs; oversize
+corrupt records fail validation rather than entering Python memory. Backups have
+an explicit deadline and no complete manifest on timeout. Restore checks available
+disk plus reserve and refuses growth/change beyond the initial snapshot size.
+Complete hashing is streamed. These are bounded operational safeguards, not a
+malicious-administrator or physical-drive reliability guarantee.
+Directory creation and the VECTOR identity marker are fsynced before database use,
+so a successful database operation does not rely on an unsynced startup marker.
+Software crash/rollback checks passed; physical power-loss/drive failure was not
+performed and is not certified by those checks.

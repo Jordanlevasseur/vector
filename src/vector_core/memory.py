@@ -73,9 +73,10 @@ class Memory:
                     self.db.execute('INSERT INTO sources VALUES (?,?,?)',(source,item.name,now()))
                 elif self.db.execute('SELECT 1 FROM sources WHERE id=?',(source,)).fetchone() is None:
                     raise ValueError('Unknown source ID.')
-                existing=self.db.execute('SELECT body FROM blobs WHERE sha256=?',(digest,)).fetchone()
-                if existing is not None and existing[0]!=item.content:
-                    raise ValueError('Stored blob differs from its content hash; ingestion refused.')
+                existing=self.db.execute('SELECT length(body) FROM blobs WHERE sha256=?',(digest,)).fetchone()
+                if existing is not None:
+                    if existing[0]!=len(item.content) or self.db.execute('SELECT body FROM blobs WHERE sha256=?',(digest,)).fetchone()[0]!=item.content:
+                        raise ValueError('Stored blob differs from its content hash; ingestion refused.')
                 if existing is None:
                     self.db.execute('INSERT INTO blobs VALUES (?,?,?)',(digest,item.content,len(item.content)))
                 event=uuid4().hex
@@ -104,12 +105,15 @@ class Memory:
         return result
 
     def original(self,event_id):
-        row=self.db.execute('SELECT b.sha256,b.body,b.byte_count FROM events e JOIN blobs b ON b.sha256=e.sha256 WHERE e.id=?',
-                            (event_id,)).fetchone()
-        if row is None: raise KeyError('Submission event not found.')
-        if len(row['body'])!=row['byte_count'] or hashlib.sha256(row['body']).hexdigest()!=row['sha256']:
+        descriptor=self.db.execute('SELECT b.sha256,length(b.body),b.byte_count FROM events e JOIN blobs b ON b.sha256=e.sha256 WHERE e.id=?',
+                                   (event_id,)).fetchone()
+        if descriptor is None:raise KeyError('Submission event not found.')
+        if descriptor[1]!=descriptor[2] or not 0<=descriptor[1]<=16*1024*1024:
+            raise ValueError('Original byte count outside supported integrity/resource bounds.')
+        body=self.db.execute('SELECT body FROM blobs WHERE sha256=?',(descriptor[0],)).fetchone()[0]
+        if hashlib.sha256(body).hexdigest()!=descriptor[0]:
             raise ValueError('Original content integrity failure; not returned as valid.')
-        return row['body']
+        return body
 
     def recent(self,limit=30):
         if type(limit) is not int or not 1<=limit<=100: raise ValueError('Result limit must be 1-100.')
@@ -129,16 +133,23 @@ def extract(content,media_type):
 def verify_connection(db):
     errors=[]
     for row in db.execute('PRAGMA integrity_check'):
-        if row[0]!='ok': errors.append(row[0])
+        if row[0]!='ok':errors.append(row[0])
+        if len(errors)>=100:break
     for row in db.execute('PRAGMA foreign_key_check'):
         errors.append('Broken reference: '+str(tuple(row)))
+        if len(errors)>=100:break
     tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     if tables=={'audit'} and db.execute('PRAGMA user_version').fetchone()[0]==1:
         return {'passed':not errors,'checked_blobs':0,'events':0,'errors':errors[:100]}
     count=0
-    for digest,body,length in db.execute('SELECT sha256,body,byte_count FROM blobs'):
+    for digest,length,declared in db.execute('SELECT sha256,length(body),byte_count FROM blobs'):
         count+=1
-        if len(body)!=length or hashlib.sha256(body).hexdigest()!=digest:
+        if length!=declared or not 0<=length<=16*1024*1024:
+            errors.append('Unsupported original byte count: '+digest)
+            if len(errors)>=100:break
+            continue
+        body=db.execute('SELECT body FROM blobs WHERE sha256=?',(digest,)).fetchone()[0]
+        if hashlib.sha256(body).hexdigest()!=digest:
             errors.append('Content hash mismatch: '+digest)
         if len(errors)>100: break
     return {'passed':not errors,'checked_blobs':count,'events':db.execute('SELECT count(*) FROM events').fetchone()[0],

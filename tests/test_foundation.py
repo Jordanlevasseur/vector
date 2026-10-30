@@ -111,3 +111,10 @@ print('kernel controls verified')
         run=subprocess.run([sys.executable,'-c',code],env=ENV,pass_fds=(handle.fileno(),),capture_output=True,text=True,timeout=20)
         self.assertEqual(run.returncode,0,run.stderr)
         self.assertIn('kernel controls verified',run.stdout)
+
+    def test_unsafe_shared_data_parent_is_rejected_before_creation(self):
+        parent=self.base/'shared'
+        parent.mkdir(mode=0o777)
+        parent.chmod(0o777)
+        with self.assertRaises(ValueError):Config.load(data_dir=str(parent/'data'))
+        self.assertFalse((parent/'data').exists())

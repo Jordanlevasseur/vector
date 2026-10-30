@@ -15,3 +15,10 @@
 8. Qualification: representative reliability/resource/retrieval benchmarks.
 9. HELIX integration: prohibited until separately authorized.
 Progress and measured acceptance are recorded separately from this plan.
+
+## Current boundary
+The supported core through Stage 4 is implemented and host-tested. Stage 5 is the
+next gated milestone: separately secured inference plus bounded evidence/context
+and model-independent contracts (INFERENCE_PLAN.md). Do not connect an unqualified
+shared daemon. Stages 6-8 have not passed acceptance; Stage 9 remains unauthorized.
+A desktop remains pending and requires an explicitly tested display/IPC profile.

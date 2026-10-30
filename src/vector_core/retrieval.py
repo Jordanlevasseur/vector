@@ -78,10 +78,8 @@ def rebuild(memory):
     try:
         db.execute("INSERT INTO text_search(text_search) VALUES ('delete-all')")
         db.execute('DELETE FROM texts')
-        for event_id,digest,media_type,content in db.execute(
-                'SELECT e.id,e.sha256,e.media_type,b.body FROM events e JOIN blobs b ON b.sha256=e.sha256'):
-            import hashlib
-            if hashlib.sha256(content).hexdigest()!=digest: raise ValueError('Original hash failure; rebuild aborted.')
+        for event_id,media_type in db.execute('SELECT id,media_type FROM events'):
+            content=memory.original(event_id)
             text,status=extract(content,media_type)
             db.execute('INSERT INTO texts VALUES (?,?,?)',(event_id,text,status))
             index_event(db,event_id,text,status)

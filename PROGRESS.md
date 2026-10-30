@@ -40,3 +40,32 @@ lexical queries. Warm-cache median exact lookup 0.0246 ms; lexical 1.5431 ms;
 0.454 s. This does not establish general semantic or factual reasoning ability.
 Next: Stage 4 source-linked claims, supported scoped conflict detection and explicit
 auditable operating overrides; originals remain unchanged.
+
+## Stage 4 — supported knowledge integration
+Implemented explicit pipe-format extraction, exact source spans and hashes, typed
+unverified claims, case-preserving entities, one-hop relationships, scoped/unit-
+matched exclusive disagreement queries, append-only assessments/evidence links and
+explicit scoped overrides. Raw originals survive extraction failure. Original
+source claims remain visible after overrides. Append order handles clock regression.
+Added resource checks for oversized corrupt blobs, restore copying and backup time.
+
+Final actual Lenovo full suite: 43/43 passed. Clean local wheel installed in VECTOR's
+own `.venv` with `include-system-site-packages=false`; all 43 tests passed again
+against the installed runtime from outside the checkout. Actual CLI tests drive
+kernel-guarded learning/conflicts/explicit override, exact archive export and
+backup/restore. Kernel positive/denial controls remain included and passing.
+
+This is bounded Stage 4 foundation acceptance, not general language understanding.
+Stages 5-8 remain unqualified; Stage 9 remains unauthorized. Local inference is
+blocked until a separately secured service and narrowly scoped client policy are
+verified. Existing inference daemons were not modified or contacted. There is no
+GUI, semantic retrieval, neural learning or scientific reasoning claim.
+
+Final additional acceptance covered data-parent rename protections and upgrade
+from a populated schema-2 archive (including its backup) to schema 4 without
+changing original bytes, IDs or retrieval provenance. Source and installed suites
+both finish at 43 passing tests, no skips or expected failures. Installed modules
+were checked byte-for-byte against the source. The user's 28,715-byte master
+directive is the first real archived submission in the private default database,
+was retrieved through FTS and verified byte-identical, and has a unique local
+backup. It was not automatically converted into facts or claimed as model learning.
