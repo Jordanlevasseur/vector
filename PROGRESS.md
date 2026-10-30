@@ -139,3 +139,30 @@ discovered local qwen2.5-coder:0.5b without loading weights or contacting the sh
 service. Actual model generation and desktop workflows remain unqualified at this
 checkpoint. All new durable state uses Stage 4.5 registered contracts. See
 INTELLIGENCE_SPEC.md. HELIX and other independent repositories were not modified.
+
+## Desktop and shared application integration
+Added the actual Tk desktop and independent protected application backend, shared
+CLI/service operations, startup/model availability/errors, evidence-only fallback,
+clickable originals, claim/override learning workflows, projects/restart history,
+deterministic tools and Stage 4.5 backup/restore/relocation controls. New explicit
+pipe/local-display profiles retain socket/process denial and synchronize threads.
+Migration 6 adds indexes only. Managed model import resolves verified external
+obligations; materialization is restricted to the supported Ollama layout. No hidden
+persistent side database is used. Menu installer preserves existing customized files.
+
+Actual Lenovo full source suite: 92 passed, zero skips (183.795 s). Independent
+wheel-installed suite outside checkout: 91 passed, one skipped (160.682 s). The
+installed skip is optional authenticated-encryption roundtrip because cryptography
+is absent from .venv; host encryption passed. CPU-only worker qualification, PID
+exhaustion/cleanup, actual GUI, remote-display denial, thread synchronization,
+application restart, indexed history and portable new-state tests are included.
+Startup diagnostics exposed GPU discovery after resolving the installed runner;
+GPU backend directories are now hidden and CPU-only settings explicit. The shared
+Ollama home is also hidden. No host-wide setting/shared service was changed.
+
+Framework/profile/desktop tests do not qualify model answer accuracy. The actual
+model qualification utility preserves independently controlled original-quote
+expectations and raw/partial-generation evidence. Current real-model requalification
+and performance evidence are recorded separately after this implementation batch.
+The application remains an experimental build, not release-ready or generally
+qualified for multi-source reasoning or scientific engineering decisions.

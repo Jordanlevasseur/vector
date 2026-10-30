@@ -50,20 +50,58 @@ def local_api(path,payload=None,timeout=10):
     finally:connection.close()
 
 
+class GenerationFailure(ValueError):
+    def __init__(self,message,partial):super().__init__(message);self.partial=partial
+
+
+def stream_generation(payload,timeout):
+    connection=http.client.HTTPConnection('127.0.0.1',11434,timeout=timeout)
+    end=time.monotonic()+timeout;parts=[];size=0
+    try:
+        payload=dict(payload,stream=True)
+        connection.request('POST','/api/generate',json.dumps(payload),{'Content-Type':'application/json'})
+        response=connection.getresponse()
+        if response.status!=200:raise GenerationFailure('Local generation HTTP '+str(response.status)+': '+response.read(1000).decode('utf-8','replace'),'')
+        while True:
+            remaining=end-time.monotonic()
+            if remaining<=0:raise GenerationFailure('Generation deadline reached.',''.join(parts))
+            if connection.sock:connection.sock.settimeout(remaining)
+            raw=response.readline(65537)
+            if not raw:raise GenerationFailure('Runtime ended before completion.',''.join(parts))
+            if len(raw)>65536:raise GenerationFailure('Excessive runtime chunk.',''.join(parts))
+            chunk=json.loads(raw,object_pairs_hook=unique)
+            if not isinstance(chunk,dict) or not isinstance(chunk.get('response',''),str):raise GenerationFailure('Malformed generation chunk.',''.join(parts))
+            fragment=chunk.get('response','');size+=len(fragment.encode())
+            if size>min(MAX_FRAME,payload['options']['num_predict']*64):raise GenerationFailure('Generation output budget exceeded.',''.join(parts))
+            parts.append(fragment)
+            if chunk.get('error'):raise GenerationFailure(str(chunk['error'])[:500],''.join(parts))
+            if chunk.get('done') is True:
+                chunk['response']=''.join(parts);return chunk
+    except (OSError,ValueError) as error:
+        if isinstance(error,GenerationFailure):raise
+        raise GenerationFailure(str(error),''.join(parts)) from error
+    finally:connection.close()
+
+
 def main():
     if {line.split(':')[0].strip() for line in Path('/proc/net/dev').read_text().splitlines()[2:]}!={'lo'}:
         raise RuntimeError('Private network namespace is not loopback-only.')
     restrict()
     import resource
     resource.setrlimit(resource.RLIMIT_FSIZE,(16*1024*1024,16*1024*1024))
-    daemon=subprocess.Popen(['/runtime/ollama','serve'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=sys.stderr)
+    import tempfile
+    runtime_log=tempfile.TemporaryFile()
+    daemon=subprocess.Popen([os.environ['VECTOR_OLLAMA_BINARY'],'serve'],stdin=subprocess.DEVNULL,stdout=runtime_log,stderr=runtime_log)
     version=None
     try:
-        for _ in range(100):
-            if daemon.poll() is not None:raise RuntimeError('Private Ollama exited at startup.')
-            try:version=local_api('/api/version')['version'];break
+        startup_deadline=time.monotonic()+8
+        while time.monotonic()<startup_deadline:
+            if daemon.poll() is not None:break
+            try:version=local_api('/api/version',timeout=.25)['version'];break
             except (OSError,ValueError):time.sleep(.05)
-        if not isinstance(version,str):raise RuntimeError('Private Ollama startup deadline reached.')
+        if not isinstance(version,str):
+            runtime_log.seek(0,2);length=runtime_log.tell();runtime_log.seek(max(0,length-2000))
+            raise RuntimeError('Private Ollama startup failed/deadline reached: '+runtime_log.read(2000).decode('utf-8','replace'))
         for raw in iter(lambda:sys.stdin.buffer.readline(MAX_FRAME+1),b''):
             if len(raw)>MAX_FRAME or not raw.endswith(b'\n'):raise RuntimeError('Invalid request frame.')
             try:
@@ -83,6 +121,8 @@ def main():
                             'routes':bool(Path('/proc/net/route').read_text().splitlines()[1:]),'external_denied':denied,
                             'nested_userns_denied':nested,'runtime_version':version,
                             'host_home_absent':not Path('/home/mint').exists(),
+                            'shared_model_home_hidden':not Path('/usr/share/ollama/.ollama').exists(),
+                            'cpu_only':os.environ.get('OLLAMA_LLM_LIBRARY')=='cpu' and os.environ.get('CUDA_VISIBLE_DEVICES')=='-1',
                             'model_blobs_readonly':bool(os.statvfs('/models/blobs').f_flag & os.ST_RDONLY)}
                 elif operation=='resource_probe':
                     children=[];exhausted=False
@@ -114,13 +154,17 @@ def main():
                     if not limits or config.context_tokens>min(limits):raise ValueError('Actual model context capacity is unknown or insufficient.')
                     prompt=request['prompt']
                     if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise ValueError('Prompt byte budget exceeded.')
-                    result=local_api('/api/generate',{'model':config.model,'prompt':prompt,'stream':False,'format':'json','keep_alive':0,
+                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':'json','keep_alive':0,
                         'options':{'num_ctx':config.context_tokens,'num_predict':config.output_tokens,'temperature':config.temperature,
-                                   'seed':config.seed,'num_thread':2}},config.timeout_seconds)
+                                   'seed':config.seed,'num_thread':2}},max(.05,config.timeout_seconds-1))
                     result['model_digest']=selected.get('digest','unknown')
                 else:raise ValueError('Unauthorized worker operation.')
                 response={'ok':True,'result':result}
-            except (ValueError,KeyError,TypeError,OSError) as error:response={'ok':False,'result':str(error)[:1000]}
+            except (ValueError,KeyError,TypeError,OSError) as error:
+                runtime_log.seek(0,2);length=runtime_log.tell();runtime_log.seek(max(0,length-700))
+                diagnostic=runtime_log.read(700).decode('utf-8','replace')
+                response={'ok':False,'result':{'error':str(error)[:250]+'; private runtime log tail: '+diagnostic,
+                          'partial':getattr(error,'partial',None),'simulated':False}}
             encoded=json.dumps(response,allow_nan=False).encode()
             if len(encoded)>MAX_FRAME:encoded=b'{"ok":false,"result":"Excessive output"}'
             sys.stdout.buffer.write(encoded+b'\n');sys.stdout.buffer.flush()
@@ -128,5 +172,6 @@ def main():
         daemon.terminate()
         try:daemon.wait(timeout=2)
         except subprocess.TimeoutExpired:daemon.kill();daemon.wait()
+        runtime_log.close()
 
 if __name__=='__main__':main()

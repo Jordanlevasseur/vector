@@ -32,8 +32,15 @@ def activate(*,pipe_fds=(),display_fd=None):
         if type(display_fd) is not int or display_fd<3:raise SecurityError('Invalid display descriptor.')
         view=socket.fromfd(display_fd,socket.AF_UNIX,socket.SOCK_STREAM)
         try:
+            if view.getsockopt(socket.SOL_SOCKET,socket.SO_DOMAIN)!=socket.AF_UNIX:raise SecurityError('Display must use an existing Unix socket.')
+            import struct
+            peer_pid,peer_uid,peer_gid=struct.unpack('3i',view.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,12))
+            if peer_uid not in (0,os.getuid()):raise SecurityError('Display peer must be this user or root.')
             peer=view.getpeername()
-            if not isinstance(peer,str) or not peer.lstrip('\0').startswith('/tmp/.X11-unix/X'):raise SecurityError('Only a preconnected local X11 display is permitted.')
+            if isinstance(peer,bytes):peer=os.fsdecode(peer)
+            import re
+            display=re.fullmatch(r':(\d+)(?:\.\d+)?',os.environ.get('DISPLAY',''))
+            if not display or not isinstance(peer,str) or peer.lstrip('\0')!='/tmp/.X11-unix/X'+display[1]:raise SecurityError('Only the explicitly selected local X11 display is permitted.')
         finally:view.close()
         retained.add(display_fd)
     start=3
@@ -77,7 +84,12 @@ def activate(*,pipe_fds=(),display_fd=None):
         raise SecurityError('Mandatory local libseccomp unavailable.') from error
     if libc.prctl(39,0,0,0,0)!=1 or libc.prctl(21,0,0,0,0)!=2:
         raise SecurityError('Kernel did not confirm filtering/no_new_privs.')
-    return probe()
+    result=probe()
+    if retained:
+        result.update(kernel_policy='seccomp-offline-desktop-v1' if display_fd is not None else 'seccomp-offline-ipc-v1',
+                      retained_pipe_count=len(set(pipe_fds)),preconnected_local_display=display_fd is not None,
+                      inference='No inference sockets authorized; any separately qualified worker uses explicit pipe IPC.')
+    return result
 
 def probe():
     observed = {}

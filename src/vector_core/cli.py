@@ -5,10 +5,6 @@ import sys
 
 def main(argv=None):
     from vector_core.security import activate,SecurityError
-    try: policy=activate()
-    except SecurityError as error:
-        print('VECTOR startup blocked: '+str(error),file=sys.stderr)
-        return 2
     import argparse
     import sqlite3
     from pathlib import Path
@@ -57,7 +53,23 @@ def main(argv=None):
     action=commands.add_parser('register-contract');action.add_argument('name');action.add_argument('description')
     action=commands.add_parser('state-put');action.add_argument('contract');action.add_argument('key');action.add_argument('json_file')
     action=commands.add_parser('state-list');action.add_argument('contract');action.add_argument('--after',type=int,default=0);action.add_argument('--limit',type=int,default=100)
+    for name in ('ask','models'):
+        action=commands.add_parser(name);action.add_argument('--models-directory');action.add_argument('--managed',action='store_true')
+        if name=='ask':
+            action.add_argument('question');action.add_argument('--model');action.add_argument('--context',type=int,default=2048)
+            action.add_argument('--output-tokens',type=int,default=256);action.add_argument('--timeout',type=float,default=30)
+    action=commands.add_parser('calculate');action.add_argument('operation');action.add_argument('parameters');action.add_argument('--approve',action='store_true')
     args=parser.parse_args(argv)
+    transport=None;startup_error=None
+    if args.command in ('ask','models') and (args.models_directory or args.managed):
+        try:
+            from vector_core.worker_launcher import launch,launch_managed
+            transport=launch_managed() if args.managed else launch(args.models_directory)
+        except (RuntimeError,ValueError,OSError) as error:startup_error=str(error)
+    try:policy=activate(pipe_fds=transport.retained_fds if transport else ())
+    except SecurityError as error:
+        if transport:transport.close()
+        print('VECTOR startup blocked: '+str(error),file=sys.stderr);return 2
     command=args.command or 'health'
     try:
         config=Config.load(args.config,args.data_dir)
@@ -75,7 +87,18 @@ def main(argv=None):
         with Memory(config) as memory:
             log=logger(config.data_dir)
             log.info('Operation started: %s',command)
-            if command=='health':
+            if command in ('ask','models','calculate'):
+                from vector_core.service import Application
+                application=Application(memory,transport,startup_error);application.policy=policy
+                if command=='models':result=application.handle('models',{})
+                elif command=='calculate':result=application.handle('tool',{'name':args.operation,'parameters':json.loads(args.parameters),'approved':args.approve})
+                else:
+                    if args.model and transport:
+                        from dataclasses import asdict
+                        from vector_core.inference import GenerationConfig
+                        application.handle('select_model',{'configuration':asdict(GenerationConfig(args.model,args.context,args.output_tokens,args.timeout)),'authorize_external':True})
+                    result=application.handle('ask',{'question':args.question})
+            elif command=='health':
                 result={'policy':policy,'database_integrity':memory.db.execute('PRAGMA quick_check').fetchone()[0],
                     'schema_version':memory.db.execute('PRAGMA user_version').fetchone()[0],
                     'data_directory':str(config.data_dir),'model_available':False,'release_ready':False,
@@ -139,5 +162,7 @@ def main(argv=None):
     except (ValueError,OSError,RuntimeError,KeyError,sqlite3.Error) as error:
         print('VECTOR operation blocked: '+str(error),file=sys.stderr)
         return 1
+    finally:
+        if transport:transport.close()
 
 if __name__=='__main__': raise SystemExit(main())

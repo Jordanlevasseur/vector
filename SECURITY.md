@@ -20,11 +20,11 @@ Data must be separate from HELIX and code and private to its owner. No document 
 executed or imported. No general document parser, model tools or shell is enabled.
 SQLite parameters and bounded operations are required throughout.
 
-Inference is disabled, including loopback: its separate daemon's egress has not
-been qualified. VECTOR's filter cannot constrain an already running Ollama service.
-Do not weaken host-wide settings or claim inference-service isolation was verified.
-Future Unix/loopback inference requires a separately tested OS policy and explicit
-profile change. External network denial remains mandatory.
+The default profile has no inference sockets, including loopback. An already running
+shared Ollama service is never treated as isolated. The separately qualified worker
+and explicit pipe/display profiles below provide the supported integration; their
+qualification does not certify model answer quality. Host-wide settings remain
+unchanged and external-network denial remains mandatory.
 
 Hashes detect tested corruption; they do not authenticate against an attacker able
 to rewrite the database and all backups. Originals have append-only SQL controls,
@@ -41,8 +41,9 @@ checks and quarantine; backup deadlines cannot produce a complete manifest.
 Actual Lenovo acceptance includes a positive unfiltered socket-creation control,
 followed by kernel denial of IPv4/IPv6/Unix sockets, inherited descriptor closure
 and denied process creation. These are syscall observations, not a packet-capture
-study, hostile-host certification or verification of an inference daemon. Separate
-inference/display profiles have not been activated or qualified. No host-wide
+study, hostile-host certification or verification of an inference daemon. At the Stage 4 checkpoint, separate
+inference/display profiles had not been activated or qualified; the subsequent
+profiles and tests are described below. No host-wide
 firewall, shared service or Linux security setting was changed.
 VECTOR write connections enable recursive triggers: SQLite REPLACE must not bypass
 immutable-table DELETE guards. Actual regression tests verified rejection with
@@ -60,3 +61,24 @@ authentication failure never falls back to plaintext. Protect recovery keys on
 separate offline media; no recovery exists if all key copies are lost. Plain hash
 archives are not adversarially authenticated; encryption does not prevent replay.
 All new CLI actions activate the same mandatory kernel offline policy first.
+
+## Stage 5/desktop profiles
+The default no-socket/no-process profile is preserved. Explicit FIFO retention uses
+`seccomp-offline-ipc-v1`; the desktop uses `seccomp-offline-desktop-v1` with only its
+already-connected local X11 descriptor excepted for socket I/O. New sockets/connects
+and process creation remain denied. Filtering synchronizes existing threads. Remote
+displays are refused before connection and inherited display peers are checked.
+
+A trusted pre-data startup phase may launch a dedicated Ollama worker in fresh
+Bubblewrap namespaces under a transient user cgroup. Its network contains loopback
+only, external routes are absent, Unix/other socket families and namespace changes
+are denied, capabilities are dropped and nested user namespaces are disabled. Host
+homes and the shared Ollama home are hidden. The CPU-only profile hides GPU backend
+libraries and constrains memory, tasks and aggregate CPU using verified cgroup v2
+controls. No RLIMIT_NPROC per-user limit is used. Selected model files are read-only;
+metadata/scratch are private bounded tmpfs. Executables must be root-owned installed
+programs; startup uses a fixed local user-bus address and sanitized environment.
+Qualification is per launch before source data reaches the worker. No unqualified
+shared service or cloud fallback is permitted. Source/response validation remains
+independent of the model. See INTELLIGENCE_SPEC.md and DESKTOP_SPEC.md for the exact
+scope and current model qualification; no hostile privileged-host guarantee is made.

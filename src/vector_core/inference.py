@@ -49,7 +49,7 @@ class SimulatedAdapter:
 
 
 def checked_result(text,config,*,simulated=False,runtime='',model_version='',metrics=None):
-    if not isinstance(text,str) or len(text.encode())>min(1024*1024,config.output_tokens*64):
+    if not isinstance(text,str) or len(json.dumps(text,ensure_ascii=False).encode())>min(1024*1024,config.output_tokens*64):
         raise InferenceError('Malformed or excessive generation output.')
     return {'text':text,'simulated':simulated,'model':config.model,'runtime_version':runtime,
             'model_version':model_version,'configuration':asdict(config),'metrics':metrics or {}}
@@ -65,7 +65,10 @@ class OllamaAdapter:
         if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise InferenceError('Prompt exceeds conservative byte budget.')
         if cancellation and cancellation.cancelled:raise InferenceError('Cancelled.')
         response=self.transport.request({'operation':'generate','prompt':prompt,'config':asdict(config)},config.timeout_seconds,cancellation)
-        if not isinstance(response,dict) or response.get('done') is not True or response.get('done_reason')=='length':raise InferenceError('Incomplete/truncated model generation.')
+        if not isinstance(response,dict) or response.get('done') is not True or response.get('done_reason')=='length':
+            error=InferenceError('Incomplete/truncated model generation.')
+            error.raw_generation=response.get('response') if isinstance(response,dict) else None
+            raise error
         if type(response.get('prompt_eval_count')) is not int or response['prompt_eval_count']+config.output_tokens>config.context_tokens:
             raise InferenceError('Actual prompt token count exceeds the accepted context budget.')
         return checked_result(response.get('response'),config,runtime=self.transport.runtime_version,

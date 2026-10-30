@@ -60,3 +60,31 @@ class ActualWorkerTests(unittest.TestCase):
                 if not cgroup.exists() or (cgroup/'pids.current').read_text().strip()=='0':break
                 time.sleep(.05)
             self.assertTrue(not cgroup.exists() or (cgroup/'pids.current').read_text().strip()=='0','Inference descendants survived cleanup')
+
+class StreamingTests(unittest.TestCase):
+    def test_streamed_runtime_response_is_assembled_only_at_done(self):
+        from unittest.mock import patch
+        from vector_core.inference_worker import stream_generation
+        import io
+        class Connection:
+            sock=None
+            def request(self,*args):pass
+            def getresponse(self):
+                response=io.BytesIO(b'{"response":"{\\"answer\\":","done":false}\n{"response":"4}","done":true,"prompt_eval_count":10}\n');response.status=200;return response
+            def close(self):pass
+        with patch('vector_core.inference_worker.http.client.HTTPConnection',return_value=Connection()):
+            result=stream_generation({'options':{'num_predict':32}},1)
+        self.assertTrue(result['done']);self.assertEqual(result['response'],'{"answer":4}')
+    def test_incomplete_stream_retains_partial_evidence_and_is_rejected(self):
+        from unittest.mock import patch
+        from vector_core.inference_worker import stream_generation,GenerationFailure
+        import io
+        class Connection:
+            sock=None
+            def request(self,*args):pass
+            def getresponse(self):
+                response=io.BytesIO(b'{"response":"partial","done":false}\n');response.status=200;return response
+            def close(self):pass
+        with patch('vector_core.inference_worker.http.client.HTTPConnection',return_value=Connection()):
+            with self.assertRaises(GenerationFailure) as error:stream_generation({'options':{'num_predict':32}},1)
+        self.assertEqual(error.exception.partial,'partial')

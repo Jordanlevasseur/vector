@@ -6,8 +6,8 @@ scope; `intake` reads explicitly selected regular files through no-follow direct
 handles; `database` owns transactional migrations and durability. `maintenance`
 owns local logs and consistent non-overwriting backups. Memory, retrieval and
 knowledge are separate layers built over authoritative originals. Models never
-own memory or control authorization. Early stages expose a bounded CLI; a minimal
-desktop can follow verified persistence/retrieval. No speculative services.
+own memory or control authorization. A bounded CLI and lightweight desktop share actual application interfaces.
+Inference and display IPC use separately verified profiles; no remote service is used.
 
 ## Implemented layers through Stage 4.5
 - `memory`: content-addressed originals, immutable submission/revision history and
@@ -34,3 +34,17 @@ can be larger. Total collection counts are not capped. Large-document full-text
 indexing remains explicitly deferred. PORTABILITY.md defines persistence contracts,
 platform dependencies, recovery, encryption policy and tested scope. Future
 subsystems must register all authoritative state/assets before claiming portability.
+
+## Inference, reasoning, tools and desktop integration
+`inference` defines bounded replaceable adapters; `worker_launcher` and
+`inference_worker` implement a separately qualified CPU-only Ollama namespace and
+pipe broker. `models` verifies explicit model dependencies and managed runtime
+layouts. `context` composes deterministic original-linked evidence; `assistant`
+validates citations and records bounded operational reasoning. `reasoning` provides
+observable literal task decomposition, not a claim of general semantic planning.
+`learning` keeps proposed knowledge separate until explicit atomic approval.
+`tools` provides authorized Decimal/SI computations without eval or shell execution.
+`service` is the shared actual operation boundary. `desktop` and `desktop_worker`
+provide a responsive local GUI and independent protected backend. All durable state
+uses the existing registered contracts; migration 6 adds lookup indexes only.
+Inference/display profiles are qualified separately from model answer quality.

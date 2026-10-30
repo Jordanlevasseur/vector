@@ -34,10 +34,25 @@ def validate_model(db,payload):
             raise ValueError('Required model asset missing or mismatched.')
 
 
+
+def validate_preference(key,payload):
+    if key=='generation':
+        from vector_core.inference import GenerationConfig
+        if not isinstance(payload,dict):raise ValueError('Generation settings must be an object.')
+        try:GenerationConfig(**payload).validate()
+        except TypeError as error:raise ValueError('Unsupported generation settings.') from error
+    if key=='desktop_session':
+        if not isinstance(payload,dict) or set(payload)!={'conversation_id','project_id'}:raise ValueError('Invalid desktop session.')
+        for name in ('conversation_id','project_id'):
+            value=payload[name]
+            if name=='project_id' and value is None:continue
+            if not isinstance(value,str) or not re.fullmatch('[0-9a-f]{32}',value):raise ValueError('Invalid session identity.')
+
 @write_operation
 def put(memory,contract,key,payload):
     require(memory,contract)
     if not isinstance(key,str) or not 1<=len(key)<=512:raise ValueError('Bounded record key required.')
+    if contract=='preferences':validate_preference(key,payload)
     if contract=='preferences' and key=='__vector_runtime__':
         if not isinstance(payload,dict) or set(payload)!={'max_source_bytes'} or type(payload['max_source_bytes']) is not int or not 1024<=payload['max_source_bytes']<=16*1024*1024:
             raise ValueError('Unsupported runtime preferences.')

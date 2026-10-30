@@ -46,3 +46,11 @@ Portable repositories contain a consistent database plus all managed objects;
 unknown state and missing/external required assets fail closed. Verified new-only
 restoration, encryption policy, relocation, paging, operation bounds, exclusions
 and growth strategy are specified permanently in PORTABILITY.md.
+
+New conversations, reasoning traces, configurations, project sessions, model
+manifests/assets, learning proposals/approvals, tool runs and desktop errors use
+registered portable records. There is no additional side database. Migration 6
+adds contract/UUID-prefix cursor and claim lookup indexes. Original bytes and IDs
+are preserved. Imported generation/session preferences are validated before portable
+activation. Runtime model materializations and scratch/log files are ephemeral;
+application launchers and runtime libraries are platform installation dependencies.

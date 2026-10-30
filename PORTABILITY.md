@@ -135,6 +135,6 @@ Imports reject traversal, symbolic links, arbitrary logical paths, unknown schem
 malformed metadata, missing files, unsupported settings and bounded decompression
 violations. Hashes detect corruption, not a hostile actor rewriting an entire
 unencrypted archive. The current format requires compatible application/schema
-versions and has no automatic downgrade conversion. Desktop actions remain pending
-an independently tested GUI/IPC security profile. Stage 5A remains gated by actual
-portability and security acceptance, not archive creation alone.
+versions and has no automatic downgrade conversion. Desktop actions now use the separately tested GUI/IPC profile described in
+DESKTOP_SPEC.md. Inference/model quality is independently qualified; archive creation
+alone does not establish portability, model accuracy or release readiness.

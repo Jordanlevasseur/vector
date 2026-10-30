@@ -44,3 +44,35 @@ suite passed 66 with one optional-encryption test skipped (cryptography absent i
 .venv). Host encryption tests passed. The real default original was migrated and
 actually restored byte-identically. See PROGRESS.md for the exact qualification
 boundary and BENCHMARKS.md for measured 50,000-event growth.
+
+
+## Offline desktop and assistant
+After local wheel installation, run `.venv/bin/vector-install-desktop` once to add
+VECTOR to the Linux application menu. The ordinary launcher needs no model.
+Menu actions also open an explicitly selected local Ollama models folder, use
+managed imported models, or choose another private VECTOR data folder.
+Run `.venv/bin/vector-desktop` directly if desired. Only local X11/XWayland is
+supported; remote displays and unqualified inference workers fail closed.
+
+Assistant uses original-linked evidence. Model responses are unverified inferences,
+never automatic facts. Without a model it displays matching source excerpts rather
+than fabricated generated answers. Knowledge/learning/projects/tools/storage actions
+use functioning subsystems; supported deterministic tools are available without AI.
+Settings exposes model budgets, storage, verified backup/restore, relocation and
+separate recovery keys. Optional encryption needs locally installed cryptography;
+the isolated .venv reports its absence rather than falling back to plaintext.
+
+CLI additions: `models`, `ask QUESTION --model NAME --models-directory PATH` or
+`ask QUESTION --model NAME --managed`, and
+`calculate arithmetic '{"expression":"2+2"}' --approve`.
+Global data/config options precede commands. Inference uses verified private
+namespaces/cgroup limits and explicit pipes, never the shared Ollama endpoint.
+Selecting external weights blocks complete exports; import assets through Settings,
+then relaunch Managed Models for portable runtime selection. Runtime binaries are
+separate platform dependencies. See DESKTOP_SPEC.md and INTELLIGENCE_SPEC.md.
+
+A reproducible actual-model check is available with
+`PYTHONPATH=src python3 -m vector_core.model_qualification --models-directory PATH --model NAME --timeout 240`.
+Add `--roundtrip` to import real local assets, export and restore them before the
+trial. These are bounded temporary-data acceptance runs, not simulated answers,
+not large-model downloads and not proof of general reasoning or release readiness.

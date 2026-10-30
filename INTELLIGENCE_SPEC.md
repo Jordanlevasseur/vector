@@ -60,3 +60,17 @@ cleanup; evidence/citation/injection, explicit simulation, atomic approvals,
 calculation/units/limits and portable new-state restore. Dedicated Ollama 0.40.12
 read-only discovery found installed qwen2.5-coder:0.5b. Actual model generation and
 desktop profile/workflows are subsequent qualification, not inferred from these tests.
+
+## Integrated application updates
+The worker profile is explicitly CPU-only. Ollama GPU discovery can delay readiness
+when installed GPU libraries are exposed, so GPU backends are hidden rather than
+relaxing startup/isolation checks. Loader/request deadlines are explicit; caller
+budgets are bounded. Generation is streamed internally for bounded collection and
+retained partial-failure evidence. A stream is accepted only after the runtime's
+completion marker; truncated/partial JSON is never promoted to a successful answer.
+Operational traces retain raw generation prefixes with SHA-256 and explicit
+truncation markers. Model performance/accuracy remains a separate actual-host test.
+`model_qualification` provides an independent two-source verbatim-attribution trial;
+its expectations are controlled outside model output and it can exercise a complete
+real-model managed export/restore before generation. This simple task does not
+establish general multi-step reasoning ability, even if a model passes it.

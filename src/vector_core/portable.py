@@ -76,6 +76,9 @@ def validate_database(db,data_root=None,deadline=None):
         for contract,record_key,payload in db.execute('SELECT contract,record_key,payload FROM persistent_records'):
             decoded=json.loads(payload,object_pairs_hook=unique,parse_constant=lambda value:(_ for _ in ()).throw(ValueError(value)))
             if contract=='models':validate_model(db,decoded)
+            if contract=='preferences':
+                from vector_core.persistence import validate_preference
+                validate_preference(record_key,decoded)
             if contract=='preferences' and record_key=='__vector_runtime__':
                 if (not isinstance(decoded,dict) or set(decoded)!={'max_source_bytes'}
                     or type(decoded['max_source_bytes']) is not int or not 1024<=decoded['max_source_bytes']<=16*1024*1024):

@@ -131,3 +131,9 @@ INSERT INTO persistence_contracts VALUES ('preferences',1,'User-authorized setti
  ('models',1,'Local model manifests and weights'),('adapters',1,'Local adaptation artifacts'),('extensions',1,'Inert portable extension assets'),
  ('originals',1,'Streaming original content'),('recovered',1,'Recovered complete content not acknowledged as a submission');
 """)
+
+MIGRATIONS.append('''
+CREATE INDEX records_contract_cursor ON persistent_records(contract);
+CREATE INDEX conversation_cursor ON persistent_records(contract,substr(record_key,1,32));
+CREATE INDEX claims_event_identity ON claims(event_id,id);
+''')

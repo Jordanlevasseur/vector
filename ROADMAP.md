@@ -21,12 +21,13 @@
 Progress and measured acceptance are recorded separately from this plan.
 
 ## Current boundary
-The supported core through Stage 4.5 is implemented and host-tested within the
-explicit PORTABILITY.md bounds. Final source suite: 67/67 passed. Independent
-installed suite: 66 passed and one optional encrypted-roundtrip test skipped because
-that interpreter has no cryptography; actual host encryption tests passed. Storage
-growth is measured at 50,000 short originals; see BENCHMARKS.md for revision/timing
-scope. Stage 5A remains gated by a separately qualified inference profile, authorized
-managed weights/runtime and independently verified reasoning. Do not connect an
-unqualified shared daemon. Stages 6-8 have not passed acceptance; Stage 9 remains
-unauthorized. Desktop actions await a tested display/IPC profile.
+Stages 1–4.5 remain preserved. Inference/evidence/learning/tool foundations were
+checkpointed at 5079048 (81 passing actual-host tests). The desktop integration adds
+actual protected workflows, managed-model materialization and indexed history.
+Framework and OS-profile acceptance is separate from actual model accuracy; no
+simulated test establishes model reasoning. See INTELLIGENCE_SPEC.md,
+DESKTOP_SPEC.md and PROGRESS.md for final test/model results. Stage 6 currently
+covers a bounded deterministic subset; general scientific reasoning remains open.
+Stage 7 has a working local X11 interface, with representative usability/security
+qualification still required. Stage 8 remains a release gate. Stage 9 remains
+unauthorized. No host-wide security relaxation or shared-service reuse is permitted.

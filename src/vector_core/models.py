@@ -51,6 +51,12 @@ def selected_files(root,name):
             if item.get('mediaType')=='application/vnd.docker.distribution.manifest.v2+json':
                 if size>65536:raise ValueError('Nested model manifest too large.')
                 with input_file(path) as source:pending.append(json.loads(source.read(65537),object_pairs_hook=unique))
+    selector=root/'manifests-v2/ollama.com/library'/model/tag
+    if selector.exists():
+        target=selector.resolve()
+        with input_file(target) as source:raw=source.read(65537)
+        if len(raw)>65536:raise ValueError('Model selector metadata too large.')
+        result.append({'path':target,'relative':str(selector.relative_to(root)),'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw)})
     return result
 
 
@@ -70,5 +76,38 @@ def import_model(memory,root,name,runtime_version):
         import_asset(memory,'models',logical,item['path'],'model-weight' if item['relative'].startswith('blobs/') else 'portable-data')
         names.append(logical)
     record=model_manifest(memory,name,files[0]['sha256'],'ollama '+runtime_version,names)
-    # External declarations are retained historical dependencies; explicit promotion is not automatic.
-    return {'manifest_record':record,'assets':len(names),'external_declarations_retained':True}
+    from vector_core.persistence import put
+    put(memory,'capabilities','model-import:'+name,{'model':name,'files':[{k:str(v) for k,v in item.items()} for item in files],
+        'status':'managed assets hash-verified; external obligations resolved','runtime_version':runtime_version})
+    for item in files:
+        memory.db.execute("DELETE FROM external_dependencies WHERE contract='models' AND path=? AND digest=?",(str(item['path']),item['sha256']))
+    return {'manifest_record':record,'assets':len(names),'external_declarations_retained':False}
+
+
+def materialize(memory,name,directory):
+    """Verified managed bytes into a private ephemeral runtime layout."""
+    from vector_core.storage import object_chunks,capacity
+    from vector_core.intake import write_new_chunks
+    from vector_core.persistence import validate_model
+    row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='models' AND record_key=? ORDER BY rowid DESC LIMIT 1",(name,)).fetchone()
+    if row is None:raise ValueError('Managed model not found; explicitly import local assets first.')
+    payload=json.loads(row[0]);validate_model(memory.db,payload);root=safe_path(directory)
+    total=0
+    for asset in payload['assets']:
+        reference=memory.db.execute('SELECT logical_name,digest FROM managed_refs WHERE id=?',(asset['asset_id'],)).fetchone()
+        prefix=name+'/'
+        if not reference[0].startswith(prefix):raise ValueError('Managed model layout mismatch.')
+        relative=reference[0][len(prefix):]
+        if not (re.fullmatch(r'blobs/sha256-[0-9a-f]{64}',relative) or re.fullmatch(r'manifests(?:-v2)?/[A-Za-z0-9_.-]+/library/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+',relative)):
+            raise ValueError('Unsafe managed model layout.')
+        descriptor=memory.db.execute('SELECT digest,raw_bytes,stored_bytes,codec FROM managed_objects WHERE digest=?',(reference[1],)).fetchone()
+        target=safe_path(root/relative);target.parent.mkdir(parents=True,mode=0o700,exist_ok=True)
+        capacity(root,descriptor[1])
+        if not target.exists():write_new_chunks(target,object_chunks(memory.config.data_dir,descriptor))
+        else:
+            digest=hashlib.sha256()
+            with input_file(target) as source:
+                while chunk:=source.read(BLOCK):digest.update(chunk)
+            if digest.hexdigest()!=reference[1]:raise ValueError('Runtime materialization differs from managed asset.')
+        total+=descriptor[1]
+    return {'model':name,'materialized_bytes':total,'ephemeral':True}
