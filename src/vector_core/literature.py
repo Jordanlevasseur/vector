@@ -70,7 +70,8 @@ def validate_record(db,contract,key,p):
 def metadata(p):
     fields={'provider_id','title','authors','language','edition','publication_date','digital_release','translators','subjects','genre','source_url','sha256','bytes','metadata_sha256','rights','acquired','print_edition_note','transport'}
     if not isinstance(p,dict) or set(p)!=fields:raise ValueError('Unknown/missing bibliography fields.')
-    for field in ('provider_id','title','edition','subjects','source_url','acquired','print_edition_note','transport'):text(p[field],2000)
+    for field in ('provider_id','title','edition','source_url','acquired','print_edition_note','transport'):text(p[field],2000)
+    if not isinstance(p['subjects'],str) or len(p['subjects'])>2000:raise ValueError('Subject metadata must be bounded text; blank means unknown.')
     language_id(p['language'])
     for field in ('authors','translators'):
         if not isinstance(p[field],list) or len(p[field])>50 or any(not isinstance(v,str) or not v.strip() or len(v)>500 for v in p[field]):raise ValueError('Invalid author/translator metadata.')

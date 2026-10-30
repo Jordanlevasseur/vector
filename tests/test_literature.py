@@ -127,6 +127,13 @@ class LiteraryTests(unittest.TestCase):
   self.assertTrue(license['quote'].lstrip().startswith('THE FULL PROJECT GUTENBERG™ LICENSE'));self.assertIn('1.A.',license['quote']);self.assertIn('1.E.1.',license['quote'])
   self.assertEqual(license['quote'],self.memory.original(record['event_id']).decode()[license['start']:license['end']])
 
+ def test_unknown_optional_subjects_remain_blank_without_weakening_required_rights(self):
+  root,entry=self.fixture();entry['subjects']=''
+  record=self.library.import_entry(root,entry,approved=True);self.assertEqual(record['metadata']['subjects'],'')
+  self.assertEqual(self.library.stats()['editions'],1)
+  with self.assertRaises(ValueError):self.library.import_entry(root,{**entry,'subjects':123},approved=True)
+  with self.assertRaises(ValueError):self.library.import_entry(root,{**entry,'rights':{**entry['rights'],'status':'unknown'}},approved=True)
+
 class LiteraryCrashTests(unittest.TestCase):
  def test_interrupted_processing_retains_original_and_no_half_committed_passage(self):
   with tempfile.TemporaryDirectory() as folder:
