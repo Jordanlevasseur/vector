@@ -74,3 +74,16 @@ and expose those results through existing forms/context without promoting user n
 to verified evidence. Preserve registered portability and original source attribution.
 Then qualify reviewed entity-alias proposals and representative mixed-domain/temporal
 reasoning; actual model capability remains independently gated.
+
+## Stage 5D follow-on gates
+After the verified literary import/index/portable foundation, prioritize independent
+scholar-reviewed grammar, historical morphology, translation ambiguity, figurative
+language and argument benchmarks. Acquire appropriately licensed attested resources
+for the 43-target curriculum; preserve distinct varieties and uncertainty. Reconcile
+underlying works, translations, print editions and dates before claiming canonical
+work counts. Measure reviewed cross-language links and semantic retrieval against
+independent tasks. Qualify a capable actual local model separately; do not promote
+lexical cues or human-authored mappings to demonstrated language intelligence.
+Expand toward 10,000 only after measured corpus quality, capacity, throughput and
+recovery justify it. Physical-power-loss, hostile-host, optional installed encryption
+and human desktop/RTL acceptance remain separate open gates.

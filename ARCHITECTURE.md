@@ -56,3 +56,16 @@ deferred extraction and source reconciliation. Existing context/retrieval/servic
 and desktop consume them. Migration 7 adds portable contracts and lookup indexes;
 no original is replaced and no hidden persistent cache is created. See
 MEMORY_INTELLIGENCE_SPEC.md for bounds, interruption semantics and qualification.
+
+## Stage 5D linguistic and literary infrastructure
+`languages` owns an extensible 43-target curriculum and sampled script inventory.
+`literature` adds strict offline package validation, source/rights editions, resumable
+body segmentation, original-verified passage FTS and versioned source attestations.
+`literary_analysis` provides literal observations, pending vocabulary proposals,
+English-only licensed CMU pronunciation alternatives and historical reading layers.
+`library_service` and `library_desktop` reuse the existing protected service, context,
+project and evidence interfaces. Migration 8 registers authoritative contracts and
+derived schemas; body-analysis contracts register through the existing registry.
+No duplicate memory engine, neural training or automatic fact promotion is added.
+Developer-only `tools/acquire_pg.py` is outside the runtime package and exposes no
+application/model operation. See LINGUISTIC_SPEC.md for limits and rights policy.

@@ -145,3 +145,13 @@ relationships and deferred extraction are included in the existing SQLite snapsh
 Payload/reference validation runs before portable activation. No model, project
 archive flag or imported record grants execution authorization. Project archival
 is retained status, distinct from exporting the complete VECTOR installation.
+
+## Stage 5D literary content
+Migration 8 adds registered edition, processing, curriculum and linguistic state,
+plus declared rebuildable passage/pronunciation tables. Original books, RDF rights
+evidence, full licenses and the optional CMU dictionary are managed original assets
+and participate in existing verified snapshots/restoration. Body observations use
+the existing dynamic contract registry. No external acquisition directory is needed
+for an already imported library to operate or restore. Offline content packs are
+optional intake inputs, not hidden dependencies. Complete unchanged processing
+checkpoints are reused; explicit derived resets retain authoritative source state.

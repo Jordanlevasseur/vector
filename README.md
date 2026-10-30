@@ -119,3 +119,14 @@ You may multi-select up to 64 Knowledge sources per Link selected source operati
 The batch commits atomically; invalid references or interruption cannot acknowledge
 partial links. Repeat batches to organize larger collections; total project size
 has no application count cap.
+
+## Literary library and linguistics
+Open Learning → Literary library / linguistics. Import only reviewed offline packs
+and explicitly approve their rights; VECTOR never downloads books. The workspace
+shows source passages, original exports, complete attached licenses, processing
+progress, linguistic interpretations and related editions. Process pending editions
+can stop between bounded batches and resume without losing originals.
+The initial curriculum lists 40 modern and three historical languages; this is not
+a proficiency claim. Literary observations are mechanical and interpretations
+require review. PG acquisition is U.S.-only by the user's choice; no worldwide
+rights assurance is made. See LINGUISTIC_SPEC.md and current ACCEPTANCE.md.

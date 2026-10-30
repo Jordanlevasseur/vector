@@ -31,3 +31,12 @@ entity/one-hop and comparable-claim expansion can include related source evidenc
 Default project contexts prefer associated sources while retaining global matches.
 Explicit project-only recall is available without changing global originals.
 MEMORY_INTELLIGENCE_SPEC.md records limits and benchmark acceptance scope.
+
+## Literary evidence
+Literary FTS indexes bounded exact original spans, excluding PG license/front matter
+from body processing while preserving all original bytes. Queries are literal AND
+terms, not semantic translation. Returned passages are revalidated against originals.
+Context reuses bounded evidence allocation and source citations, adds reviewed
+linguistic links, and avoids duplicating processed whole-book source retrieval.
+Rights display notices remain outside inference evidence budgets and are shown in
+the desktop. User-approved links remain interpretations, not established equivalence.

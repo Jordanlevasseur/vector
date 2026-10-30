@@ -88,3 +88,14 @@ exit leaves the pending question recoverable, never a fabricated answer. Ordinar
 history shows only each turn's latest version; full version history remains portable.
 Proposal review retrieves exact original quotes before explicit approval, and no
 manual copying of proposal identifiers is required in the desktop.
+
+## Linguistic qualification boundary
+The literary subsystem supplies source-linked passages, typed interpretations,
+mechanical observations and explicit uncertainty. It does not establish grammatical,
+translation, historical morphological, narrative, metaphor, meter or reasoning
+competence. CMUdict provides ambiguous US-English lexical pronunciation references,
+not audio, performance scansion or other-language pronunciation. Historical frames
+keep original/transliteration/morphology/gloss/translation/commentary/disagreement
+separate; no fabricated paradigms or etymologies are supplied. There is no new model
+qualification or fine-tuning. Existing real-model failures remain qualification
+evidence; synthetic framework responses never substitute for real-model results.

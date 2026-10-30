@@ -68,3 +68,14 @@ records remain complete. Project timelines summarize conversation entries and li
 back to complete saved turns rather than replicating large inference traces.
 Context allocates original evidence ahead of notes/history, preventing optional
 project records from crowding sources out of small-model budgets.
+
+## Literary workspace
+Learning opens the protected literary workspace without replacing existing tabs.
+It provides paged title/author/subject/language/known-print-period filters, original
+passages and rights, full offline licenses, resumable approved pack import and
+processing, errors, body and selected-passage observations, source-linked pending
+interpretations/review, typed concept and edition relations, historical layers,
+licensed dictionary import and pronunciation references. Project links reuse existing
+source associations. Corpus downloads are not an application action. Print dates
+unknown in the provider catalog remain unknown and do not match period filters.
+Automated local-display checks do not establish human usability or RTL quality.

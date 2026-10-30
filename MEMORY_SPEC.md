@@ -59,3 +59,12 @@ MEMORY_INTELLIGENCE_SPEC.md defines derived episodic/semantic/procedural/project
 working views and registered project/source/evidence/reassessment records. These
 views preserve originals and earlier revisions; source associations never copy
 original bytes. Model-free context and session continuation remain available.
+
+## Literary state
+Books and rights metadata use existing immutable original events and managed
+objects. Bibliography, curriculum, processing checkpoints, body observations and
+linguistic records/links use registered versioned state. Original-source attestation
+quotes are checked, including during portable restoration. Derived passage FTS is
+rebuildable; source corruption prevents false attribution. Importing the same
+provider ID/hash reuses its edition; related translations remain explicit editions.
+No summary replaces an original and no curriculum entry establishes proficiency.

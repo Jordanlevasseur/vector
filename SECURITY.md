@@ -89,3 +89,15 @@ unverified records. Association/reference and revision validation fail closed;
 project scoping only filters/preferentially ranks queries, never removes originals.
 Registered new-state payloads are validated during portable restoration. Existing
 kernel profiles and local inference qualification remain unchanged.
+
+## Literary ingestion boundary
+Literature remains inert untrusted data. Runtime accepts only explicitly approved
+local packages with bounded strict metadata, numeric PG identities, content hashes,
+regular no-follow object files and edition-specific U.S. rights evidence. DTDs and
+entities are rejected; uncertain rights, special copyright notices, incomplete PG
+licenses, changed manifests and mismatched source hashes fail closed. Originals
+retain the complete attached license; readers expose its full text offline.
+All sockets remain denied by the existing kernel policy. Development acquisition
+is a separate, authorized provider-mirror operation, absent from the runtime wheel.
+Provider assertions and hashes are not publisher signatures or legal adjudication.
+Source text cannot approve interpretations, execute commands or change permissions.
