@@ -109,3 +109,16 @@ concurrent regression activity; these are workload observations, not isolated-ho
 throughput guarantees. Neither originals nor total project/source counts are capped.
 Raw evidence: outputs/vector-memory-projects in the current Codex workspace.
 Reproduce on the actual host with `PYTHONPATH=src python3 -m vector_core.memory_benchmark`.
+
+
+Final frozen installed ee3e692 repetition (same 5k/4-project/100-probe workload):
+all probes passed. Ingest 23.774 s, association 9.576 s, retrieval median/p95
+1.259/2.804 ms, context median/p95 0.934/2.479 ms, max context 703 bytes (excluding
+model instructions), query CPU 0.274 s; peak RSS 40,436 KiB. SQLite 21,164,032 bytes,
+growth 20,910,080 bytes, FTS 802,816 bytes. Export 13.258 s, actual restore 2.304 s;
+all 5,000 original hashes verified plus 100 independent byte probes. Warm OS and
+concurrent regression; no model loaded or semantic task measured.
+Final installed protected GUI: ready 2.106 s; frontend peak 29,564 KiB, backend
+RSS 24,640 KiB; two sources reused across projects, source-switch claim paging
+passed and zero reported errors. Raw final JSON/PNG evidence is in the directory
+listed in PROGRESS.md; these are automated checks, not human usability acceptance.

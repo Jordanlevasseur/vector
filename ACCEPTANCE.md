@@ -91,3 +91,52 @@ Evidence directory (outside the repository):
 See REPORT.md, frozen-*-trial*.json, full regression logs, fingerprints, benchmark
 JSON, actual default-data verification and final-interaction-roundtrip.json.
 This is an experimental foundation; VECTOR is not release-ready.
+
+
+## Final Lenovo memory/project acceptance — 2026-10-30
+Frozen implementation ee3e692, with earlier batches e3b0c83 and 26d7cb6.
+Source: 112 passed, zero skips (224.184 s). Independent installed: 111 passed,
+one skipped (243.581 s). The installed skip is the optional authenticated-encryption
+roundtrip because cryptography is absent from the isolated .venv; host source
+positive encryption passed. All 36 installed modules match source exactly. The
+final source includes all earlier tests unchanged and 17 new memory/project cases.
+No skipped test is represented as a pass.
+
+Actual GUI acceptance additionally verified multi-source cross-project reuse,
+source-switch claim paging, visible forms, durable research items, model-unavailable
+operation and error-free protected workflows. Startup 2.106 s; frontend peak RSS
+29,564 KiB, backend RSS 24,640 KiB on the warm Lenovo. These are automated native
+GUI checks, not a human usability study or a general desktop release qualification.
+
+Final installed controlled corpus: 5,000 originals, four projects, 5,000 associations,
+100/100 top recall, chronological, late-file context and independent restored-byte
+probes. Full restore integrity checked all 5,000 original hashes. Recall median/p95
+1.259/2.804 ms; context 0.934/2.479 ms; max context 703 bytes; peak RSS 40,436 KiB;
+SQLite 21,164,032 bytes, FTS 802,816 bytes. Bulk associations 9.576 s versus earlier
+single-transaction-per-source 203.711 s. Synchronous FULL and batch crash rollback
+remain mandatory. Warm/concurrent workloads are not dedicated-host throughput or
+semantic-reasoning measurements. Detailed raw results are retained outside the repo.
+
+Default user data has schema 7, its original event ID/28,715 bytes/SHA-256 unchanged,
+and actual restore verification passed before and after the installed upgrade.
+No synthetic knowledge was inserted into the default user installation. All new
+state participates in registered portable records; complete-state tests compare
+all versions/IDs/reference tables exactly after actual restoration. Network, worker,
+filesystem, seccomp, source/hash, authorization and recovery tests passed unchanged.
+No external network, downloads, shared runtime changes or HELIX modifications.
+
+No new real-model answer qualification is claimed. Qwen0.5B's previous independent
+0/3 remains historical unqualified evidence, not a score measured on this new
+context implementation. Simulated framework outputs are explicitly labelled and
+never production fallback. Literal categories, exact entities and user-authored
+links are not semantic understanding or neural training. Older project items remain
+paged/portable, but context currently checks only the latest 20 items; full-history
+project-note/task FTS is the next concrete milestone. Broader mixed-domain reasoning,
+reviewed entity aliases, human usability, installed optional encryption and physical
+power-loss/hostile-host acceptance remain open. VECTOR is not release-ready.
+
+Evidence directory:
+/home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-memory-projects
+See REPORT.md, final-full-installed.log, release-candidate-source.log,
+final-installed-fingerprint.json, benchmark-final-installed.json,
+desktop-installed.json and default-migration-and-restore.json.

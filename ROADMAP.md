@@ -65,3 +65,12 @@ only with measured retrieval benefit, and conduct user usability/recovery sessio
 A capable actual local model remains a separate qualification gate; literal memory
 views and explicit user links do not establish semantic understanding. Optional
 installed encryption and physical-power-loss/hostile-host acceptance remain open.
+
+
+Immediate next milestone after memory/project acceptance: build a derived, rebuildable
+full-history FTS index for versioned project notes/tasks/goals, validate latest-version
+retrieval against independently chosen notes older than the recent-20 context window,
+and expose those results through existing forms/context without promoting user notes
+to verified evidence. Preserve registered portability and original source attribution.
+Then qualify reviewed entity-alias proposals and representative mixed-domain/temporal
+reasoning; actual model capability remains independently gated.
