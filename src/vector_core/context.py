@@ -87,7 +87,16 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
                 'start':row.get('start',0),'end':row.get('end',len(excerpt)),'quote':excerpt,'name':row['name'],'occurred':row.get('occurred')}
         context['sources'].append(source)
         if len(canonical(context).encode())>budget_bytes:
-            context['sources'].pop();context['truncated']=True;continue
+            match=re.search('|'.join(re.escape(term) for term in terms),excerpt,re.IGNORECASE) if terms else None
+            focus=match.start() if match else 0
+            for width in (256,128,64,32):
+                if width>=len(excerpt):continue
+                left=max(0,focus-min(32,width//4));right=min(len(excerpt),left+width)
+                source.update(start=row.get('start',0)+left,end=row.get('start',0)+right,quote=excerpt[left:right])
+                context['truncated']=True
+                if len(canonical(context).encode())<=budget_bytes:break
+            if len(canonical(context).encode())>budget_bytes:
+                context['sources'].pop();context['truncated']=True;continue
     # Allocate original coverage before derived claims/notes can consume the budget.
     for source in context['sources']:
         for (identity,) in memory.db.execute('SELECT id FROM claims WHERE event_id=? ORDER BY id LIMIT 12',(source['event_id'],)):
@@ -119,7 +128,7 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     if project_records:optional('project_records',project_records)
     if project_id:optional('project',{'id':project_id,'selection':'project-only' if project_only else 'project preferred; global sources allowed'})
     unanswered=[]
-    if not context['sources']:unanswered.append('No matching source evidence found in the selected bounded search.')
+    if not context['sources']:unanswered.append('Matching originals were omitted by the selected context budget; increase the budget or narrow the question.' if candidates else 'No matching source evidence found in the selected bounded search.')
     if context['conflicts']:unanswered.append('Comparable source disagreement remains unresolved; user overrides are assumptions.')
     if unanswered:optional('unanswered_questions',unanswered)
     context['truncated']|=len(ordered)>len(context['sources'])

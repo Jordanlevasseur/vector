@@ -106,3 +106,14 @@ Repeated association is idempotent. Larger projects use successive bounded batch
 there is no total project/source count cap. Multi-select Knowledge sources and click
 Link selected source to authorize one batch. This avoids one fsync transaction per
 source during bulk organization without lowering acknowledgement durability.
+
+Final budget handling can reduce an excerpt around its literal hit while retaining
+exact original offsets and setting truncation. Hash/span/quote validation is unchanged.
+If even minimum evidence metadata cannot fit, diagnostics distinguish budget omission
+from no search match. Working-memory date filters apply to saved turn timestamps;
+archived-source filters are explicitly rejected for conversation-only views.
+
+Current project-item context selection inspects the most recent 20 item versions
+and includes up to four literal matches. Older items remain fully retained/paged,
+but there is no dedicated full-text index over all project-note bodies yet. This
+is distinct from the full original-source FTS index and is a remaining milestone.

@@ -4,7 +4,7 @@ import re
 from uuid import uuid4
 from vector_core.memory import now
 from vector_core.projects import Projects,append,identity,latest,page,LINK_KINDS
-from vector_core.retrieval import search
+from vector_core.retrieval import search,timestamp
 from vector_core.knowledge import Knowledge,normalized
 
 VIEWS=('episodic','semantic','procedural','project','working')
@@ -14,9 +14,16 @@ def recall(memory,query='',*,view='episodic',project_id=None,conversation_id=Non
     page(after,limit)
     if view=='working':
         identity(conversation_id)
+        if source_id is not None:raise ValueError('Source filters apply to archived-source views, not saved conversation questions.')
+        if since and until and timestamp(since)>timestamp(until):raise ValueError('Time range is reversed.')
+        if project_id:Projects(memory).get(project_id)
         if not isinstance(query,str) or len(query)>512:raise ValueError('Invalid working-memory query.')
         # Latest version per turn, with cursor paging; originals are not summarized away.
-        rows=memory.db.execute("SELECT rowid AS cursor,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) AND (?='' OR instr(lower(json_extract(payload,'$.question')),lower(?))>0) ORDER BY rowid LIMIT ?",(conversation_id,after,query,query,limit)).fetchall()
+        conditions=[];parameters=[conversation_id,after,query,query]
+        for value,operator in ((since,'>='),(until,'<=')):
+            if value:conditions.append("json_extract(payload,'$.created')"+operator+'?');parameters.append(timestamp(value))
+        if project_id:conditions.append("json_extract(payload,'$.project_id')=?");parameters.append(project_id)
+        rows=memory.db.execute("SELECT rowid AS cursor,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) AND (?='' OR instr(lower(json_extract(payload,'$.question')),lower(?))>0) "+('AND '+' AND '.join(conditions) if conditions else '')+" ORDER BY rowid LIMIT ?",parameters+[limit]).fetchall()
         return {'view':view,'items':[{'cursor':r['cursor'],**{k:v for k,v in json.loads(r['payload']).items() if k in ('id','conversation_id','project_id','question','created')},'status':json.loads(r['payload']).get('outcome',{}).get('status')} for r in rows],'next_cursor':rows[-1]['cursor'] if rows else after,'limits':'Exact saved user questions/turns, not model summaries or semantic recall.'}
     results=search(memory,query,limit=limit,project_id=project_id,category=view,since=since,until=until,source_id=source_id)
     return {'view':view,'items':results,'limits':'Bounded literal query; explicit filters. No semantic equivalence or calibrated relevance.'}
@@ -60,6 +67,7 @@ def learning_history(memory,event_id,after=0,limit=50):
 def continuity(memory,conversation_id,question,limit=4):
     """Recent user questions only; answers and instructions are never authority."""
     identity(conversation_id)
+    if type(limit) is not int or not 1<=limit<=4:raise ValueError('Continuity uses 1–4 prior questions per context.')
     rows=memory.db.execute("SELECT payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT ?",(conversation_id,limit+1)).fetchall()
     return [{'turn_id':p['id'],'question':p['question'][:300],'status':'Untrusted prior user context; not source evidence.'} for p in (json.loads(r[0]) for r in rows) if p.get('question')!=question and 'id' in p][:limit]
 

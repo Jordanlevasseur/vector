@@ -257,7 +257,10 @@ class Desktop:
     def select_source(self,event=None):
         selection=self.knowledge.selection()
         if not selection:return
-        kind,row=self.rows[selection[0]];self.selected_source_id=row.get('source_id');self.selected_event=row.get('event_id') if kind=='claim' else row.get('event_id',row.get('id'));self.selected_claim=row if kind=='claim' else None
+        kind,row=self.rows[selection[0]]
+        event_id=row.get('event_id') if kind=='claim' else row.get('event_id',row.get('id'))
+        if event_id!=self.selected_event:self.claim_cursor=''
+        self.selected_source_id=row.get('source_id');self.selected_event=event_id;self.selected_claim=row if kind=='claim' else None
     def view_source(self):
         if self.selected_event:self.call('show',{'event_id':self.selected_event},self.show_result)
     def export_original(self):

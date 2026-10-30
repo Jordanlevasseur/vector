@@ -172,6 +172,28 @@ class MemoryProjectTests(unittest.TestCase):
         self.assertEqual(len(first['items'])+len(second['items']),128)
         self.assertEqual(self.memory.db.execute('SELECT count(*) FROM events').fetchone()[0],128)
 
+    def test_working_memory_respects_dates_and_rejects_inapplicable_source_filter(self):
+        p=self.project();event=self.ingest('Historical pump record')
+        with patch('vector_core.assistant.now',return_value='2011-04-01T00:00:00.000000+00:00'):
+            old=self.app.handle('ask',{'question':'Historical pump'})
+        self.app.handle('ask',{'question':'Current pump'})
+        recalled=recall(self.memory,view='working',conversation_id=self.app.session['conversation_id'],project_id=p['id'],since='2010-01-01T00:00:00+00:00',until='2012-01-01T00:00:00+00:00')
+        self.assertEqual([item['id'] for item in recalled['items']],[old['id']])
+        with self.assertRaises(ValueError):recall(self.memory,view='working',conversation_id=self.app.session['conversation_id'],source_id=event['source_id'])
+
+    def test_small_context_keeps_middle_file_evidence_with_exact_shrunk_span(self):
+        event=self.ingest('Archive preface. '*180+'Archived zinc sensor reports 42 pascals.'+' Unrelated appendix.'*100)
+        self.assertEqual(self.app.handle('search',{'query':'zinc sensor'})[0]['event_id'],event['event_id'])
+        result=self.app.handle('ask',{'question':'zinc sensor'})
+        self.assertEqual(result['outcome']['status'],'evidence-only')
+        source=result['context']['context']['sources'][0]
+        self.assertEqual(source['event_id'],event['event_id']);self.assertIn('42 pascals',source['quote']);self.assertLess(len(source['quote']),500)
+        self.assertEqual(source['quote'],self.memory.read_text_span(event['event_id'],source['start'],source['end']))
+        self.assertTrue(result['context']['context']['truncated'])
+        self.assertLessEqual(result['context']['bytes'],self.app.generation.prompt_bytes)
+        limited=build_context(self.memory,'zinc sensor',budget_bytes=400)['context']
+        self.assertEqual(limited['sources'],[]);self.assertIn('context budget',limited['unanswered_questions'][0])
+
     def test_complete_new_state_snapshot_preserves_all_versions_and_associations(self):
         first=self.project('Evidence lab');a=self.app.handle('learn',{'text':'Valve | state | open','scope':'plant','exclusive':True})
         b=self.app.handle('learn',{'text':'Valve | state | closed','scope':'plant','exclusive':True})

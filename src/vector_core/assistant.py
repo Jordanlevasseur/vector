@@ -91,7 +91,7 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
                 if len(corrected.encode())<=config.prompt_bytes:prompt=corrected
     else:
         outcome['status']='insufficient-evidence'
-        outcome['errors'].append('No matching archived evidence; no model generation attempted.')
+        outcome['errors'].append('Matching evidence did not fit the context budget; no model generation attempted. Increase the budget or narrow the question.' if context['truncated'] else 'No matching archived evidence; no model generation attempted.')
     record={'id':identity,'conversation_id':conversation_id,'project_id':project_id,'question':question,'created':created,
             'context':built,'outcome':outcome,'trace':trace,'seconds':time.perf_counter()-started,
             'plan':task_plan,'limits':'Citations are byte/source checked. Semantic entailment and model inferences are not independently certified facts.'}

@@ -241,3 +241,29 @@ integrity errors. Incremental export reused 375 blocks and added 1; original
 IDs/bytes preserved. Actual restore verification 62.800 s; export plus verification
 162.125 s. Evidence: final-interaction-roundtrip.json. No source changes followed
 the frozen 95-test regression or model trials.
+
+## Advanced memory and project organization — 2026-10-30
+Preserved d06f7d5 and checkpointed project/memory foundations at e3b0c83, then
+measured and fixed per-source commit overhead at 26d7cb6. Registered portable
+associations, research items, evidence links and deferred/reassessment histories
+use existing append-only SQLite state. Many-project reuse preserves original bytes;
+item revisions reject stale updates; archived projects retain all state. Memory
+views add deterministic source/time/category/project recall, exact-entity/one-hop
+context, scoped comparison, old-session resumption and byte-bounded history.
+Actual desktop forms and protected backend expose the functioning workflows.
+
+An early 106-test run caught project notes crowding originals out of small contexts;
+original allocation now precedes derived records, with an independent regression.
+Additional review corrected source-switch claim cursors, chronological working-view
+filters and a real fixed-excerpt omission at the default budget. Adaptive excerpts
+retain exact original offsets/hash checks and explicit truncation; budget omission
+is distinguished from no match. No validation requirement or model threshold changed.
+
+Final source regression: 112 passed, zero skips, 224.184 s. Prior verified batches:
+95/95 baseline, 108/108 organization, 110/110 bulk linking and 111/111 filter fixes.
+A process killed after its first uncommitted bulk link leaves zero partial links
+and both originals intact. Controlled 128-source batches demonstrate paging without
+a total source cap. Complete portable restoration preserves every project-item kind,
+all versions/IDs/source associations, relationships, learning queue, conversations,
+claims, assessments and overrides. Original source inputs remain authoritative.
+Installed/final benchmark evidence is recorded after independent execution.
