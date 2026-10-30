@@ -3,7 +3,7 @@
 Use only after reviewing provider policies and selecting U.S. jurisdiction.
 No external runtime service/permissions are added. No website crawling.
 """
-import argparse,csv,gzip,hashlib,json,re,subprocess,time
+import argparse,csv,gzip,hashlib,json,os,re,subprocess,time
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -69,7 +69,7 @@ def rsync(root,names,remote,mode):
   if process.returncode not in (0,23,24):raise RuntimeError('rsync failed: '+str(process.returncode))
 
 def main():
- p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--catalog',required=True);p.add_argument('--phase',choices=['metadata','books','package'],required=True);p.add_argument('--target',type=int,default=1000);p.add_argument('--pack-name',default='pack')
+ p=argparse.ArgumentParser();p.add_argument('directory');p.add_argument('--catalog',required=True);p.add_argument('--phase',choices=['metadata','books','package'],required=True);p.add_argument('--target',type=int,default=1000);p.add_argument('--pack-name',default='pack');p.add_argument('--exclude-manifest',action='append',default=[]);p.add_argument('--mirror',choices=['pglaf','ibiblio'],default='pglaf')
  args=p.parse_args();root=Path(args.directory).absolute();root.mkdir(parents=True,exist_ok=True);(root/'mirror').mkdir(exist_ok=True)
  if args.phase=='metadata':
   rows=select(args.catalog);(root/'selected.json').write_text(json.dumps(rows,ensure_ascii=False))
@@ -88,12 +88,19 @@ def main():
     if values:eligible.append(values.pop(0))
  if args.phase=='books':
   # Explicit known generated UTF-8 names only; no remote directory enumeration/crawl.
-  rsync(root,[r['Text#']+'/pg'+r['Text#']+'.txt' for r,m in eligible],'rsync://gutenberg.pglaf.org/gutenberg-epub/','books');return
+  rsync(root,[r['Text#']+'/pg'+r['Text#']+'.txt' for r,m in eligible],'rsync://'+('gutenberg.pglaf.org' if args.mirror=='pglaf' else 'rsync.ibiblio.org')+'/gutenberg-epub/','books');return
  if not re.fullmatch('[a-z0-9-]{1,64}',args.pack_name):raise ValueError('Invalid package name')
  package=root/args.pack_name;package.mkdir(exist_ok=False);objects=package/'objects';objects.mkdir(exist_ok=True)
+ excluded=set()
+ for manifest in args.exclude_manifest:
+  with Path(manifest).open() as previous:
+   next(previous)
+   for line in previous:excluded.add(json.loads(line)['provider_id'])
  successes=[];rejected=[];keys=set();size=0
  for row,metadata in eligible:
-  number=row['Text#'];file=root/'mirror'/number/('pg'+number+'.txt')
+  number=row['Text#']
+  if 'pg:'+number in excluded:continue
+  file=root/'mirror'/number/('pg'+number+'.txt')
   try:
    raw=file.read_bytes()
    if not 100<=len(raw)<=8*1024*1024:raise ValueError('Unsupported source size')
@@ -106,14 +113,14 @@ def main():
    digest=hashlib.sha256(raw).hexdigest();rdf=(root/'mirror'/number/('pg'+number+'.rdf')).read_bytes();rdfhash=hashlib.sha256(rdf).hexdigest()
    for data,d in ((raw,digest),(rdf,rdfhash)):
     dest=objects/d
-    if not dest.exists():dest.write_bytes(data)
+    if not dest.exists():os.link(file if d==digest else root/'mirror'/number/('pg'+number+'.rdf'),dest)
     elif dest.read_bytes()!=data:raise ValueError('Digest collision/corruption')
    record={'provider_id':'pg:'+number,'title':row['Title'],'authors':metadata['authors'] or [v.strip() for v in row['Authors'].split(';')],
     'language':row['Language'],'edition':'Project Gutenberg digital edition #'+number,'publication_date':None,'digital_release':row['Issued'],
     'translators':metadata['translators'],'subjects':row['Subjects'],'genre':'poetry' if re.search(r'poetry|poems|verse',row['Subjects'],re.I) else 'prose',
     'source_url':'https://www.gutenberg.org/ebooks/'+number,'sha256':digest,'bytes':len(raw),'metadata_sha256':rdfhash,
     'rights':{'status':'provider-unrestricted-us','jurisdiction':'US','basis':metadata['rights'][0],'evidence_url':'https://www.gutenberg.org/cache/epub/'+number+'/pg'+number+'.rdf','license_url':'https://www.gutenberg.org/policy/license.html'},
-    'acquired':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'print_edition_note':'PG digital edition identified; original print edition/date not independently established.','transport':'provider-supported rsync mirror; checksums are not publisher signatures'}
+    'acquired':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'print_edition_note':'PG digital edition identified; original print edition/date, dialect and historical language stage not independently established. Genre is a coarse subject-tag layout hint, not certified literary classification.','transport':'provider-supported rsync mirror; checksums are not publisher signatures'}
    successes.append(record);keys.add(key);size+=len(raw)+len(rdf)
    if len(successes)>=args.target:break
   except (OSError,UnicodeError,ValueError) as error:rejected.append({'id':number,'error':str(error)})

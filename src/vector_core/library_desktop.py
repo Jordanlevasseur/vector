@@ -15,10 +15,13 @@ class LiteraryDesktop:
         for name in ('author','subject','since','until'):
             self.ttk.Label(filters,text=name.title()).pack(side='left');entry=self.ttk.Entry(filters,width=18 if name in ('author','subject') else 8);entry.pack(side='left');self.fields[name]=entry
         notebook=self.ttk.Notebook(window);notebook.pack(fill='both',expand=True,padx=10,pady=6)
-        browse=self.ttk.Frame(notebook);notebook.add(browse,text='Works and passages');self.listing=self.tk.Listbox(browse,height=7);self.listing.pack(fill='x');self.listing.bind('<<ListboxSelect>>',self.select)
+        browse=self.ttk.Frame(notebook);notebook.add(browse,text='Works and passages');self.listing=self.tk.Listbox(browse,height=7,selectmode='extended');self.listing.pack(fill='x');self.listing.bind('<<ListboxSelect>>',self.select)
         actions=self.ttk.Frame(browse);actions.pack(fill='x')
         for label,command in [('Next titles',self.next_titles),('Source & rights',self.rights),('Process / resume',self.process),('Body observations',self.body_observations),('Next passages',self.next_units),('Link to project',self.link_project),('Export original',self.export_original)]:self.ttk.Button(actions,text=label,command=command).pack(side='left',padx=2)
         from tkinter.scrolledtext import ScrolledText
+        related=self.ttk.Frame(browse);related.pack(fill='x')
+        self.ttk.Button(related,text='Related editions / translations',command=self.related_editions).pack(side='left')
+        self.ttk.Button(related,text='Relate two selected editions',command=self.relate_editions).pack(side='left')
         self.reader=ScrolledText(browse,wrap='word',height=13,state='disabled');self.reader.pack(fill='both',expand=True)
         analysis=self.ttk.Frame(browse);analysis.pack(fill='x')
         for label,command in [('Structure / poetry observations',self.observe),('Vocabulary proposals',self.vocabulary),('Add interpretation',self.annotate),('Historical layers',self.historical)]:self.ttk.Button(analysis,text=label,command=command).pack(side='left',padx=2)
@@ -31,6 +34,7 @@ class LiteraryDesktop:
         self.ttk.Button(resources,text='Stop library batch',command=self.stop).pack(anchor='w')
         self.ttk.Button(resources,text='Processing status and errors',command=lambda:app.paged_records('Literary processing','library_processing',lambda r:r['status']+' — '+r['event_id'],app.show_result)).pack(anchor='w')
         self.ttk.Button(resources,text='Reset derived passage index (originals retained)',command=self.reset_index).pack(anchor='w')
+        self.ttk.Button(resources,text='Read selected work’s full attached license offline',command=self.license).pack(anchor='w')
         self.ttk.Button(resources,text='Import licensed CMU dictionary',command=self.dictionary).pack(anchor='w')
         self.ttk.Button(resources,text='Pronunciation reference',command=self.pronunciation).pack(anchor='w')
         self.ttk.Label(resources,text='No downloads occur in VECTOR. Import only reviewed offline packages.\nLanguage IDs describe a curriculum; grammar/translation proficiency remains unqualified.\nHistorical readings, glosses, translations and commentary remain separate source-linked records.',wraplength=900).pack(anchor='w',pady=10)
@@ -64,6 +68,12 @@ class LiteraryDesktop:
         self.app.selected_event=record['event_id']
     def rights(self):
         if self.selected:self.app.call('library_edition',{'id':self.selected['id']},self.app.show_result)
+    def license(self):
+        if not self.selected:return
+        def loaded(result):
+            from tkinter.scrolledtext import ScrolledText
+            window=self.tk.Toplevel(self.window);window.title('Original attached license / rights evidence');view=ScrolledText(window,wrap='word',width=100,height=28);view.pack(fill='both',expand=True);view.insert('1.0',result['quote']);view.configure(state='disabled')
+        self.app.call('library_license',{'id':self.selected['id']},loaded)
     def search(self):
         p={'query':self.query.get()}
         if self.language.get():p['language']=self.language.get()
@@ -118,13 +128,26 @@ class LiteraryDesktop:
             if not result['complete'] and not self.stop_batch and self.window.winfo_exists():self.window.after(20,step)
         def step():self.app.call('library_import',{'directory':directory,'offset':state['offset'],'fingerprint':state['fingerprint'],'approved':True},completed)
         step()
-    def languages(self):self.app.paged_records('Language curriculum','library_languages',lambda r:r['payload']['name']+' — '+r['payload']['coverage'],self.app.show_result)
+    def languages(self):
+        def choose(record):
+            self.language.delete(0,'end');self.language.insert(0,record['payload']['id']);self.app.show_result(record['payload'])
+        self.app.paged_records('Choose a language / inspect curriculum','library_languages',lambda r:r['payload']['name']+' — '+r['payload']['coverage'],choose)
     def link_project(self):
         if self.selected:self.app.selected_event=self.selected['event_id'];self.app.link_selected_project()
     def export_original(self):
         if self.current_passage:self.app.selected_event=self.current_passage['event_id']
         elif self.selected:self.app.selected_event=self.selected['event_id']
         self.app.export_original()
+    def related_editions(self):
+        if self.selected:self.app.call('library_related',{'id':self.selected['id']},self.app.show_result)
+    def relate_editions(self):
+        selected=self.listing.curselection()
+        if len(selected)!=2 or any(i not in self.editions for i in selected):self.app.dialog.showinfo('Choose editions','Select two titles in the library title list.');return
+        left,right=[self.editions[i]['id'] for i in selected]
+        window=self.tk.Toplevel(self.window);window.title('Edition relationship');relation=self.tk.StringVar(value='translation-of')
+        self.ttk.Combobox(window,textvariable=relation,values=('translation-of','edition-of','volume-of'),state='readonly').pack(fill='x')
+        self.ttk.Label(window,text='Reason and explicit uncertainty (source interpretation)').pack(anchor='w');reason=self.ttk.Entry(window,width=70);reason.pack(fill='x');uncertainty=self.ttk.Entry(window,width=70);uncertainty.insert(0,'User interpretation; work identity and translation relationship are not independently certified.');uncertainty.pack(fill='x')
+        self.ttk.Button(window,text='Save reviewed relationship',command=lambda:self.app.call('library_relate',{'left':left,'right':right,'relation':relation.get(),'reason':reason.get(),'uncertainty':uncertainty.get(),'approved':True},self.app.show_result)).pack(anchor='w')
     def observe(self):
         if self.current_passage:self.app.call('library_observe',{'event_id':self.current_passage['event_id'],'start':self.current_passage['start'],'end':self.current_passage['end']},self.app.show_result)
     def vocabulary(self):

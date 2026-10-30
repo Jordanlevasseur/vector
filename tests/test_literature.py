@@ -39,6 +39,9 @@ class LiteraryTests(unittest.TestCase):
   results=self.library.search('Second line');self.assertEqual(results[0]['event_id'],event);passage=self.library.passage(results[0]['id'])
   self.assertIn('First line\r\nSecond line',passage['quote']);self.assertEqual(passage['quote'],self.memory.read_text_span(event,passage['start'],passage['end']))
   self.assertTrue(self.library.process(event)['unchanged_skipped'])
+  from vector_core.service import Application
+  license_view=Application(self.memory).handle('library_license',{'id':record['id']})
+  self.assertEqual(license_view['quote'],self.memory.original(record['rights_event_id']).decode())
   from vector_core.literary_analysis import observe
   observed=observe(self.memory,event,0,len(body));self.assertEqual(observed['nonblank_lines'],3);self.assertEqual(observed['stanzas'],2);self.assertEqual(observed['lines'][1]['text'],'Second line')
  def test_rights_hash_unsafe_paths_and_unapproved_import_fail_closed(self):
@@ -102,6 +105,9 @@ class LiteraryTests(unittest.TestCase):
   batch=self.library.import_pack(root,limit=1,approved=True);self.assertFalse(batch['complete'])
   with self.assertRaises(ValueError):self.library.import_pack(root,offset=batch['next_cursor'],fingerprint=['wrong'],approved=True)
   next_batch=self.library.import_pack(root,offset=batch['next_cursor'],fingerprint=batch['fingerprint'],approved=True);self.assertTrue(next_batch['complete'])
+  self.library.relate(batch['items'][0]['id'],next_batch['items'][0]['id'],'edition-of','Explicit fixture edition association','Fixture interpretation only',approved=True)
+  from vector_core.service import Application
+  self.assertEqual(len(Application(self.memory).handle('library_related',{'id':batch['items'][0]['id']})['items']),1)
   event=batch['items'][0]['event_id'];self.process(event)
   from vector_core.projects import latest
   summary=latest(self.memory,'literary_analyses',event)
@@ -111,6 +117,15 @@ class LiteraryTests(unittest.TestCase):
   self.assertEqual(self.library.search('alpha'),[])
   self.library.reset_index(approved=True);self.process(event);self.assertTrue(self.library.search('alpha'))
   self.assertEqual(self.memory.original(event),b'Alpha alpha beta.\n\nSecond stanza.\n')
+
+ def test_actual_pg_license_view_includes_early_terms_not_only_last_reference(self):
+  fixtures=Path(__file__).parent/'fixtures';entry=json.loads((fixtures/'pg1-provenance.json').read_text());root=self.root/'pg';(root/'objects').mkdir(parents=True)
+  (root/'objects'/entry['sha256']).write_bytes((fixtures/'pg1-original.txt').read_bytes());(root/'objects'/entry['metadata_sha256']).write_bytes((fixtures/'pg1-rights.rdf').read_bytes())
+  record=self.library.import_entry(root,entry,approved=True)
+  from vector_core.service import Application
+  license=Application(self.memory).handle('library_license',{'id':record['id']})
+  self.assertTrue(license['quote'].lstrip().startswith('THE FULL PROJECT GUTENBERG™ LICENSE'));self.assertIn('1.A.',license['quote']);self.assertIn('1.E.1.',license['quote'])
+  self.assertEqual(license['quote'],self.memory.original(record['event_id']).decode()[license['start']:license['end']])
 
 class LiteraryCrashTests(unittest.TestCase):
  def test_interrupted_processing_retains_original_and_no_half_committed_passage(self):
@@ -151,6 +166,10 @@ class PronunciationTests(unittest.TestCase):
     read=pronunciation(memory,'read');self.assertEqual({tuple(a['phones']) for a in read['alternatives']},{('R','EH1','D'),('R','IY1','D')})
     for a in read['alternatives']:self.assertEqual(memory.read_text_span(a['event_id'],a['start'],a['end']),a['quote'])
     self.assertFalse(pronunciation(memory,'florbleswidget')['available'])
+    from vector_core.memory import Submission
+    from vector_core.literary_analysis import observe
+    nonenglish=memory.ingest(Submission(b'cat','Explicit non-English metadata fixture',metadata={'language':'la-x-classic'}))
+    self.assertEqual(observe(memory,nonenglish['event_id'],0,3)['lines'][0]['last_word_pronunciations']['alternatives'],[])
     self.assertTrue(import_dictionary(memory,fixtures/'cmu_subset.txt',fixtures/'CMU_LICENSE.txt',approved=True)['unchanged_skipped'])
 
 class LiteraryDesktopTests(unittest.TestCase):

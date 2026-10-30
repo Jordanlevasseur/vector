@@ -1,0 +1,28 @@
+{
+  "provider_id": "pg:1",
+  "title": "The Declaration of Independence of the United States of America",
+  "authors": [
+    "Jefferson, Thomas"
+  ],
+  "language": "en",
+  "edition": "Project Gutenberg digital edition #1",
+  "publication_date": null,
+  "digital_release": "1971-12-01",
+  "translators": [],
+  "subjects": "United States -- History -- Revolution, 1775-1783 -- Sources; United States. Declaration of Independence",
+  "genre": "prose",
+  "source_url": "https://www.gutenberg.org/ebooks/1",
+  "sha256": "8fc7483413518ecf182d982a2e61289894e7fa3ccb1fa3d1db4c1be55debb1f0",
+  "bytes": 30835,
+  "metadata_sha256": "2ab3a71d0382eb59ee70125d6301365c6ad17528d917725a00453f70c57a151f",
+  "rights": {
+    "status": "provider-unrestricted-us",
+    "jurisdiction": "US",
+    "basis": "Public domain in the USA.",
+    "evidence_url": "https://www.gutenberg.org/cache/epub/1/pg1.rdf",
+    "license_url": "https://www.gutenberg.org/policy/license.html"
+  },
+  "acquired": "2026-10-30T20:41:42Z",
+  "print_edition_note": "PG digital edition identified; original print edition/date not independently established.",
+  "transport": "provider-supported rsync mirror; checksums are not publisher signatures"
+}

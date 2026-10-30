@@ -1,6 +1,7 @@
 """Fixed, offline application operations. Never a model tool or arbitrary dispatcher."""
 import json
-from vector_core.literature import Library,PG_NOTICE
+import re
+from vector_core.literature import Library,PG_NOTICE,pg_license_span
 from vector_core.projects import latest,identity
 from vector_core.persistence import records
 
@@ -15,6 +16,21 @@ def dispatch(app,operation,p):
     if operation=='library_edition':
         record=library.edition(p['id']);record['rights_notice']=PG_NOTICE if record['metadata']['rights']['status']=='provider-unrestricted-us' else record['metadata']['rights']['basis']
         return record
+    if operation=='library_related':
+        edition=library.edition(p['id']);rows=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='linguistic_links' AND (json_extract(payload,'$.left')=? OR json_extract(payload,'$.right')=?) AND json_extract(payload,'$.relation') IN ('edition-of','translation-of','volume-of') ORDER BY rowid LIMIT 30",(edition['id'],edition['id'])).fetchall()
+        items=[]
+        for row in rows:
+            link=json.loads(row[0]);target=link['right'] if link['left']==edition['id'] else link['left'];items.append({'relationship':link,'edition':library.edition(target)})
+        return {'items':items}
+    if operation=='library_license':
+        edition=library.edition(p['id'])
+        if edition['metadata']['rights']['status']=='provider-unrestricted-us':
+            original=memory.original(edition['event_id']).decode('utf-8');start,end=pg_license_span(original)
+            if len(original)-start>65536:raise ValueError('License exceeds viewer budget; export the complete original.')
+            return {'event_id':edition['event_id'],'start':start,'end':len(original),'quote':original[start:]}
+        evidence=memory.original(edition['rights_event_id']).decode('utf-8')
+        if len(evidence)>65536:raise ValueError('Rights evidence exceeds viewer budget; export original evidence.')
+        return {'event_id':edition['rights_event_id'],'start':0,'end':len(evidence),'quote':evidence}
     if operation=='library_import':
         result=library.import_pack(p['directory'],offset=p.get('offset',0),limit=p.get('limit',2),approved=p.get('approved',False),fingerprint=p.get('fingerprint'))
         if app.session['project_id'] and result['items']:

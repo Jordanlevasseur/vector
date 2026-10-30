@@ -88,6 +88,13 @@ def metadata(p):
     if not p['source_url'].startswith(('https://','urn:')):raise ValueError('Source reference must be explicit; it is never fetched at runtime.')
     return p
 
+def pg_license_span(original):
+    heading=re.search(r'(?im)^[ \t]*(?:THE[ \t]+)?FULL[ \t]+PROJECT[ \t]+GUTENBERG(?:-TM|™)?[ \t]+LICENSE[ \t]*\r?$',original)
+    if heading is None:raise ValueError('Complete attached license heading not found; original needs review.')
+    license=original[heading.start():]
+    if not all(marker in license for marker in ('1.A.','1.E.1.','1.F.')) or 'section 5' not in license.casefold():raise ValueError('Attached license appears incomplete; original needs review.')
+    return heading.start(),len(original)
+
 def verify_rights(entry,raw,evidence):
     if entry['rights']['status']=='provider-unrestricted-us':
         import xml.etree.ElementTree as ET
@@ -101,6 +108,7 @@ def verify_rights(entry,raw,evidence):
         if ebook is None or ebook.get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about')!=expected or not any('public domain in the usa' in r.lower() for r in rights):raise ValueError('Rights metadata does not identify this unrestricted edition.')
         original=raw.decode('utf-8');start=re.search(r'\*\*\*\s*START OF (?:THE |THIS )?PROJECT GUTENBERG',original,re.I)
         if not re.search(r'END OF (?:THE |THIS )?PROJECT GUTENBERG',original,re.I):raise ValueError('Incomplete book marker; source rejected.')
+        pg_license_span(original)
         if not start or re.search(r'copyright(?:ed|\s*(?:\(c\)|[0-9]))|permission of|copyright holder',original[:start.start()],re.I) or 'FULL PROJECT GUTENBERG LICENSE' not in original.upper():raise ValueError('Missing license or special copyright notice requires separate review.')
     elif not evidence.strip():raise ValueError('Rights evidence is empty.')
 

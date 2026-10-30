@@ -67,7 +67,7 @@ def pronunciation(memory,word,*,verified_source=None):
 def observe(memory,event_id,start,end):
     if type(start) is not int or type(end) is not int or not 0<=start<end or end-start>4000:raise ValueError('Select an exact passage of at most 4000 characters.')
     original=memory.read_text_span(event_id,start,end);event=memory.event(event_id)
-    dictionary=dictionary_state(memory);verified_source=(dictionary['event_id'],memory.original(dictionary['event_id']).decode('utf-8')) if dictionary else None
+    dictionary=dictionary_state(memory) if event['metadata'].get('language','und').split('-')[0]=='en' else None;verified_source=(dictionary['event_id'],memory.original(dictionary['event_id']).decode('utf-8')) if dictionary else None
     lines=[];cursor=start;stanzas=0;in_stanza=False
     for raw in original.splitlines(keepends=True):
         body=raw.rstrip('\r\n')
@@ -75,7 +75,7 @@ def observe(memory,event_id,start,end):
             if not in_stanza:stanzas+=1
             in_stanza=True
             words=re.findall(r"[^\W_]+(?:['’][^\W_]+)*",body);last=words[-1] if words else None
-            pron=pronunciation(memory,last,verified_source=verified_source) if last else {'alternatives':[]}
+            pron=pronunciation(memory,last,verified_source=verified_source) if last and dictionary else {'alternatives':[],'reason':'No qualified pronunciation resource for this source language.'}
             lines.append({'start':cursor,'end':cursor+len(body),'text':body,'last_word':last,'last_word_pronunciations':pron})
         else:in_stanza=False
         cursor+=len(raw)
@@ -86,7 +86,7 @@ def observe(memory,event_id,start,end):
         if len(candidates)>=32:break
         candidates.append({'marker':match.group(),'start':start+match.start(),'end':start+match.end(),'interpretation':'Lexical comparison/argument cue only; figurative use or valid inference not established.'})
     return {'version':VERSION,'event_id':event_id,'sha256':event['sha256'],'start':start,'end':end,'quote':original,
-            'script_evidence':identify(original),'nonblank_lines':len(lines),'stanzas':stanzas,'stanza_count_interpretation':'Blank-line grouping only; prose paragraphs and wrapped editions may not encode poetic stanzas.','lines':lines,'tokens':len(words),'repeated_forms':repetitions,'lexical_cues':candidates,
+            'script_evidence':identify(original),'pronunciation_policy':'CMU US-English reference only for sources declared English; other languages abstain.','nonblank_lines':len(lines),'stanzas':stanzas,'stanza_count_interpretation':'Blank-line grouping only; prose paragraphs and wrapped editions may not encode poetic stanzas.','lines':lines,'tokens':len(words),'repeated_forms':repetitions,'lexical_cues':candidates,
             'sentence_boundary_candidates':[start+m.end() for m in re.finditer(r'[.!?]+(?=\s|$)',original)][:100],
             'interpretive_status':'Themes, symbolism, narrative, metaphor, irony, grammar and meter require source-linked reviewed interpretations. No automatic literary certainty or model competence claim.'}
 
