@@ -26,3 +26,24 @@ Upgrade acceptance explicitly covers populated schema-2 originals and a schema-2
 backup migrating to schema 4 with unchanged event identity, source bytes and FTS
 retrieval. Physical power-loss testing, hostile-host review, inference isolation,
 GUI workflows, general NLP and representative multi-source reasoning remain open.
+
+## Mandatory Stage 4.5 gate
+PORTABILITY.md defines the new contract. Required acceptance covers complete
+populated export/import; exact originals/IDs/duplicate events/revisions/claims/
+overrides/registered state/assets; different-location restore and index rebuild;
+corrupt/incomplete/unsafe input rejection; real-process interruption recovery;
+disk-full rollback; incremental correctness; kernel network denial during transfer;
+missing-asset failure; and measured storage growth beyond 10,000 records.
+A created archive is not a verified backup. Actual restore verification is required.
+Stage 5A cannot rely on unverified portability. GUI/inference/release qualification
+remains separate, and skipped optional-dependency tests are never counted as passes.
+
+
+Final Stage 4.5 source acceptance: 67 passed/no skips; installed acceptance:
+66 passed/one explicitly unverified optional-encryption test in .venv. The same
+positive encryption test passed on the actual host interpreter. Actual cross-volume
+publication, crash/restart, disk-full rollback, unsafe import rejection and transfer
+network denial passed. Real schema-4 default data migrated/restored at schema 5
+with its original event ID/bytes/hash unchanged. BENCHMARKS.md records the 50k
+workload and precise performance-revision boundary. This qualifies the documented
+storage operations, not local reasoning, GUI, physical power loss or broad release.

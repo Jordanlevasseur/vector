@@ -158,7 +158,7 @@ os._exit(18)
         restore(recovered,saved['directory'])
         for config in (legacy,recovered):
             with Memory(config) as upgraded:
-                self.assertEqual(upgraded.db.execute('PRAGMA user_version').fetchone()[0],4)
+                self.assertEqual(upgraded.db.execute('PRAGMA user_version').fetchone()[0],len(MIGRATIONS))
                 self.assertEqual(upgraded.original('legacy-event'),raw)
                 self.assertEqual(search(upgraded,'upgrade 42')[0]['event_id'],'legacy-event')
                 self.assertTrue(upgraded.verify()['passed'])

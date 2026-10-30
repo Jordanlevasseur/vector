@@ -26,6 +26,8 @@ def sync(path):
     finally: os.close(fd)
 
 def backup(db,root,timeout_seconds=120):
+    if db.execute("SELECT 1 FROM sqlite_master WHERE name='managed_objects'").fetchone() and db.execute('SELECT 1 FROM managed_objects LIMIT 1').fetchone():
+        raise ValueError('Database-only backup cannot include managed assets; use export-vector.')
     parent=root/'backups'
     if parent.is_symlink(): raise ValueError('Backup symbolic links forbidden.')
     parent.mkdir(mode=0o700,exist_ok=True)
@@ -48,7 +50,7 @@ def backup(db,root,timeout_seconds=120):
         json.dump({'format':1,'sha256':digest,'database':'archive.sqlite3'},output)
         output.flush();os.fsync(output.fileno())
     sync(folder);sync(parent)
-    return {'directory':str(folder),'sha256':digest,'complete':True}
+    return {'directory':str(folder),'sha256':digest,'complete':True,'scope':'legacy-database-only','portable_installation_complete':False}
 
 
 def file_hash(path):
@@ -104,6 +106,8 @@ def restore(config,directory):
         db.execute('PRAGMA trusted_schema=OFF')
         if db.execute('PRAGMA application_id').fetchone()[0]!=APPLICATION_ID or not 1<=db.execute('PRAGMA user_version').fetchone()[0]<=len(MIGRATIONS):
             raise ValueError('Backup database version/identity invalid.')
+        if db.execute("SELECT 1 FROM sqlite_master WHERE name='managed_objects'").fetchone() and db.execute('SELECT 1 FROM managed_objects LIMIT 1').fetchone():
+            raise ValueError('Database-only backup has required external files; use a complete portable export.')
         integrity=verify_connection(db)
         if not integrity['passed']: raise ValueError('Backup contents failed integrity verification.')
     finally: db.close()

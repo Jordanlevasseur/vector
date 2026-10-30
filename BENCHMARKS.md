@@ -34,3 +34,29 @@ not measured. No 100k/1M corpus or model benchmark was run.
 These measurements were taken at the Stage 3 retrieval implementation, before
 Stage 4 knowledge tables and subsequent resource hardening. They are a baseline,
 not a certified latency distribution for every later build, corpus or cold start.
+
+## Stage 4.5 controlled storage workload (Lenovo, 2026-10-29)
+50,000 distinct short synthetic original events were ingested through the bounded
+iterator. Every original was reconstructed byte-identically after restoration;
+all SQLite/reference/hash checks passed; 100 ID-bearing literal lexical probes
+returned the expected source. No neural/model reasoning was exercised.
+
+Measured during concurrent regression activity: ingestion 711.83 s, first export
+42.54 s, unchanged incremental export 17.55 s, actual restore 5.08 s, restored
+integrity verification 2.38 s. SQLite including indexes: 65,265,664 bytes. First
+repository: 20,294,956 bytes. An unchanged snapshot added 36,934 bytes of catalogue/
+receipts and reused all 63 blocks (zero new blocks). Peak benchmark-process RSS:
+34,368 KiB. These are warm synthetic-workload measurements, not dedicated-host,
+cold-cache, million-record or general-question-answering qualification.
+
+This growth run preceded the final destination-local cross-filesystem publication
+fix and final whole-operation relocation/deadline hardening. Those controls are
+covered by subsequent actual-host regression/cross-filesystem acceptance; the
+numbers above are not a measurement of their incremental performance cost.
+Reproduce the current implementation with
+`PYTHONPATH=src python3 -m vector_core.storage_benchmark`.
+The test uses temporary data and requires at least 1 GiB free; the application also
+retains its volume safety reserve. Maximum measured collection here is 50,000
+short originals, not 50,000 large files or a general maximum supported capacity.
+A separate regression streams/restores a 24 MiB original and integrates/pages
+1,201 claims without the former 100-claim aggregate cap.

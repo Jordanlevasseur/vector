@@ -107,3 +107,27 @@ CREATE TRIGGER overrides_no_delete BEFORE DELETE ON overrides BEGIN SELECT RAISE
 CREATE TRIGGER runs_no_update BEFORE UPDATE ON extraction_runs BEGIN SELECT RAISE(ABORT,'append-only extraction'); END;
 CREATE TRIGGER runs_no_delete BEFORE DELETE ON extraction_runs BEGIN SELECT RAISE(ABORT,'append-only extraction'); END;
 """)
+
+# Persistence contracts cover generic subsystem records and managed content.
+MIGRATIONS.append("""
+CREATE TABLE persistence_contracts(name TEXT PRIMARY KEY,version INTEGER NOT NULL,description TEXT NOT NULL);
+CREATE TABLE persistent_records(id TEXT PRIMARY KEY,contract TEXT NOT NULL REFERENCES persistence_contracts(name),
+ record_key TEXT NOT NULL,payload TEXT NOT NULL,previous_id TEXT REFERENCES persistent_records(id),created TEXT NOT NULL);
+CREATE INDEX records_key ON persistent_records(contract,record_key);
+CREATE TABLE managed_objects(digest TEXT PRIMARY KEY,raw_bytes INTEGER NOT NULL,stored_bytes INTEGER NOT NULL,codec TEXT NOT NULL);
+CREATE TABLE managed_refs(id TEXT PRIMARY KEY,contract TEXT NOT NULL REFERENCES persistence_contracts(name),
+ logical_name TEXT NOT NULL,digest TEXT NOT NULL REFERENCES managed_objects(digest),purpose TEXT NOT NULL,created TEXT NOT NULL);
+CREATE INDEX refs_contract ON managed_refs(contract,logical_name);
+CREATE TABLE external_dependencies(id TEXT PRIMARY KEY,contract TEXT NOT NULL REFERENCES persistence_contracts(name),
+ name TEXT NOT NULL,path TEXT NOT NULL,digest TEXT NOT NULL,raw_bytes INTEGER NOT NULL,created TEXT NOT NULL);
+CREATE TABLE external_originals(digest TEXT PRIMARY KEY REFERENCES blobs(sha256),object_digest TEXT NOT NULL REFERENCES managed_objects(digest));
+CREATE TABLE capacity_samples(id INTEGER PRIMARY KEY,created TEXT NOT NULL,free_bytes INTEGER NOT NULL,total_bytes INTEGER NOT NULL);
+CREATE TRIGGER records_no_update BEFORE UPDATE ON persistent_records BEGIN SELECT RAISE(ABORT,'versioned state'); END;
+CREATE TRIGGER records_no_delete BEFORE DELETE ON persistent_records BEGIN SELECT RAISE(ABORT,'versioned state'); END;
+CREATE TRIGGER objects_no_update BEFORE UPDATE ON managed_objects BEGIN SELECT RAISE(ABORT,'immutable objects'); END;
+CREATE TRIGGER objects_no_delete BEFORE DELETE ON managed_objects BEGIN SELECT RAISE(ABORT,'immutable objects'); END;
+INSERT INTO persistence_contracts VALUES ('preferences',1,'User-authorized settings'),('conversations',1,'Conversations and episodic records'),
+ ('projects',1,'Project history'),('procedures',1,'Procedural records'),('capabilities',1,'Inert capability manifests'),
+ ('models',1,'Local model manifests and weights'),('adapters',1,'Local adaptation artifacts'),('extensions',1,'Inert portable extension assets'),
+ ('originals',1,'Streaming original content'),('recovered',1,'Recovered complete content not acknowledged as a submission');
+""")

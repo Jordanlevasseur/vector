@@ -17,3 +17,9 @@ source identity, explicit-zone time ranges and up to four typed scalar metadata
 filters through the Python interface. Exact event/hash lookup uses SQLite indexes.
 Rebuild re-extracts originals and replaces derived text/postings atomically; original
 hash failure aborts without partial index commit. No embeddings/entity graph yet.
+
+Stage 4.5 large originals are retained and exported using bounded streams. Originals
+above the configured text-extraction budget have explicit deferred-index status;
+index rebuilding verifies their bytes and retains that status. This is not full
+lexical indexing of arbitrarily large files. Exact original retrieval and portable
+restoration remain available independently of derived full-text coverage.

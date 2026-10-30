@@ -37,3 +37,11 @@ and override IDs, and never change evidence. Latest correction follows append or
 not wall-clock order. The operating value is marked a user-authorized assumption;
 conflicting source claims remain visible. No neural training or automatic truth
 certification, unrestricted extraction or general reasoning is implemented.
+
+Stage 4.5 removes the fixed 100-claim integration ceiling. Physical input lines are
+streamed, valid claims commit atomically and a bounded 100-ID preview explicitly
+reports truncation; claim_page exposes the full collection. The failure-retention
+test now uses an actually invalid overlong subject, rather than the removed count
+ceiling; a separate 1,201-claim test verifies this behavior. Evidence span and
+per-field bounds remain enforced. All authoritative writes, including learning
+failure audits, participate in relocation writer coordination.

@@ -27,9 +27,20 @@ and `override ID --scope NAME --value VALUE --reason REASON --approve` records a
 explicit operating assumption without rewriting evidence. Ordinary prose is stored
 and searched but is not automatically understood or certified as factual.
 
-Current verification: 43 source tests and 43 clean-installed tests passed on the
-Lenovo. See PROGRESS.md/BENCHMARKS.md for measured scope. No graphical interface or
+The previous Stage 4 checkpoint passed 43 source and 43 installed tests.
+Stage 4.5 adds portable repositories, streamed storage and managed inert assets;
+see PORTABILITY.md and the latest PROGRESS.md results. See PROGRESS.md/BENCHMARKS.md for measured scope. No graphical interface or
 model inference is enabled yet; no broad release/J.A.R.V.I.S. capability is claimed.
 Your supplied master directive is preserved verbatim in DIRECTIVE.md and archived
 as a distinct source event in the private default database. This is retained source
 material, not verified truth or neural/model learning.
+
+Complete portable backups use `export-vector`, `verify-export` and `restore-vector`.
+Database-only `backup` refuses managed assets. Storage diagnostics, paging and
+verified `move-data` are available through the CLI; desktop actions remain pending.
+
+Stage 4.5 final Lenovo results: 67/67 source tests passed; independent installed
+suite passed 66 with one optional-encryption test skipped (cryptography absent in
+.venv). Host encryption tests passed. The real default original was migrated and
+actually restored byte-identically. See PROGRESS.md for the exact qualification
+boundary and BENCHMARKS.md for measured 50,000-event growth.

@@ -4,6 +4,8 @@ Only explicit pipe statements are extracted. There is no general language
 understanding, automatic truth certification or model-weight training here.
 """
 from dataclasses import dataclass
+from vector_core.coordination import write_operation
+
 import math
 import sqlite3
 import unicodedata
@@ -50,10 +52,11 @@ class Knowledge:
         self.db.execute('INSERT INTO entities VALUES (?,?,?)',(identity,name,key))
         return identity
 
-    def _insert(self,draft,text,origin):
-        if type(draft.start) is not int or type(draft.end) is not int or not 0<=draft.start<draft.end<=len(text):
+    def _insert(self,draft,text,origin,original_quote=None):
+        if type(draft.start) is not int or type(draft.end) is not int or not 0<=draft.start<draft.end or (original_quote is None and draft.end>len(text)):
             raise ValueError('Claim span outside original text.')
-        quote=text[draft.start:draft.end]
+        quote=text[draft.start:draft.end] if original_quote is None else original_quote
+        if len(quote)!=draft.end-draft.start:raise ValueError('Original span length mismatch.')
         if len(quote)>4000:raise ValueError('Claim quote exceeds 4000 characters.')
         subject=bounded(draft.subject,'Subject',200)
         predicate=normalized(bounded(draft.predicate,'Predicate',120))
@@ -74,11 +77,12 @@ class Knowledge:
              scope,draft.unit,draft.kind,int(draft.exclusive),object_id,origin,now()))
         return identity
 
+    @write_operation
     def add_claim(self,draft):
-        text=self.memory.original(draft.event_id).decode('utf-8')
+        quote=self.memory.read_text_span(draft.event_id,draft.start,draft.end)
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            identity=self._insert(draft,text,'user-proposed interpretation; unverified')
+            identity=self._insert(draft,None,'user-proposed interpretation; unverified',original_quote=quote)
             self.db.execute('INSERT INTO audit(occurred,action,detail) VALUES (?,?,?)',
                             (now(),'claim-proposed',canonical({'claim_id':identity})))
             self.db.commit()
@@ -90,40 +94,53 @@ class Knowledge:
             'JOIN entities s ON s.id=c.subject_id JOIN events e ON e.id=c.event_id WHERE c.id=?',(identity,)).fetchone()
         if row is None:raise KeyError('Claim not found.')
         result=dict(row)
-        text=self.memory.original(result['event_id']).decode('utf-8')
-        if text[result['start_char']:result['end_char']]!=result['quote']:
+        quote=self.memory.read_text_span(result['event_id'],result['start_char'],result['end_char'])
+        if quote!=result['quote']:
             raise ValueError('Claim quote does not match its original event.')
         result['verification']='unverified source-linked claim'
         return result
 
+    @write_operation
     def integrate(self,event_id,scope,exclusive=False):
         scope=bounded(scope,'Scope',120)
-        text=self.memory.original(event_id).decode('utf-8')
-        if self.db.execute('SELECT status FROM texts WHERE event_id=?',(event_id,)).fetchone()[0]!='utf8-extracted':
+        event=self.memory.event(event_id)
+        if not event['media_type'].startswith('text/') and event['media_type'] not in ('application/json','application/xml'):
             raise ValueError('No supported text representation; original remains stored.')
-        proposals=[];offset=0;skipped=0
-        for physical in text.splitlines(keepends=True):
-            line=physical.rstrip('\r\n')
-            if line.strip():
-                parts=line.split('|')
-                if len(parts)==3 and all(part.strip() for part in parts):
-                    proposals.append(ClaimDraft(event_id,offset,offset+len(line),*map(str.strip,parts),scope,exclusive=exclusive))
-                    if len(proposals)>100:raise ValueError('Extraction exceeds 100 claims; original retained.')
-                else:skipped+=1
-            offset+=len(physical)
-        identities=[]
+        identities=[];skipped=0;count=0
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            for proposal in proposals:identities.append(self._insert(proposal,text,'deterministic pipe-v1; unverified'))
-            status=('partial' if skipped else 'extracted-unverified') if identities else 'no-supported-claims'
-            detail={'claim_ids':identities,'unsupported_lines':skipped,'original_retained':True}
+            for offset,end,physical in self.memory.text_lines(event_id):
+                if physical is None:
+                    skipped+=1;continue
+                line=physical.rstrip('\r\n')
+                if not line.strip():continue
+                parts=line.split('|')
+                if len(parts)!=3 or not all(part.strip() for part in parts):
+                    skipped+=1;continue
+                draft=ClaimDraft(event_id,offset,offset+len(line),*map(str.strip,parts),scope,exclusive=exclusive)
+                identity=self._insert(draft,None,'deterministic pipe-v1; unverified',original_quote=line)
+                count+=1
+                if len(identities)<100:identities.append(identity)
+                if count%100==0:
+                    from vector_core.storage import capacity
+                    capacity(self.memory.config.data_dir,2*1024*1024)
+            status=('partial' if skipped else 'extracted-unverified') if count else 'no-supported-claims'
+            detail={'claim_ids':identities,'claim_count':count,'claim_ids_truncated':count>len(identities),
+                    'unsupported_lines':skipped,'original_retained':True,'paging':'claim_page(event_id=...)'}
             self.db.execute('INSERT INTO extraction_runs VALUES (?,?,?,?,?,?,?)',
                 (uuid4().hex,event_id,'pipe-v1',scope,status,canonical(detail),now()))
             self.db.execute('INSERT INTO audit(occurred,action,detail) VALUES (?,?,?)',
-                (now(),'extraction',canonical({'event_id':event_id,'status':status,'claims':len(identities)})))
+                (now(),'extraction',canonical({'event_id':event_id,'status':status,'claims':count})))
             self.db.commit()
         except Exception:self.db.rollback();raise
         return {'status':status,**detail}
+
+    def claim_page(self,*,event_id=None,after='',limit=100):
+        if type(limit) is not int or not 1<=limit<=1000 or not isinstance(after,str):raise ValueError('Invalid claim page.')
+        where='id>?';parameters=[after]
+        if event_id is not None:where+=' AND event_id=?';parameters.append(event_id)
+        rows=self.db.execute('SELECT id FROM claims WHERE '+where+' ORDER BY id LIMIT ?',parameters+[limit]).fetchall()
+        return {'items':[self.claim(row[0]) for row in rows],'next_cursor':rows[-1][0] if rows else after}
 
     def contradictions(self,limit=20):
         if type(limit) is not int or not 1<=limit<=50:raise ValueError('Conflict limit must be 1-50.')
@@ -156,6 +173,7 @@ class Knowledge:
             (normalized(entity_name),'relationship',limit)).fetchall()
         return [self.claim(row[0]) for row in rows]
 
+    @write_operation
     def assess(self,claim_id,state,confidence,reason,evidence=()):
         self.claim(claim_id)
         if state not in ('unverified','hypothesis','supported','disputed','superseded'):
@@ -178,6 +196,7 @@ class Knowledge:
         except Exception:self.db.rollback();raise
         return dict(self.db.execute('SELECT * FROM assessments WHERE id=?',(identity,)).fetchone())
 
+    @write_operation
     def override(self,claim_id,value,scope,reason,*,approved=False):
         if approved is not True:raise PermissionError('Explicit user authorization required for an override.')
         claim=self.claim(claim_id)
@@ -211,6 +230,7 @@ class Knowledge:
                 'conclusion_kind':'user-authorized assumption' if override else 'unverified source statement'}
 
 
+@write_operation
 def learn(memory,submission,scope,exclusive=False):
     event=memory.ingest(submission)  # Preserve original before optional extraction.
     try:

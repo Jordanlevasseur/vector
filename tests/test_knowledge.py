@@ -27,7 +27,7 @@ class KnowledgeTests(unittest.TestCase):
         self.assertEqual(claim['sha256'],result['event']['sha256'])
 
     def test_extraction_failure_retains_original_and_audited_failure(self):
-        text='\n'.join('A | state | '+str(i) for i in range(101))
+        text=('A'*201)+' | state | invalid subject length'
         result=self.ingest(text)
         self.assertEqual(result['knowledge']['status'],'failed-original-retained')
         self.assertEqual(self.memory.original(result['event']['event_id']),text.encode())

@@ -78,3 +78,51 @@ versions are also rejected before migration rather than selecting a negative lis
 index. Both source and clean-installed full suites passed again: 43/43 each.
 The deliberate pre-fix failure and restricted-runner ownership errors are retained
 separately from the successful host results.
+
+
+## Stage 4.5 — Portability and scalable storage (2026-10-29)
+Implemented registered versioned subsystem state, managed compressed CAS assets and
+streamed originals, strict complete-inventory checks, fixed-block incremental
+repositories, independently verified new-only restoration, crash resume, capacity
+monitoring/reserve, real SQLite-full rollback and cooperative verified relocation.
+Optional installed cryptography provides AES-256-GCM/HKDF with separate offline
+recovery keys and no plaintext fallback. Models/extensions remain inert. No HELIX
+source, shared inference service, firewall or host-wide security setting changed.
+
+Final actual Lenovo source suite: **67 passed, no skips** (228.545 s).
+Final independent wheel-installed suite outside the checkout: **66 passed,
+1 skipped** (220.464 s). The sole skip is authenticated-encryption roundtrip:
+cryptography is absent from the isolated .venv. Actual host Python has that local
+dependency and its positive encryption/wrong-key/tamper tests passed. Core .venv
+operations remain dependency-free; missing encryption fails closed. All 18 installed
+Python modules were compared byte-for-byte with final source. Tests include a real
+second-filesystem export/restore, abrupt os._exit recovery, actual SQLITE_FULL,
+strict unsafe/missing state rejection and kernel socket denial during transfers.
+The removed 100-claim aggregate cap is verified with 1,201 source-linked claims;
+the failure-retention fixture now uses an actually invalid subject. Migration
+assertions now require the current migration count (5), retaining byte/ID checks.
+
+The 50,000-event synthetic growth workload restored every original byte-identically,
+passed all integrity checks and 100 literal retrieval probes. An unchanged backup
+reused 63 blocks with zero new blocks. BENCHMARKS.md records timing, overhead and
+the fact that final cross-filesystem publication/locking/deadline fixes followed
+that growth measurement; their final behavior passed actual-host regression.
+
+Real default data was first backed up by the previous installed runtime, then
+migrated to schema 5. Its complete portable export was actually restored in two
+independent temporary installations. Existing event eedfd6c445664afa9a2b46a03cee4a5d
+and the 28,715-byte original master directive retained SHA-256
+`eaaf6cac9a07207a754a46557b0f8e93b79a0dabcd0c015c00317c79571a16e2`.
+No real model weights are installed in VECTOR; fake test asset bytes are explicitly
+labelled fixtures and never presented as models/inference. Default data stays in
+its original location; relocation acceptance used disposable installations.
+
+Known boundaries: Linux/runtime/schema dependencies require separate trusted
+installation; optional encryption is unavailable in .venv until provisioned offline;
+large-file full-text indexing is deferred above the extraction budget; incomplete
+source fragments are retained for review; restore reserve is conservative; no
+automatic backup retention deletion or partitioned/distributed store; no physical
+power-loss qualification, million-record claim, model reasoning or GUI acceptance.
+Stage 5A activation remains blocked by the absence of a qualified dedicated inference
+profile/runtime/managed model. The existing deny-all-sockets/process policy remains
+mandatory. Portability does not qualify that new security profile or release readiness.

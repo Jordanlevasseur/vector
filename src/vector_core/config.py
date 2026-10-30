@@ -11,9 +11,10 @@ import tomllib
 class Config:
     data_dir: Path
     max_source_bytes: int=8*1024*1024
+    settings_explicit: bool=True
 
     @classmethod
-    def load(cls,path=None,data_dir=None):
+    def load(cls,path=None,data_dir=None,_seen=None):
         values={}
         if path:
             from vector_core.intake import read_file
@@ -43,7 +44,19 @@ class Config:
         maximum=values.get('max_source_bytes',8*1024*1024)
         if type(maximum) is not int or not 1024<=maximum<=16*1024*1024:
             raise ValueError('Source limit must be 1 KiB through 16 MiB.')
-        return cls(root,maximum)
+        redirect=root/'.location.json'
+        if redirect.exists():
+            if root.stat().st_uid!=os.getuid() or stat.S_IMODE(root.stat().st_mode)&0o077:
+                raise ValueError('Unsafe relocated data root.')
+            from vector_core.portable import read_json
+            binding=read_json(redirect)
+            if not isinstance(binding,dict) or set(binding)!={'format','target'} or binding['format']!=1 or not isinstance(binding['target'],str):
+                raise ValueError('Invalid machine-local data location binding.')
+            seen=set() if _seen is None else _seen
+            if root in seen:raise ValueError('Data location cycle.')
+            seen.add(root)
+            return cls.load(path,binding['target'],seen)
+        return cls(root,maximum,"max_source_bytes" in values)
 
     def initialize(self):
         root=self.data_dir

@@ -36,3 +36,13 @@ Write connections explicitly enable recursive triggers to protect originals agai
 SQLite's implicit DELETE during REPLACE. Corrupt/negative schema versions fail
 closed. The local backup directory is on the same disk by default; it is not
 independent disaster recovery, and physical disk loss has not been qualified.
+
+## Stage 4.5 permanent portability contract
+Migration 5 registers all future persistent subsystems and versioned generic state.
+Managed CAS objects stream large originals/assets without a collection count cap.
+`external_originals` connects legacy blob hashes to managed content; duplicate
+submission events retain identity across both APIs. Exact bytes stay authoritative.
+Portable repositories contain a consistent database plus all managed objects;
+unknown state and missing/external required assets fail closed. Verified new-only
+restoration, encryption policy, relocation, paging, operation bounds, exclusions
+and growth strategy are specified permanently in PORTABILITY.md.

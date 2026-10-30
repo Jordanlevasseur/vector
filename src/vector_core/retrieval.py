@@ -1,5 +1,7 @@
 """Bounded literal FTS5 retrieval with original event/source provenance."""
 from datetime import datetime,timezone
+from vector_core.coordination import write_operation
+
 import json
 import re
 
@@ -69,6 +71,7 @@ def index_event(db,event_id,text,status):
         db.execute('INSERT INTO text_search(rowid,text) VALUES (?,?)',(rowid,text))
 
 
+@write_operation
 def rebuild(memory):
     """One atomic derived-data rebuild; originals/hashes remain authoritative."""
     from vector_core.memory import extract,now
@@ -79,8 +82,13 @@ def rebuild(memory):
         db.execute("INSERT INTO text_search(text_search) VALUES ('delete-all')")
         db.execute('DELETE FROM texts')
         for event_id,media_type in db.execute('SELECT id,media_type FROM events'):
-            content=memory.original(event_id)
-            text,status=extract(content,media_type)
+            event=memory.event(event_id)
+            if event['byte_count']>memory.config.max_source_bytes:
+                for _ in memory.original_chunks(event_id):pass
+                text,status=None,'streamed-original-preserved-index-deferred'
+            else:
+                content=memory.original(event_id)
+                text,status=extract(content,media_type)
             db.execute('INSERT INTO texts VALUES (?,?,?)',(event_id,text,status))
             index_event(db,event_id,text,status)
             count+=1

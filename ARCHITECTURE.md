@@ -1,5 +1,5 @@
 # Architecture
-Python 3.12+, standard library, SQLite/FTS5, Linux libseccomp. No runtime Python
+Python 3.12+, standard library, SQLite/FTS5, Linux libseccomp. No mandatory runtime Python
 dependencies, external services or HELIX imports. `cli` installs mandatory kernel
 policy before config/data operations. `config` owns an independent private data
 scope; `intake` reads explicitly selected regular files through no-follow directory
@@ -9,7 +9,7 @@ knowledge are separate layers built over authoritative originals. Models never
 own memory or control authorization. Early stages expose a bounded CLI; a minimal
 desktop can follow verified persistence/retrieval. No speculative services.
 
-## Implemented layers through Stage 4
+## Implemented layers through Stage 4.5
 - `memory`: content-addressed originals, immutable submission/revision history and
   extraction status; transactional batches and exact reconstruction.
 - `retrieval`: contentless FTS5, literal bounded queries, typed metadata/source/time
@@ -20,8 +20,17 @@ desktop can follow verified persistence/retrieval. No speculative services.
 - `benchmark`: resource-checked controlled 10k lexical/provenance/reconstruction
   measurement, not a model or natural-language reasoning evaluation.
 
-Schema migrations 1-4 are forward transactional. Default SQLite page cache is
-bounded to 4 MiB and SQLite values to 32 MiB. Original objects are currently bounded
-to 16 MiB globally (default ingest 8 MiB); batches to 64 events / 16 MiB. Larger
-archives grow by more independent objects, not an unbounded in-memory context.
-Future large-object/chunked backends may preserve event/hash contracts.
+Schema migrations 1-5 are forward transactional. `storage` streams compressed,
+content-addressed originals/assets; `persistence` owns registered versioned records
+and inert model manifests. `portable` snapshots all registered state into immutable,
+deduplicated block repositories and restores into quarantine before validation.
+`portable_crypto` optionally uses installed cryptography for authenticated encryption;
+it never downloads dependencies. `coordination` serializes supported writes and
+verified location moves. Machine-local paths are rebound, never imported as code.
+
+SQLite page cache is bounded to 4 MiB and individual SQLite values to 32 MiB.
+Byte ingestion/text extraction retains per-operation limits; streamed originals
+can be larger. Total collection counts are not capped. Large-document full-text
+indexing remains explicitly deferred. PORTABILITY.md defines persistence contracts,
+platform dependencies, recovery, encryption policy and tested scope. Future
+subsystems must register all authoritative state/assets before claiming portability.

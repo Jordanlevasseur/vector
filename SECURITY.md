@@ -49,3 +49,14 @@ immutable-table DELETE guards. Actual regression tests verified rejection with
 original bytes unchanged. Future/negative migration versions are refused without
 rewriting the version. Direct hostile-owner database edits remain outside the
 supported write interface and cannot be prevented by in-database triggers alone.
+
+## Portable imports and optional encryption
+PORTABILITY.md defines the untrusted import boundary, strict logical paths/schema,
+bounded decompression, new-only quarantine and actual restore verification. No
+imported capability/model code is executed. Unknown/missing state fails closed.
+Managed models are inert until separately qualified offline inference is implemented.
+Optional installed cryptography supplies standard AES-256-GCM/HKDF; key absence or
+authentication failure never falls back to plaintext. Protect recovery keys on
+separate offline media; no recovery exists if all key copies are lost. Plain hash
+archives are not adversarially authenticated; encryption does not prevent replay.
+All new CLI actions activate the same mandatory kernel offline policy first.
