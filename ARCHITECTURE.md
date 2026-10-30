@@ -48,3 +48,11 @@ observable literal task decomposition, not a claim of general semantic planning.
 provide a responsive local GUI and independent protected backend. All durable state
 uses the existing registered contracts; migration 6 adds lookup indexes only.
 Inference/display profiles are qualified separately from model answer quality.
+
+## Memory intelligence and durable projects
+`projects` adds versioned user research records and many-project original links.
+`memory_intelligence` coordinates literal memory views, comparison, relationships,
+deferred extraction and source reconciliation. Existing context/retrieval/services
+and desktop consume them. Migration 7 adds portable contracts and lookup indexes;
+no original is replaced and no hidden persistent cache is created. See
+MEMORY_INTELLIGENCE_SPEC.md for bounds, interruption semantics and qualification.

@@ -55,3 +55,16 @@ not qualified. Generated prose is not independently certified truth. The initial
 scientific tools do not provide general symbolic algebra or engineering certification.
 Model generation and independent evidence/answer qualification are reported separately
 from UI/framework tests. UI availability alone does not imply release readiness.
+
+Memory/project workflow now includes explicit many-project source associations,
+versioned goal/requirement/note/decision/task/milestone/question/hypothesis forms,
+archive/reactivate status, histories and evidence-linked item revisions. Opening a
+project scopes new submissions by association; global originals remain searchable.
+Knowledge offers memory-category/time/project/source recall, duplicate/version
+comparison, evidence links, entity lookup and assessment/override history. Learning
+shows deferred extraction and explicit reconciliation. Saved-conversation browsing
+can resume older sessions. Histories page by both count and response bytes; original
+records remain complete. Project timelines summarize conversation entries and link
+back to complete saved turns rather than replicating large inference traces.
+Context allocates original evidence ahead of notes/history, preventing optional
+project records from crowding sources out of small-model budgets.

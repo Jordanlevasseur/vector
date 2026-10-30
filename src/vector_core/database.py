@@ -137,3 +137,17 @@ CREATE INDEX records_contract_cursor ON persistent_records(contract);
 CREATE INDEX conversation_cursor ON persistent_records(contract,substr(record_key,1,32));
 CREATE INDEX claims_event_identity ON claims(event_id,id);
 ''')
+
+# New views use registered append-only records; indexes carry no authoritative copies.
+MIGRATIONS.append('''
+INSERT INTO persistence_contracts VALUES
+ ('project_sources',1,'Explicit many-project original-event associations'),
+ ('project_items',1,'Versioned project goals notes decisions tasks questions hypotheses'),
+ ('memory_links',1,'User-authored evidence relationships; not certified entailment'),
+ ('learning_queue',1,'Deferred source extraction and reassessment history');
+CREATE INDEX records_project ON persistent_records(contract,json_extract(payload,'$.project_id'));
+CREATE INDEX records_project_history ON persistent_records(json_extract(payload,'$.project_id'));
+CREATE INDEX records_target ON persistent_records(contract,json_extract(payload,'$.target_id'));
+CREATE INDEX records_event ON persistent_records(contract,json_extract(payload,'$.event_id'));
+CREATE INDEX claims_subject_time ON claims(subject_id,created,id);
+''')

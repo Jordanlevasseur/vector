@@ -52,7 +52,7 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
              'context':None,'outcome':{'status':'pending','answer':None,'generation':None,'errors':[]},'trace':trace,'plan':task_plan}
     put(memory,'conversations',key,pending)  # Durable user input precedes retrieval and model execution.
     budget=config.prompt_bytes-len(INSTRUCTIONS.encode())-200
-    try:built=build_context(memory,question,budget_bytes=budget,scope=scope)
+    try:built=build_context(memory,question,budget_bytes=budget,scope=scope,project_id=project_id,conversation_id=conversation_id)
     except Exception as error:
         pending['outcome'].update(status='failed',errors=[str(error)[:1000]])
         put(memory,'conversations',key,pending)

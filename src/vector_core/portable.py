@@ -76,6 +76,8 @@ def validate_database(db,data_root=None,deadline=None):
         for contract,record_key,payload in db.execute('SELECT contract,record_key,payload FROM persistent_records'):
             decoded=json.loads(payload,object_pairs_hook=unique,parse_constant=lambda value:(_ for _ in ()).throw(ValueError(value)))
             if contract=='models':validate_model(db,decoded)
+            from vector_core.projects import validate_record
+            validate_record(db,contract,record_key,decoded)
             if contract=='preferences':
                 from vector_core.persistence import validate_preference
                 validate_preference(record_key,decoded)

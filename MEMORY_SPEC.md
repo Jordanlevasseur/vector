@@ -54,3 +54,8 @@ adds contract/UUID-prefix cursor and claim lookup indexes. Original bytes and ID
 are preserved. Imported generation/session preferences are validated before portable
 activation. Runtime model materializations and scratch/log files are ephemeral;
 application launchers and runtime libraries are platform installation dependencies.
+
+MEMORY_INTELLIGENCE_SPEC.md defines derived episodic/semantic/procedural/project/
+working views and registered project/source/evidence/reassessment records. These
+views preserve originals and earlier revisions; source associations never copy
+original bytes. Model-free context and session continuation remain available.

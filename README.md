@@ -87,3 +87,30 @@ Set budgets explicitly in Settings rather than assuming inference is fast.
 Current desktop/archive/search/manual tools are experimental usable foundations;
 reliable general AI assistance and release readiness have not been established.
 See ACCEPTANCE.md and ROADMAP.md for remaining gates.
+
+## Memory and project organization
+Open VECTOR from the application menu. In Projects, enter a name and click Create
+project. The project opens immediately; subsequent Learning imports are associated
+with it. Select an existing Knowledge source and choose Link selected source in
+Projects to reuse it without copying original data. Sources, History and Archive /
+restore inspect durable associations and status; leaving a project preserves all
+its knowledge and returns to global work.
+
+Use the item form for goals, requirements, notes, decisions, tasks, milestones,
+questions and hypotheses. Save revision records the text/status and selected source
+as evidence. Click Items for the next page, select an item to edit, and save its new
+revision. New item clears editing. All earlier versions remain in History.
+
+Knowledge's memory selector provides episodic, semantic, procedural, project and
+working views. Recall memories uses the text query and optional explicit-zone ISO
+Since/Until dates, project/source filters. Global search remains available across
+projects. Compare / versions shows exact duplicates, literal overlap candidates and
+source ancestry. Relationships and assessment controls retain evidence/uncertainty.
+Learning's deferred queue does not require a model. Reconcile selected evidence
+compares explicit claims and requests review rather than silently choosing truth.
+
+Assistant's saved-session browser resumes older conversations; Load saved
+conversation pages complete saved turns. Short follow-ups can use prior user
+questions for literal retrieval. Originals are allocated before project notes in
+bounded contexts. Model-generated answers remain unverified and cannot approve
+knowledge or run tools. See MEMORY_INTELLIGENCE_SPEC.md for precise limits.

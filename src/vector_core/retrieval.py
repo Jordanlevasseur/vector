@@ -12,18 +12,28 @@ def timestamp(value):
     return moment.astimezone(timezone.utc).isoformat(timespec='microseconds')
 
 
-def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None):
+def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None,project_id=None,category=None):
     if not isinstance(query,str) or len(query)>512:
         raise ValueError('Query must be text up to 512 characters.')
     if type(limit) is not int or not 1<=limit<=100: raise ValueError('Result limit must be 1-100.')
     tokens=re.findall(r'[^\W_]+',query,flags=re.UNICODE)
     if len(tokens)>16: raise ValueError('Query exceeds 16 lexical terms.')
-    conditions=[];parameters=[]
+    if category not in (None,'episodic','semantic','procedural','project'):raise ValueError('Unsupported source memory category.')
+    if project_id is not None:
+        from vector_core.projects import Projects
+        Projects(memory).get(project_id)
+    if category=='project' and project_id is None:raise ValueError('Select a project for project memory.')
+    conditions=["t.status='utf8-extracted'"];parameters=[]
+    if project_id:
+        conditions.append("EXISTS (SELECT 1 FROM persistent_records a WHERE a.contract='project_sources' AND json_extract(a.payload,'$.project_id')=? AND json_extract(a.payload,'$.event_id')=e.id)")
+        parameters.append(project_id)
+    if category in ('semantic','procedural'):
+        conditions.append("EXISTS (SELECT 1 FROM claims c WHERE c.event_id=e.id"+(" AND (c.kind='procedure' OR c.predicate='procedure')" if category=='procedural' else '')+")")
     ranked=bool(tokens)
     if ranked:
         conditions.append('text_search MATCH ?')
         parameters.append(' AND '.join('"'+token+'"' for token in tokens))
-    elif not any((source_id,since,until,metadata)):
+    elif not any((source_id,since,until,metadata,project_id,category)):
         raise ValueError('Provide search terms or an explicit filter.')
     if source_id:
         conditions.append('e.source_id=?');parameters.append(source_id)
@@ -60,7 +70,11 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
         derived=memory.db.execute('SELECT text FROM texts WHERE event_id=?',(result['event_id'],)).fetchone()[0]
         if derived!=original:
             raise ValueError('Derived text differs from original; rebuild the index before trusting results.')
-        result['excerpt']=original[:500]
+        # A late-file hit must not be represented by an unrelated prefix.
+        match=re.search('|'.join(re.escape(t) for t in tokens),original,re.IGNORECASE) if tokens else None
+        start=max(0,match.start()-120) if match else 0
+        result['start']=start;result['end']=min(len(original),start+500)
+        result['excerpt']=original[start:result['end']]
         results.append(result)
     return results
 

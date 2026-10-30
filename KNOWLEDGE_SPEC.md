@@ -45,3 +45,9 @@ test now uses an actually invalid overlong subject, rather than the removed coun
 ceiling; a separate 1,201-claim test verifies this behavior. Evidence span and
 per-field bounds remain enforced. All authoritative writes, including learning
 failure audits, participate in relocation writer coordination.
+
+Memory orchestration adds explicit source relationships and bounded literal
+reconciliation. Comparable exclusive disagreements queue review; matching literal
+values are not automatically verified facts. Assessment/override history is exposed
+through the desktop. Project hypotheses/decisions are user records with original
+references and uncertainty, never automatic changes to source-linked knowledge.

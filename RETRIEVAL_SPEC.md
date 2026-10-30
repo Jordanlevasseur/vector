@@ -23,3 +23,11 @@ above the configured text-extraction budget have explicit deferred-index status;
 index rebuilding verifies their bytes and retains that status. This is not full
 lexical indexing of arbitrarily large files. Exact original retrieval and portable
 restoration remain available independently of derived full-text coverage.
+
+Project/category filters use registered indexed associations; source/time filters
+remain explicit. Excerpts retain exact offsets around a literal hit, including late
+in a file. Context prioritizes original coverage, then derived state; bounded exact-
+entity/one-hop and comparable-claim expansion can include related source evidence.
+Default project contexts prefer associated sources while retaining global matches.
+Explicit project-only recall is available without changing global originals.
+MEMORY_INTELLIGENCE_SPEC.md records limits and benchmark acceptance scope.

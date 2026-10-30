@@ -95,8 +95,8 @@ class Desktop:
         from tkinter import ttk,messagebox,filedialog,simpledialog
         from tkinter.scrolledtext import ScrolledText
         self.tk=tk;self.ttk=ttk;self.dialog=messagebox;self.files=filedialog;self.simple=simpledialog
-        self.root=root;self.client=client;self.managed=managed;self.last_response=None;self.selected_event=None;self.selected_claim=None
-        self.rows={};self.event_cursor='';self.project_cursor=0;self.project_rows={};self.history_cursor=0
+        self.root=root;self.client=client;self.managed=managed;self.last_response=None;self.selected_event=None;self.selected_claim=None;self.selected_source_id=None;self.claim_cursor=''
+        self.rows={};self.event_cursor='';self.project_cursor=0;self.project_rows={};self.history_cursor=0;self.active_project=None;self.item_rows={};self.editing_item=None
         root.title('VECTOR — Offline Evidence Assistant');root.geometry(str(min(1060,root.winfo_screenwidth()-80))+'x'+str(min(760,root.winfo_screenheight()-100)));root.minsize(820,600)
         style=ttk.Style();style.theme_use('clam');style.configure('TButton',padding=6);style.configure('TNotebook.Tab',padding=(16,8))
         top=ttk.Frame(root,padding=10);top.pack(fill='x')
@@ -113,22 +113,46 @@ class Desktop:
         ttk.Button(line,text='Ask VECTOR',command=self.send_chat).pack(side='left',padx=6)
         ttk.Button(line,text='New conversation',command=lambda:self.call('new_conversation',{},lambda r:self.reset_history('New conversation.'))).pack(side='left')
         ttk.Button(self.tabs['Assistant'],text='Load saved conversation',command=self.load_history).pack(anchor='w')
+        ttk.Button(self.tabs['Assistant'],text='Find / resume older conversations',command=self.conversations).pack(anchor='w')
         tab=self.tabs['Knowledge'];bar=ttk.Frame(tab);bar.pack(fill='x')
         self.search=ttk.Entry(bar);self.search.pack(side='left',fill='x',expand=True);self.search.bind('<Return>',lambda event:self.search_sources())
         for label,command in [('Search',self.search_sources),('Browse next sources',self.browse),('Claims',self.claims),('Conflicts',lambda:self.call('conflicts',{},self.show_result)),('Override claim',self.override)]:ttk.Button(bar,text=label,command=command).pack(side='left',padx=2)
+        filters=ttk.Frame(tab);filters.pack(fill='x',pady=4)
+        self.memory_view=tk.StringVar(value='episodic');ttk.Combobox(filters,textvariable=self.memory_view,values=('episodic','semantic','procedural','project','working'),state='readonly',width=12).pack(side='left')
+        self.project_only=tk.BooleanVar();ttk.Checkbutton(filters,text='Active project only',variable=self.project_only).pack(side='left')
+        self.source_only=tk.BooleanVar();ttk.Checkbutton(filters,text='Selected source only',variable=self.source_only).pack(side='left')
+        self.memory_since=ttk.Entry(filters,width=20);self.memory_until=ttk.Entry(filters,width=20)
+        for label,entry in [('Since (ISO + zone)',self.memory_since),('Until',self.memory_until)]:ttk.Label(filters,text=label).pack(side='left');entry.pack(side='left')
+        ttk.Button(filters,text='Recall memories',command=self.recall_memories).pack(side='left')
         self.knowledge=ttk.Treeview(tab,columns=('title','detail','identity'),show='headings',height=12)
         for name,width in [('title',240),('detail',420),('identity',220)]:self.knowledge.heading(name,text=name.title());self.knowledge.column(name,width=width)
         self.knowledge.pack(fill='both',expand=True,pady=8);self.knowledge.bind('<<TreeviewSelect>>',self.select_source);self.knowledge.bind('<Double-1>',lambda event:self.view_source())
         ttk.Button(tab,text='View selected original / evidence',command=self.view_source).pack(anchor='w')
         ttk.Button(tab,text='Export selected original',command=self.export_original).pack(anchor='w',pady=4)
+        more=ttk.Frame(tab);more.pack(fill='x')
+        for label,command in [('Compare / versions',lambda:self.source_operation('memory_compare')),('Relationships',lambda:self.source_operation('memory_links')),('Link evidence',self.link_evidence),('Assessments',self.assessment_history),('Dispute claim',self.assess_claim),('Entity',self.entity_lookup)]:ttk.Button(more,text=label,command=command).pack(side='left',padx=2)
         tab=self.tabs['Learning'];ttk.Label(tab,text='Import originals or learn explicit subject | predicate | value statements. Sources remain unverified.').pack(anchor='w')
         self.learning=ScrolledText(tab,wrap='word',height=12);self.learning.pack(fill='both',expand=True,pady=8)
         controls=ttk.Frame(tab);controls.pack(fill='x');self.scope=ttk.Entry(controls,width=20);self.scope.insert(0,'personal');self.scope.grid(row=0,column=0,sticky='w')
         self.exclusive=tk.BooleanVar();ttk.Checkbutton(controls,text='Comparable exclusive claims',variable=self.exclusive).grid(row=0,column=1,columnspan=2,sticky='w')
         for index,(label,command) in enumerate([('Archive text',self.archive_text),('Import file',self.import_file),('Learn statements',self.learn_text),('AI proposal from selected source',self.extract_proposal),('Review proposals',self.proposals)]):ttk.Button(controls,text=label,command=command).grid(row=1+index//3,column=index%3,sticky='w',padx=3,pady=4)
+        ttk.Button(tab,text='Deferred extraction queue',command=lambda:self.paged_records('Deferred learning','learning_queue',lambda r:r['status']+' — '+r['event_id'],lambda r:self.call('show',{'event_id':r['event_id']},self.show_result))).pack(anchor='w')
+        ttk.Button(tab,text='Reconcile selected evidence',command=lambda:self.source_operation('reconcile')).pack(anchor='w')
+        ttk.Button(tab,text='Selected source learning history',command=lambda:self.source_operation('learning_history')).pack(anchor='w')
         tab=self.tabs['Projects'];bar=ttk.Frame(tab);bar.pack(fill='x');self.project_name=ttk.Entry(bar);self.project_name.pack(side='left',fill='x',expand=True)
         ttk.Button(bar,text='Create project',command=self.create_project).pack(side='left');ttk.Button(bar,text='Load next projects',command=self.projects).pack(side='left');ttk.Button(bar,text='Resume selected',command=self.load_project).pack(side='left')
-        self.project_list=tk.Listbox(tab,font=('Sans',12));self.project_list.pack(fill='both',expand=True,pady=8)
+        self.project_list=tk.Listbox(tab,font=('Sans',12),height=4);self.project_list.pack(fill='x',pady=8)
+        self.project_status=tk.StringVar(value='No active project. Global memory remains available.');ttk.Label(tab,textvariable=self.project_status).pack(anchor='w')
+        controls=ttk.Frame(tab);controls.pack(fill='x')
+        for label,command in [('Link selected source',self.link_selected_project),('Sources',self.project_sources),('History',self.project_history),('Archive / restore',self.archive_project),('Leave project',self.leave_project),('Items',self.project_items)]:ttk.Button(controls,text=label,command=command).pack(side='left',padx=2)
+        self.project_item_list=tk.Listbox(tab,height=5);self.project_item_list.pack(fill='both',expand=True,pady=5);self.project_item_list.bind('<<ListboxSelect>>',self.select_project_item)
+        form=ttk.Frame(tab);form.pack(fill='x');self.item_kind=tk.StringVar(value='note');self.item_status=tk.StringVar(value='open')
+        ttk.Combobox(form,textvariable=self.item_kind,values=('goal','requirement','note','decision','task','milestone','question','hypothesis'),state='readonly',width=13).pack(side='left')
+        ttk.Combobox(form,textvariable=self.item_status,values=('open','done','blocked','deferred'),state='readonly',width=10).pack(side='left')
+        self.item_title=ttk.Entry(form);self.item_title.pack(side='left',fill='x',expand=True)
+        ttk.Button(form,text='New item',command=self.clear_item).pack(side='left');ttk.Button(form,text='Save revision',command=self.save_item).pack(side='left')
+        self.item_body=ScrolledText(tab,height=4,wrap='word');self.item_body.pack(fill='x',pady=5)
+        ttk.Label(tab,text='Selected Knowledge source is attached as evidence on save. Goals/decisions/hypotheses are user records, not verified facts.').pack(anchor='w')
         tab=self.tabs['Tools'];ttk.Label(tab,text='Deterministic calculations. Clicking Run authorizes this calculation only. No model tool execution.').pack(anchor='w')
         self.tool_name=tk.StringVar(value='arithmetic');combo=ttk.Combobox(tab,textvariable=self.tool_name,values=('arithmetic','convert','solve_linear','geometry','statistics','constant'),state='readonly');combo.pack(anchor='w',pady=8);combo.bind('<<ComboboxSelected>>',lambda e:self.tool_fields())
         self.tool_form=ttk.Frame(tab);self.tool_form.pack(fill='x');self.tool_inputs={};self.tool_fields()
@@ -195,6 +219,8 @@ class Desktop:
     def health(self,result):
         inference=result['inference']
         self.model_status.set('Isolated local runtime qualified. Select a model; generated answers remain unverified.' if inference.get('runtime_version') else 'Local AI unavailable: '+str(inference.get('reason','No worker selected.'))[:350])
+        self.active_project=result['session']['project_id']
+        self.project_status.set('Active project: '+str(self.active_project) if self.active_project else 'No active project. Global memory remains available.')
         configuration=result['generation'];self.model.set(configuration['model'])
         for key,field in [('context','context_tokens'),('output','output_tokens'),('timeout','timeout_seconds')]:self.model_limits[key].delete(0,'end');self.model_limits[key].insert(0,str(configuration[field]))
         self.call('managed_models' if self.managed else 'models',{},self.model_list)
@@ -225,11 +251,13 @@ class Desktop:
     def search_sources(self):self.call('search',{'query':self.search.get()},lambda r:self.fill(r,'event'))
     def browse(self):self.call('events',{'after':self.event_cursor},self.source_page)
     def source_page(self,result):self.event_cursor=result['next_cursor'];self.fill(result['items'],'event')
-    def claims(self):self.call('claims',{},lambda r:self.fill(r['items'],'claim'))
+    def claims(self):
+        def loaded(result):self.claim_cursor=result['next_cursor'] if result['items'] else '';self.fill(result['items'],'claim')
+        self.call('claims',{'event_id':self.selected_event,'after':self.claim_cursor},loaded)
     def select_source(self,event=None):
         selection=self.knowledge.selection()
         if not selection:return
-        kind,row=self.rows[selection[0]];self.selected_event=row.get('event_id') if kind=='claim' else row.get('event_id',row.get('id'));self.selected_claim=row if kind=='claim' else None
+        kind,row=self.rows[selection[0]];self.selected_source_id=row.get('source_id');self.selected_event=row.get('event_id') if kind=='claim' else row.get('event_id',row.get('id'));self.selected_claim=row if kind=='claim' else None
     def view_source(self):
         if self.selected_event:self.call('show',{'event_id':self.selected_event},self.show_result)
     def export_original(self):
@@ -288,17 +316,123 @@ class Desktop:
         self.ttk.Button(controls,text='Next page / restart',command=load).pack(side='right')
         listing.bind('<<ListboxSelect>>',lambda event:approve.configure(state='normal' if selected()==state['reviewed'] and selected() else 'disabled'))
         load()
-    def create_project(self):self.call('project_create',{'name':self.project_name.get()},self.show_result)
+    def create_project(self):self.call('project_create',{'name':self.project_name.get()},lambda r:self.open_project(r['id']))
     def projects(self):
         def loaded(result):
             self.project_cursor=result['next_cursor'];self.project_list.delete(0,'end');self.project_rows={}
             for row in result['items']:
                 if row['payload'].get('kind')=='project':
                     index=self.project_list.size();self.project_list.insert('end',row['payload']['name']);self.project_rows[index]=row['payload']['id']
+                    if row['payload'].get('archived'):self.project_list.delete(index);self.project_list.insert(index,row['payload']['name']+' [archived]')
+            if not result['items']:self.project_cursor=0
         self.call('projects',{'after':self.project_cursor},loaded)
     def load_project(self):
         selected=self.project_list.curselection()
-        if selected:self.call('project_load',{'id':self.project_rows[selected[0]]},lambda r:self.reset_history('Project resumed. Use Load saved conversation to read its history.'))
+        if selected:self.open_project(self.project_rows[selected[0]])
+    def open_project(self,identity):
+        def loaded(result):
+            self.active_project=result['project_id'];self.project_status.set('Active project: '+result['project']['name']+(' [archived]' if result['project'].get('archived') else ''))
+            self.reset_history('Project resumed. Load saved conversation to read its history.');self.clear_item();self.item_after=0;self.project_item_list.delete(0,'end')
+        self.call('project_load',{'id':identity},loaded)
+    def leave_project(self):
+        def left(result):self.active_project=None;self.project_status.set('Global workspace. Originals remain searchable.');self.reset_history('Global conversation.');self.clear_item();self.item_after=0;self.project_item_list.delete(0,'end')
+        self.call('project_leave',{},left)
+    def link_selected_project(self):
+        if self.active_project and self.selected_event:self.call('project_link',{'event_id':self.selected_event,'approved':True},self.show_result)
+        else:self.dialog.showinfo('Select project and source','Open a project and select a source in Knowledge first.')
+    def project_sources(self):
+        if not self.active_project:return
+        self.paged_records('Project sources','project_sources',lambda r:r['event_id'],lambda r:self.call('show',{'event_id':r['event_id']},self.show_result),{'project_id':self.active_project})
+    def project_history(self):
+        if not self.active_project:return
+        self.paged_records('Project history','project_history',lambda r:r['created']+' — '+r['contract'],self.show_result,{'project_id':self.active_project})
+    def archive_project(self):
+        if not self.active_project:return
+        def selected(record):
+            archived=not record.get('archived',False)
+            if self.dialog.askyesno('Project status','Archive this project?' if archived else 'Restore this project to active status?'):
+                self.call('project_archive',{'archived':archived,'revision':record['revision'],'approved':True},lambda r:self.project_status.set(r['name']+(' [archived]' if r['archived'] else ' [active]')))
+        self.call('project_get',{},selected)
+    def clear_item(self):
+        self.editing_item=None;self.item_title.delete(0,'end');self.item_body.delete('1.0','end');self.item_status.set('open')
+    def project_items(self):
+        if not self.active_project:return
+        def loaded(result):
+            self.project_item_list.delete(0,'end');self.item_rows={}
+            for index,row in enumerate(result['items']):self.project_item_list.insert('end',row['kind']+' / '+row['status']+' — '+row['title']);self.item_rows[index]=row
+            self.item_after=result['next_cursor'] if result['items'] else 0
+        self.call('project_items',{'after':getattr(self,'item_after',0)},loaded)
+    def select_project_item(self,event=None):
+        selected=self.project_item_list.curselection()
+        if not selected:return
+        row=self.item_rows[selected[0]];self.clear_item();self.editing_item=row
+        self.item_kind.set(row['kind']);self.item_status.set(row['status']);self.item_title.insert(0,row['title']);self.item_body.insert('1.0',row['body'])
+    def save_item(self):
+        if not self.active_project:self.dialog.showinfo('Open project','Create or open a project first.');return
+        previous=self.editing_item
+        evidence=list(previous['evidence']) if previous else []
+        if self.selected_event and self.selected_event not in evidence:evidence.append(self.selected_event)
+        parameters={'kind':self.item_kind.get(),'title':self.item_title.get(),'body':self.item_body.get('1.0','end-1c'),'status':self.item_status.get(),'evidence':evidence,'approved':True}
+        if previous:parameters.update(item_id=previous['id'],revision=previous['revision'],confidence=previous['confidence'],uncertainty=previous['uncertainty'])
+        def saved(record):self.editing_item=record;self.status.set('Saved project revision. Evidence remains unverified.')
+        self.call('project_item',parameters,saved)
+    def paged_records(self,title,operation,label,inspect,parameters=None):
+        window=self.tk.Toplevel(self.root);window.title(title);window.geometry('760x420')
+        listing=self.tk.Listbox(window);listing.pack(fill='both',expand=True);state={'after':0,'rows':[]}
+        def load():
+            def loaded(result):
+                state.update(rows=result['items'],after=result['next_cursor'] if result['items'] else 0);listing.delete(0,'end')
+                for row in state['rows']:listing.insert('end',label(row))
+            self.call(operation,{**(parameters or {}),'after':state['after']},loaded)
+        def selected():
+            indices=listing.curselection()
+            if indices:inspect(state['rows'][indices[0]])
+        self.ttk.Button(window,text='Next page / restart',command=load).pack(side='left');self.ttk.Button(window,text='Inspect / open selected',command=selected).pack(side='right');load()
+    def conversations(self):
+        def resume(row):
+            def resumed(result):
+                self.active_project=result['project_id'];self.project_status.set('Resumed project '+str(self.active_project) if self.active_project else 'Global conversation');self.reset_history('Saved session resumed. Load saved conversation to view turns.')
+            self.call('conversation_resume',{'conversation_id':row['conversation_id']},resumed)
+        self.paged_records('Saved conversations','conversation_browse',lambda r:r['question'],resume)
+    def recall_memories(self):
+        parameters={'query':self.search.get(),'view':self.memory_view.get(),'project_only':self.project_only.get() or self.memory_view.get()=='project'}
+        for key,entry in [('since',self.memory_since),('until',self.memory_until)]:
+            if entry.get():parameters[key]=entry.get()
+        if self.source_only.get():
+            if not self.selected_source_id:self.dialog.showinfo('Select source','Select an original source first.');return
+            parameters['source_id']=self.selected_source_id
+        def recalled(result):
+            if result['view']=='working':self.show_result(result)
+            else:self.fill(result['items'],'event')
+        self.call('memory_recall',parameters,recalled)
+    def source_operation(self,operation):
+        if self.selected_event:self.call(operation,{'event_id':self.selected_event},self.show_result)
+    def link_evidence(self):
+        if not self.selected_event:return
+        first=self.selected_event
+        # Events use string cursors, unlike registered-record pages.
+        window=self.tk.Toplevel(self.root);window.title('Link selected evidence');window.geometry('650x360');listing=self.tk.Listbox(window);listing.pack(fill='both',expand=True);state={'after':'','rows':[]}
+        def load():
+            def loaded(result):
+                state.update(after=result['next_cursor'],rows=result['items']);listing.delete(0,'end')
+                for row in result['items']:listing.insert('end',row['submission_name'])
+                if not result['items']:state['after']=''
+            self.call('events',{'after':state['after']},loaded)
+        def apply():
+            chosen=listing.curselection()
+            if not chosen:return
+            reason=self.simple.askstring('Relationship reason','Why are these originals related?')
+            if reason:self.call('memory_link',{'event_id':first,'target_id':state['rows'][chosen[0]]['id'],'kind':'related','reason':reason,'approved':True},self.show_result)
+        self.ttk.Button(window,text='Next sources / restart',command=load).pack(side='left');self.ttk.Button(window,text='Save user relationship',command=apply).pack(side='right');load()
+    def assessment_history(self):
+        if self.selected_claim:self.call('assessment_history',{'claim_id':self.selected_claim['id']},self.show_result)
+    def assess_claim(self):
+        if not self.selected_claim:return
+        reason=self.simple.askstring('Reassessment','Reason to mark this interpretation disputed (source stays intact):')
+        if reason:self.call('assess',{'claim_id':self.selected_claim['id'],'state':'disputed','confidence':0,'reason':reason,'approved':True},self.show_result)
+    def entity_lookup(self):
+        name=self.simple.askstring('Entity','Exact entity or concept label:')
+        if name:self.call('entity',{'name':name},self.show_result)
     def tool_fields(self):
         for child in self.tool_form.winfo_children():child.destroy()
         fields={'arithmetic':[('expression','2+2')],'convert':[('value','1'),('from','ft'),('to','m')],

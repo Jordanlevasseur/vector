@@ -138,3 +138,10 @@ unencrypted archive. The current format requires compatible application/schema
 versions and has no automatic downgrade conversion. Desktop actions now use the separately tested GUI/IPC profile described in
 DESKTOP_SPEC.md. Inference/model quality is independently qualified; archive creation
 alone does not establish portability, model accuracy or release readiness.
+
+Migration 7 registers project_sources/project_items/memory_links/learning_queue.
+Their append-only versions, histories, original IDs, uncertainty, decisions/tasks,
+relationships and deferred extraction are included in the existing SQLite snapshot.
+Payload/reference validation runs before portable activation. No model, project
+archive flag or imported record grants execution authorization. Project archival
+is retained status, distinct from exporting the complete VECTOR installation.

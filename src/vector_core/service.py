@@ -69,10 +69,23 @@ class Application:
             else:event['preview']='Binary/large original preserved; export original to view exact bytes.'
             return event
         if operation=='export_original':return memory.export_original(p['event_id'],p['output'])
-        if operation=='ingest':
-            if p.get('file'):return memory.ingest_file(p['file'],media_type=p.get('media_type','text/plain'))
-            return memory.ingest(Submission(p['text'].encode(),p.get('name','Desktop submission')))
-        if operation=='learn':return learn(memory,Submission(p['text'].encode(),p.get('name','Learning submission')),p['scope'],p.get('exclusive',False))
+        if operation in ('ingest','learn'):
+            from vector_core.projects import Projects
+            from vector_core.memory_intelligence import defer
+            project_id=self.session['project_id']
+            if project_id:Projects(memory).get(project_id)  # Validate before accepting input.
+            if operation=='learn':
+                result=learn(memory,Submission(p['text'].encode(),p.get('name','Learning submission')),p['scope'],p.get('exclusive',False));event=result['event']
+            else:
+                event=memory.ingest_file(p['file'],media_type=p.get('media_type','text/plain')) if p.get('file') else memory.ingest(Submission(p['text'].encode(),p.get('name','Desktop submission')))
+                result=event
+            # Originals commit first. A crash cannot destroy input or pretend extraction succeeded.
+            if project_id:result['project_association']=Projects(memory).link(project_id,event['event_id'])
+            result['learning']=defer(memory,event['event_id'])
+            if operation=='learn':
+                from vector_core.memory_intelligence import reconcile
+                result['reconciliation']=reconcile(memory,event['event_id'])
+            return result
         if operation=='claims':return Knowledge(memory).claim_page(event_id=p.get('event_id'),after=p.get('after',''),limit=30)
         if operation=='conflicts':return Knowledge(memory).contradictions()
         if operation=='override':return Knowledge(memory).override(p['claim_id'],p['value'],p['scope'],p['reason'],approved=p.get('approved',False))
@@ -103,7 +116,11 @@ class Application:
             drafts=parsed['drafts']
             if not isinstance(drafts,list) or any(not isinstance(d,dict) or d.get('event_id')!=p['event_id'] or d.get('scope')!=p['scope'] or type(d.get('end')) is not int or d['end']>len(excerpt) for d in drafts):raise ValueError('Model proposal selected unauthorized sources/scope/spans.')
             from vector_core.learning import propose
-            return propose(memory,drafts,origin='Local model '+self.generation.model+'; '+self.transport.runtime_version+'; unverified')
+            result=propose(memory,drafts,origin='Local model '+self.generation.model+'; '+self.transport.runtime_version+'; unverified')
+            from vector_core.projects import append
+            from vector_core.memory import now
+            append(memory,'learning_queue',p['event_id'],{'event_id':p['event_id'],'status':'proposed','reason':'Source-linked proposal awaits explicit review; no verified fact created.','created':now()})
+            return result
         if operation=='propose':
             from vector_core.learning import propose
             return propose(memory,p['drafts'],origin=p['origin'])
@@ -118,24 +135,80 @@ class Application:
                     project=json.loads(row[0]);project['conversation_id']=self.session['conversation_id'];put(memory,'projects',self.session['project_id'],project)
             put(memory,'preferences','desktop_session',self.session);return self.session
         if operation=='history':
-            prefix=self.session['conversation_id']+':'
-            rows=memory.db.execute("SELECT rowid,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 100",(self.session['conversation_id'],p.get('after',0))).fetchall()
-            return {'items':[json.loads(row['payload']) for row in rows],'next_cursor':rows[-1]['rowid'] if rows else p.get('after',0)}
+            from vector_core.projects import page
+            from vector_core.memory import canonical
+            page(p.get('after',0),100)
+            rows=memory.db.execute("SELECT rowid,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 100",(self.session['conversation_id'],p.get('after',0)))
+            items=[];used=0;cursor=p.get('after',0)
+            for row in rows:
+                item=json.loads(row['payload']);size=len(canonical(item).encode())
+                if used+size>768*1024:
+                    if not items:raise ValueError('A saved turn exceeds the desktop page budget; full state remains in portable storage.')
+                    break
+                items.append(item);used+=size;cursor=row['rowid']
+            return {'items':items,'next_cursor':cursor}
+        if operation=='conversation_browse':
+            from vector_core.projects import page
+            page(p.get('after',0),50)
+            rows=memory.db.execute("SELECT rowid AS cursor,json_extract(payload,'$.conversation_id') AS conversation_id,json_extract(payload,'$.project_id') AS project_id,substr(json_extract(payload,'$.question'),1,200) AS question FROM persistent_records r WHERE contract='conversations' AND rowid>? AND json_type(payload,'$.question')='text' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 50",(p.get('after',0),)).fetchall()
+            return {'items':[dict(r) for r in rows],'next_cursor':rows[-1]['cursor'] if rows else p.get('after',0)}
+        if operation=='conversation_resume':
+            from vector_core.projects import identity,Projects
+            conversation=identity(p['conversation_id'])
+            row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='conversations' AND substr(record_key,1,32)=? ORDER BY rowid DESC LIMIT 1",(conversation,)).fetchone()
+            if row is None:raise ValueError('Saved conversation not found.')
+            record=json.loads(row[0]);project_id=record.get('project_id')
+            if project_id:Projects(memory).get(project_id)
+            self.session={'conversation_id':conversation,'project_id':project_id};put(memory,'preferences','desktop_session',self.session);return self.session
         if operation=='project_create':
-            name=p['name']
-            if not isinstance(name,str) or not 1<=len(name)<=200:raise ValueError('Project name must contain 1–200 characters.')
-            identity=uuid4().hex;put(memory,'projects',identity,{'id':identity,'name':name,'kind':'project','conversation_id':uuid4().hex})
-            return {'id':identity,'name':name}
+            from vector_core.projects import Projects
+            return Projects(memory).create(p['name'])
         if operation=='projects':
+            from vector_core.projects import page
+            page(p.get('after',0),100)
             rows=memory.db.execute("SELECT rowid AS cursor,* FROM persistent_records r WHERE contract='projects' AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='projects' AND record_key=r.record_key) ORDER BY rowid LIMIT 100",(p.get('after',0),)).fetchall()
             return {'items':[{**dict(row),'payload':json.loads(row['payload'])} for row in rows],'next_cursor':rows[-1]['cursor'] if rows else p.get('after',0)}
         if operation=='project_load':
-            row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='projects' AND record_key=? ORDER BY rowid DESC LIMIT 1",(p['id'],)).fetchone()
-            if row is None:raise ValueError('Project not found.')
-            project=json.loads(row[0])
-            if project.get('kind')!='project':raise ValueError('Not a project record.')
+            from vector_core.projects import Projects
+            project=Projects(memory).get(p['id'])
             self.session.update(project_id=p['id'],conversation_id=project['conversation_id']);put(memory,'preferences','desktop_session',self.session)
-            return self.session
+            return {**self.session,'project':project}
+        if operation=='project_leave':
+            self.session={'project_id':None,'conversation_id':uuid4().hex};put(memory,'preferences','desktop_session',self.session);return self.session
+        if operation in ('project_get','project_sources','project_items','project_history','project_link','project_item','project_archive'):
+            from vector_core.projects import Projects
+            projects=Projects(memory);project_id=p.get('project_id') or self.session['project_id']
+            if operation=='project_get':return projects.get(project_id)
+            if operation=='project_sources':return projects.sources(project_id,p.get('after',0))
+            if operation=='project_items':return projects.entries('project_items',project_id,p.get('after',0))
+            if operation=='project_history':return projects.history(project_id,p.get('after',0))
+            if operation=='project_link':
+                if p.get('approved') is not True:raise PermissionError('Explicit source association approval required.')
+                return projects.link(project_id,p['event_id'])
+            if operation=='project_archive':return projects.archive(project_id,p['archived'],p['revision'],approved=p.get('approved',False))
+            return projects.item(project_id,p['kind'],p['title'],p['body'],evidence=p.get('evidence'),status=p.get('status','open'),confidence=p.get('confidence'),uncertainty=p.get('uncertainty','User record; not independently verified.'),item_id=p.get('item_id'),revision=p.get('revision'),approved=p.get('approved',False))
+        if operation=='memory_recall':
+            if p.get('project_only') and not self.session['project_id']:raise ValueError('Open a project before requesting project-only recall.')
+            from vector_core.memory_intelligence import recall
+            return recall(memory,p.get('query',''),view=p.get('view','episodic'),project_id=self.session['project_id'] if p.get('project_only') else None,conversation_id=self.session['conversation_id'],since=p.get('since'),until=p.get('until'),source_id=p.get('source_id'),after=p.get('after',0))
+        if operation in ('memory_compare','memory_links','memory_link','learning_history','learning_queue','reconcile'):
+            from vector_core import memory_intelligence as intelligence
+            if operation=='reconcile':return intelligence.reconcile(memory,p['event_id'])
+            if operation=='memory_compare':return intelligence.compare(memory,p['event_id'])
+            if operation=='memory_links':return intelligence.links(memory,p['event_id'],p.get('after',0))
+            if operation=='memory_link':return intelligence.link(memory,p['event_id'],p['target_id'],p['kind'],p['reason'],approved=p.get('approved',False))
+            if operation=='learning_history':return intelligence.learning_history(memory,p['event_id'],p.get('after',0))
+            return intelligence.queue(memory,p.get('after',0))
+        if operation=='entity':return Knowledge(memory).entity(p['name'])
+        if operation=='assess':
+            if p.get('approved') is not True:raise PermissionError('Explicit assessment approval required.')
+            return Knowledge(memory).assess(p['claim_id'],p['state'],p['confidence'],p['reason'],p.get('evidence',()))
+        if operation=='assessment_history':
+            from vector_core.projects import identity,page
+            claim=Knowledge(memory).claim(p['claim_id']);page(p.get('after',0),50)
+            assessments=[dict(r) for r in memory.db.execute('SELECT rowid AS cursor,* FROM assessments WHERE claim_id=? AND rowid>? ORDER BY rowid LIMIT 50',(claim['id'],p.get('after',0)))]
+            overrides=[dict(r) for r in memory.db.execute('SELECT rowid AS cursor,* FROM overrides WHERE claim_id=? AND rowid>? ORDER BY rowid LIMIT 50',(claim['id'],p.get('override_after',0)))]
+            return {'assessments':assessments,'overrides':overrides,'next_cursor':assessments[-1]['cursor'] if assessments else p.get('after',0),'override_cursor':overrides[-1]['cursor'] if overrides else p.get('override_after',0),'effective':Knowledge(memory).effective(claim['id'],claim['scope'])}
         if operation=='tool':
             from vector_core.tools import run_tool
             return run_tool(memory,p['name'],p['parameters'],authorized=p.get('approved',False))

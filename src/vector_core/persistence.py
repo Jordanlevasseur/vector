@@ -57,6 +57,8 @@ def put(memory,contract,key,payload):
         if not isinstance(payload,dict) or set(payload)!={'max_source_bytes'} or type(payload['max_source_bytes']) is not int or not 1024<=payload['max_source_bytes']<=16*1024*1024:
             raise ValueError('Unsupported runtime preferences.')
     if contract=='models':validate_model(memory.db,payload)
+    from vector_core.projects import validate_record
+    validate_record(memory.db,contract,key,payload)
     encoded=canonical(payload)
     if len(encoded.encode())>1024*1024:raise ValueError('Large payloads belong in streamed managed assets, not metadata records.')
     memory.db.execute('BEGIN IMMEDIATE')

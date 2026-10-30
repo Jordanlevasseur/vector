@@ -82,3 +82,10 @@ Qualification is per launch before source data reaches the worker. No unqualifie
 shared service or cloud fallback is permitted. Source/response validation remains
 independent of the model. See INTELLIGENCE_SPEC.md and DESKTOP_SPEC.md for the exact
 scope and current model qualification; no hostile privileged-host guarantee is made.
+
+The memory/project upgrade adds no OS permissions or model-callable actions.
+User-authored project decisions/hypotheses and evidence relationship labels remain
+unverified records. Association/reference and revision validation fail closed;
+project scoping only filters/preferentially ranks queries, never removes originals.
+Registered new-state payloads are validated during portable restoration. Existing
+kernel profiles and local inference qualification remain unchanged.
