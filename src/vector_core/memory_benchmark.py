@@ -30,7 +30,9 @@ def run(count=5000,probes=100):
             ingest=time.perf_counter()-start
             start=time.perf_counter()
             # Every corpus source is linked. No application collection limit is involved.
-            for i,event_id in expected.items():Projects(memory).link(projects[i%4]['id'],event_id)
+            for project_index,project in enumerate(projects):
+                chosen=[event_id for i,event_id in expected.items() if i%4==project_index]
+                for offset in range(0,len(chosen),64):Projects(memory).link_many(project['id'],chosen[offset:offset+64],approved=True)
             association=time.perf_counter()-start
             hits=0;chronological=0;totalcontext=0;querycpu=time.process_time()
             for i in range(probes):

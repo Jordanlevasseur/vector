@@ -158,6 +158,20 @@ class MemoryProjectTests(unittest.TestCase):
         self.assertEqual(found,expected);self.assertGreater(pages,1)
         self.assertTrue(all('fixture_audit' not in json.dumps(r) for r in self.projects.history(self.app.session['project_id'])['items']))
 
+    def test_bulk_association_is_authorized_atomic_idempotent_and_has_no_total_cap(self):
+        p=self.project();events=[]
+        for batch in range(2):events.extend(self.memory.ingest_batch([Submission(('Bulk '+str(batch)+' '+str(i)).encode(),'source') for i in range(64)]))
+        ids=[event['event_id'] for event in events]
+        with self.assertRaises(PermissionError):self.projects.link_many(p['id'],ids[:64])
+        with self.assertRaises(ValueError):self.projects.link_many(p['id'],ids[:63]+['0'*32],approved=True)
+        self.assertEqual(self.projects.sources(p['id'])['items'],[])
+        self.projects.link_many(p['id'],ids[:64],approved=True);self.projects.link_many(p['id'],ids[64:],approved=True)
+        self.projects.link_many(p['id'],ids[:64],approved=True)
+        self.assertEqual(self.memory.db.execute("SELECT count(*) FROM persistent_records WHERE contract='project_sources'").fetchone()[0],128)
+        first=self.projects.sources(p['id'],limit=100);second=self.projects.sources(p['id'],after=first['next_cursor'],limit=100)
+        self.assertEqual(len(first['items'])+len(second['items']),128)
+        self.assertEqual(self.memory.db.execute('SELECT count(*) FROM events').fetchone()[0],128)
+
     def test_complete_new_state_snapshot_preserves_all_versions_and_associations(self):
         first=self.project('Evidence lab');a=self.app.handle('learn',{'text':'Valve | state | open','scope':'plant','exclusive':True})
         b=self.app.handle('learn',{'text':'Valve | state | closed','scope':'plant','exclusive':True})
@@ -203,6 +217,35 @@ with Memory(Config.load(data_dir=sys.argv[1])) as memory:
             with Memory(Config.load(data_dir=data)) as memory:
                 self.assertEqual(memory.db.execute("SELECT count(*) FROM persistent_records WHERE contract='project_items'").fetchone()[0],0)
                 self.assertEqual(memory.db.execute('SELECT count(*) FROM events').fetchone()[0],1);self.assertTrue(memory.verify()['passed'])
+
+    def test_actual_bulk_link_crash_cannot_publish_a_partial_association_batch(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data=str(Path(folder)/'data')
+            script='''
+import os,sys
+from vector_core.security import activate
+activate()
+from vector_core.memory import Memory,Submission
+from vector_core.config import Config
+from vector_core.projects import Projects
+import vector_core.projects as module
+with Memory(Config.load(data_dir=sys.argv[1])) as memory:
+ p=Projects(memory).create('Atomic source batch')
+ events=memory.ingest_batch([Submission(b'One','one'),Submission(b'Two','two')])
+ original=module._insert
+ def interrupted(*args,**kwargs):
+  result=original(*args,**kwargs)
+  os._exit(88)
+ module._insert=interrupted
+ Projects(memory).link_many(p['id'],[e['event_id'] for e in events],approved=True)
+'''
+            env={**os.environ,'PYTHONPATH':str(Path(__file__).resolve().parents[1]/'src')}
+            child=subprocess.run([sys.executable,'-c',script,data],env=env,capture_output=True,text=True,timeout=15)
+            self.assertEqual(child.returncode,88,child.stderr)
+            with Memory(Config.load(data_dir=data)) as memory:
+                self.assertEqual(memory.db.execute("SELECT count(*) FROM persistent_records WHERE contract='project_sources'").fetchone()[0],0)
+                self.assertEqual(memory.db.execute('SELECT count(*) FROM events').fetchone()[0],2)
+                self.assertTrue(memory.verify()['passed'])
 
 class ProjectDesktopTests(unittest.TestCase):
     def test_actual_protected_project_learning_task_recall_and_backup_workflow(self):

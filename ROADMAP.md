@@ -50,3 +50,18 @@ unauthorized. No host-wide security relaxation or shared-service reuse is permit
    Current crash tests are process interruption tests, not physical power loss.
 5. Release only after these gates and representative memory/performance/recovery
    workloads pass. Keep inference optional and evidence-only workflows available.
+
+## Memory/project organization milestone after d06f7d5
+Implemented durable source associations, versioned research items, project archival/
+reactivation/history, memory-category/source/time recall, exact-entity/evidence
+expansion, scoped reconciliation, deferred learning, old-session resumption and
+byte-bounded history. Original evidence has priority over optional project notes.
+A measured one-commit-per-source bulk bottleneck is addressed with approved atomic
+batches, preserving synchronous FULL and crash rollback. See the new memory spec.
+
+Next milestone: independently qualify mixed-domain and temporal reasoning over a
+representative adversarial evidence corpus, add reviewed entity-alias proposals
+only with measured retrieval benefit, and conduct user usability/recovery sessions.
+A capable actual local model remains a separate qualification gate; literal memory
+views and explicit user links do not establish semantic understanding. Optional
+installed encryption and physical-power-loss/hostile-host acceptance remain open.

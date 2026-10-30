@@ -114,3 +114,8 @@ conversation pages complete saved turns. Short follow-ups can use prior user
 questions for literal retrieval. Originals are allocated before project notes in
 bounded contexts. Model-generated answers remain unverified and cannot approve
 knowledge or run tools. See MEMORY_INTELLIGENCE_SPEC.md for precise limits.
+
+You may multi-select up to 64 Knowledge sources per Link selected source operation.
+The batch commits atomically; invalid references or interruption cannot acknowledge
+partial links. Repeat batches to organize larger collections; total project size
+has no application count cap.

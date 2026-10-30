@@ -84,3 +84,28 @@ storage and inference work. Storage timings include ~398 MB actual model data;
 ordinary source retrieval timings exclude inference. Independent task score 0/3.
 Raw benchmark/configuration/model digests are retained in the evidence directory
 listed in PROGRESS.md. No large model or dependency was downloaded.
+
+## Project/memory workload — Lenovo, 2026-10-30
+Controlled 5,000 distinct short historical originals (2012 timestamps), four
+projects and 5,000 source associations. 100 independently specified literal probes
+passed top project recall, chronological filters and late-file source-context
+attribution (100/100 each). A real portable restore verified all 5,000 original
+hashes; 100 separately constructed byte expectations matched exactly.
+
+Final bounded-batch workload: ingest 17.451 s; association 9.101 s; recall median/
+p95 1.195/2.910 ms; context median/p95 0.765/2.101 ms, maximum 703 context bytes.
+Query CPU 0.246 s; peak RSS 39,876 KiB; SQLite 21,204,992 bytes including all originals,
+text, history and indexes (growth 20,951,040 bytes); FTS pages 802,816 bytes.
+Export 14.174 s, actual restore 1.741 s; zero integrity errors. Query-plan evidence
+confirms records_project index use. No model inference, semantic recall or reasoning
+accuracy was measured. Long-term timestamps are controlled test data, not a claim
+of years of real deployment.
+
+The earlier same-size workload linked each source in its own synchronous transaction
+and took 203.711 s for associations. Explicit approved atomic batches (up to 64)
+reduced that measured time to 9.101 s while retaining synchronous FULL, idempotence,
+reference checks and tested process-crash rollback. Runs used warm OS caches and
+concurrent regression activity; these are workload observations, not isolated-host
+throughput guarantees. Neither originals nor total project/source counts are capped.
+Raw evidence: outputs/vector-memory-projects in the current Codex workspace.
+Reproduce on the actual host with `PYTHONPATH=src python3 -m vector_core.memory_benchmark`.

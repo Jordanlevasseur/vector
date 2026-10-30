@@ -56,21 +56,25 @@ def validate_record(db,contract,key,p):
         if set(p)!={'event_id','status','reason','created'} or key!=p['event_id'] or p['status'] not in {'deferred','proposed','review-needed'}:raise ValueError('Invalid learning queue record.')
         event(p['event_id']);text(p['reason'],2000);text(p['created'],64)
 
+def _insert(memory,contract,key,payload,*,expected=None,new=False):
+    from vector_core.persistence import require
+    require(memory,contract);db=memory.db
+    validate_record(db,contract,key,payload)
+    row=db.execute('SELECT id FROM persistent_records WHERE contract=? AND record_key=? ORDER BY rowid DESC LIMIT 1',(contract,key)).fetchone()
+    previous=row[0] if row else None
+    if (new and previous) or (expected is not None and previous!=expected):raise ValueError('Record changed; reload before updating.')
+    record=uuid4().hex
+    db.execute('INSERT INTO persistent_records VALUES (?,?,?,?,?,?)',(record,contract,key,canonical(payload),previous,now()))
+    db.execute('INSERT INTO audit(occurred,action,detail) VALUES (?,?,?)',(now(),'organization-'+contract,canonical({'key':key,'revision':record})))
+    return {**payload,'revision':record}
+
 @write_operation
 def append(memory,contract,key,payload,*,expected=None,new=False):
-    from vector_core.persistence import require
-    require(memory,contract);db=memory.db;db.execute('BEGIN IMMEDIATE')
+    memory.db.execute('BEGIN IMMEDIATE')
     try:
-        validate_record(db,contract,key,payload)
-        row=db.execute('SELECT id FROM persistent_records WHERE contract=? AND record_key=? ORDER BY rowid DESC LIMIT 1',(contract,key)).fetchone()
-        previous=row[0] if row else None
-        if (new and previous) or (expected is not None and previous!=expected):raise ValueError('Record changed; reload before updating.')
-        record=uuid4().hex
-        db.execute('INSERT INTO persistent_records VALUES (?,?,?,?,?,?)',(record,contract,key,canonical(payload),previous,now()))
-        db.execute('INSERT INTO audit(occurred,action,detail) VALUES (?,?,?)',(now(),'organization-'+contract,canonical({'key':key,'revision':record})))
-        db.commit()
-    except BaseException:db.rollback();raise
-    return {**payload,'revision':record}
+        result=_insert(memory,contract,key,payload,expected=expected,new=new);memory.db.commit()
+    except BaseException:memory.db.rollback();raise
+    return result
 
 class Projects:
     def __init__(self,memory):self.memory=memory
@@ -86,14 +90,23 @@ class Projects:
         if type(archived) is not bool:raise ValueError('Archive flag must be boolean.')
         p=self.get(project_id);p.pop('revision');p['archived']=archived
         return append(self.memory,'projects',project_id,p,expected=identity(revision))
-    @write_operation
     def link(self,project_id,event_id):
-        self.get(project_id);identity(event_id)
-        if not self.memory.db.execute('SELECT 1 FROM events WHERE id=?',(event_id,)).fetchone():raise ValueError('Original source not found; association rejected.')
-        key=project_id+':'+event_id
-        try:return latest(self.memory,'project_sources',key)
-        except ValueError:pass
-        return append(self.memory,'project_sources',key,{'project_id':project_id,'event_id':event_id,'created':now()},new=True)
+        return self.link_many(project_id,[event_id],approved=True)['items'][0]
+    @write_operation
+    def link_many(self,project_id,event_ids,*,approved=False):
+        if approved is not True:raise PermissionError('Explicit source association approval required.')
+        if not isinstance(event_ids,list) or not 1<=len(event_ids)<=64:raise ValueError('Select 1–64 sources per atomic batch; total project size is not limited.')
+        self.get(project_id);db=self.memory.db;db.execute('BEGIN IMMEDIATE');items=[]
+        try:
+            for event_id in dict.fromkeys(identity(value) for value in event_ids):
+                if not db.execute('SELECT 1 FROM events WHERE id=?',(event_id,)).fetchone():raise ValueError('Original source not found; association batch rejected.')
+                key=project_id+':'+event_id
+                row=db.execute("SELECT id,payload FROM persistent_records WHERE contract='project_sources' AND record_key=? ORDER BY rowid DESC LIMIT 1",(key,)).fetchone()
+                if row:items.append({**json.loads(row['payload']),'revision':row['id']})
+                else:items.append(_insert(self.memory,'project_sources',key,{'project_id':project_id,'event_id':event_id,'created':now()},new=True))
+            db.commit()
+        except BaseException:db.rollback();raise
+        return {'items':items,'atomic':True,'originals_modified':False}
     def sources(self,project_id,after=0,limit=50):
         self.get(project_id);return self.entries('project_sources',project_id,after,limit)
     def entries(self,contract,project_id,after=0,limit=50):

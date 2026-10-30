@@ -98,3 +98,11 @@ and complete portable restoration of all new revisions/references. Benchmark war
 literal retrieval/context separately from actual model performance. Qwen0.5B's
 previous 0/3 model score remains unqualified; framework acceptance changes no model
 accuracy or release gate.
+
+Bulk association uses explicit approved batches of 1–64 source IDs, consistent with
+existing bounded intake operations. All new links and audits commit atomically with
+SQLite synchronous FULL; a missing reference or interruption rolls the batch back.
+Repeated association is idempotent. Larger projects use successive bounded batches;
+there is no total project/source count cap. Multi-select Knowledge sources and click
+Link selected source to authorize one batch. This avoids one fsync transaction per
+source during bulk organization without lowering acknowledgement durability.

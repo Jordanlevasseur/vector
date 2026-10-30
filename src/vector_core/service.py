@@ -175,13 +175,14 @@ class Application:
             return {**self.session,'project':project}
         if operation=='project_leave':
             self.session={'project_id':None,'conversation_id':uuid4().hex};put(memory,'preferences','desktop_session',self.session);return self.session
-        if operation in ('project_get','project_sources','project_items','project_history','project_link','project_item','project_archive'):
+        if operation in ('project_get','project_sources','project_items','project_history','project_link','project_links','project_item','project_archive'):
             from vector_core.projects import Projects
             projects=Projects(memory);project_id=p.get('project_id') or self.session['project_id']
             if operation=='project_get':return projects.get(project_id)
             if operation=='project_sources':return projects.sources(project_id,p.get('after',0))
             if operation=='project_items':return projects.entries('project_items',project_id,p.get('after',0))
             if operation=='project_history':return projects.history(project_id,p.get('after',0))
+            if operation=='project_links':return projects.link_many(project_id,p['event_ids'],approved=p.get('approved',False))
             if operation=='project_link':
                 if p.get('approved') is not True:raise PermissionError('Explicit source association approval required.')
                 return projects.link(project_id,p['event_id'])

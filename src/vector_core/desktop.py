@@ -338,8 +338,13 @@ class Desktop:
         def left(result):self.active_project=None;self.project_status.set('Global workspace. Originals remain searchable.');self.reset_history('Global conversation.');self.clear_item();self.item_after=0;self.project_item_list.delete(0,'end')
         self.call('project_leave',{},left)
     def link_selected_project(self):
-        if self.active_project and self.selected_event:self.call('project_link',{'event_id':self.selected_event,'approved':True},self.show_result)
-        else:self.dialog.showinfo('Select project and source','Open a project and select a source in Knowledge first.')
+        selected=self.knowledge.selection()
+        events=list(dict.fromkeys(self.rows[item][1].get('event_id',self.rows[item][1].get('id')) for item in selected))
+        if not events and self.selected_event:events=[self.selected_event]
+        if self.active_project and events:
+            if len(events)>64:self.dialog.showinfo('Bounded batch','Select at most 64 sources per atomic operation. Projects may contain any number of sources.');return
+            self.call('project_links',{'event_ids':events,'approved':True},self.show_result)
+        else:self.dialog.showinfo('Select project and sources','Open a project and select sources in Knowledge first.')
     def project_sources(self):
         if not self.active_project:return
         self.paged_records('Project sources','project_sources',lambda r:r['event_id'],lambda r:self.call('show',{'event_id':r['event_id']},self.show_result),{'project_id':self.active_project})
