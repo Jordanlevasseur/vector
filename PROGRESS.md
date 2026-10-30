@@ -234,3 +234,10 @@ Evidence directory (outside the repository):
 See REPORT.md, frozen-*-trial*.json, full regression logs, fingerprints, benchmark
 JSON, actual default-data verification and final-interaction-roundtrip.json.
 This is an experimental foundation; VECTOR is not release-ready.
+
+Final post-inference managed snapshot e1760c88ffc642d8b41c7fdb1226b5ba
+passed actual restoration: 8 files, 7 managed objects, 2 original events, no
+integrity errors. Incremental export reused 375 blocks and added 1; original
+IDs/bytes preserved. Actual restore verification 62.800 s; export plus verification
+162.125 s. Evidence: final-interaction-roundtrip.json. No source changes followed
+the frozen 95-test regression or model trials.
