@@ -151,3 +151,25 @@ Installed b778fe4 GUI ready 1.264 s, frontend peak
 An exact grouped-index rowid count measured 1,288,804 in 20.057 s. That is not an
 estimate, checkpoint sum or a cold-cache performance guarantee. Full-corpus export/restoration acceptance remains BLOCKED/UNVERIFIED at resume-preserved-snapshot: Export deadline reached; staged transfer can be resumed.. Staging and live originals are retained; incomplete phases are not passes.
 Raw protocols, per-probe results, failed attempts and recovery evidence: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d.
+
+## Stage 6A pilot measurements
+Independent 20-instance arithmetic: existing direct tool 20/20, two-step durable
+resume workflow 20/20. Median direct computation 0.436 ms; durable two-step/resume
+workflow 470.103 ms. These perform different persistence work: no speedup or
+arithmetic-accuracy gain is claimed. Finite-domain enumeration 6/6 against independent
+Python enumeration, with exact continuation cursors. Literal reconciliation retained
+one explicit disagreement and both originals. Total pilot 16.355 s, peak process
+RSS 26820 KiB, no model calls or simulated model. Host activity overlapped portions
+of measurement; no cold-cache or exclusive-host guarantee.
+
+Real Qwen 0.5B system comparison: six synthetic held-out instances per pathway,
+4096 context/384 output/120s request timeout, seed/temperature zero and unchanged
+qualified CPU-only worker. Objective baseline 0/4, adaptive 0/4. Creative results
+are unscored; adaptive 1/2 valid envelopes is not discovery competence. Separate
+tool-feedback repair 0/1, wrong 385 repeated despite independently computed 285.
+Initial worker failures and all raw outputs remain preserved; remaining tasks
+used fresh qualified workers rather than a security fallback. System response
+formats differ; this is not a model-only ablation. Protocol/fingerprints record the
+small reconciliation correction between early and remaining trials. No training,
+model substitution, larger-budget rerun or acceptance relaxation occurred.
+Full per-task results and limits: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage6a/REPORT.md.

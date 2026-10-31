@@ -203,3 +203,45 @@ resolve this engineering/performance failure before increasing corpus scale. Its
 exact internal bottleneck is not established. Do not treat this as an unavailable
 dependency, skip validation, or raise deadlines to manufacture acceptance.
 Native rerun commands: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/HOST_ACCEPTANCE.md
+
+## Stage 6A measured implementation checkpoint
+Core implementation f9e4c50; foundational laws unchanged. New investigation/authority
+interfaces reuse existing memory, context, adapters, Decimal tools and portable
+validation. Source: 146 passed, zero skips (305.598 s). Independent installed:
+145 passed, one optional cryptography roundtrip skipped (276.944 s). Native-host
+source encryption passed; no dependency was downloaded. All 43 installed modules
+match tested source. Wheel SHA 02e21f4ca50ba2258df26dca12697ce0d83a5d06f40258f502f4d40e48a58a70.
+
+Working features: explicit calculation routing, dependency plans, unverified uncited
+proposals, alternatives, critique/verification, typed interpreted links, chunked
+finite constraints, durable started/result/failure checkpoints, ordinary approved
+pause/resume/cancel/redirection and late-result discard. Privileged override remains
+fail-closed; owner authentication is not selected. No new desktop panel is claimed.
+Contracts register dynamically; active library schema/data were not migrated.
+
+Independent deterministic pilot: existing direct arithmetic 20/20, checkpointed
+arithmetic 20/20; finite constraints 6/6; literal conflict/original retention passed.
+This is orchestration and formal computation, not new general mathematical or
+scientific intelligence. Default reconciliation initially failed due to an overly
+small model-derived evidence budget; an independent bounded evidence budget plus
+a new regression fixed it. Failed pilot/logs remain preserved.
+
+Real Qwen 0.5B: baseline 0/4 objective tasks, adaptive 0/4. Creative envelopes:
+baseline 0/2, adaptive 1/2, unscored for scientific originality/feasibility. After
+initial timeout/repetition aborts, only unexecuted tasks used fresh qualified
+workers; failures were not replaced. A separate one-call tool-feedback repair
+again returned 385 for 15*19 despite independent 285 feedback; final check failed.
+Repeated valid text is flagged, not scored as progress. No mock substituted for
+real model output, and no acceptance criterion was relaxed.
+
+All 2020 active files retain recorded identity/change metadata; the preexisting
+28715-byte original hash was directly reverified. No full-library rescan, ingestion,
+export retry or Phase 1B optimization occurred. Existing same-disk safety backup
+and its verification evidence remain intact. Offline/core/worker security and
+models/configuration are unchanged. Only source and VECTOR's own installed package
+were updated. HELIX and the separate offline assistant were not modified.
+
+Functional foundation verified; model-dependent reasoning/discovery acceptance
+remains incomplete. No release readiness or full-library portability is claimed.
+Detailed A–J report, all failures, fingerprints, independent protocols, model
+transcripts and logs: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage6a/REPORT.md

@@ -105,3 +105,16 @@ resolve this engineering/performance failure before increasing corpus scale. Its
 exact internal bottleneck is not established. Do not treat this as an unavailable
 dependency, skip validation, or raise deadlines to manufacture acceptance.
 Native rerun commands: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/HOST_ACCEPTANCE.md
+
+## After Stage 6A evidence
+The checkpointed reasoning foundation is functional, but actual Qwen 0.5B objective
+reasoning and tool-feedback repair failed. Before introducing MCTS or learned
+routing, independently qualify a capable local generator and reliable correction
+on broader held-out tasks. Separate strict schema-guided syntax support from
+objective answer correctness; preserve existing failed scores and validators.
+Larger-model/hardware experiments require explicit resource authorization. Semantic
+plan proposals, adaptive task routing and a desktop investigation view are future
+work over the existing protected service. Privileged owner authentication/control
+requires separate authorized design. The 900-second export bottleneck still needs
+its separately authorized Phase 1B diagnosis; Stage 6A did not retry or optimize it.
+No subsequent milestone is initiated by these recommendations.
