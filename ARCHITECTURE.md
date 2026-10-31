@@ -69,3 +69,13 @@ derived schemas; body-analysis contracts register through the existing registry.
 No duplicate memory engine, neural training or automatic fact promotion is added.
 Developer-only `tools/acquire_pg.py` is outside the runtime package and exposes no
 application/model operation. See LINGUISTIC_SPEC.md for limits and rights policy.
+
+## Owner-defined foundational requirements
+[FOUNDATIONAL_LAWS.md](FOUNDATIONAL_LAWS.md) V1.0 is the authoritative source for
+independent discovery and authenticated owner authority over discretionary judgment.
+Its traceability matrix assesses current components, gaps and future joint acceptance
+criteria. Current evidence-only contracts and request budgets describe implemented
+operations, not permanent cognitive ceilings. Scoped claim assumptions are not a
+general authenticated owner-control mechanism. No such mechanism is implemented
+by adopting these requirements; existing evidence, offline and authorization
+boundaries remain in force. Material normative changes require owner authorization.

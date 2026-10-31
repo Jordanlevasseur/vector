@@ -8,3 +8,5 @@
 - Test persistence, security and recovery; update specifications and commit each verified milestone.
 - Distinguish evidence, unverified claims, assessments and scoped overrides.
 - Do not claim neural learning, reasoning or release qualification without measurements.
+
+- Consult [FOUNDATIONAL_LAWS.md](FOUNDATIONAL_LAWS.md), the authoritative owner-defined laws, before major cognition, autonomy, memory or owner-control changes. Preserve both laws and their precise interpretations; material modifications require explicit owner review and authorization. Documentation is not an authentication or enforcement mechanism.
