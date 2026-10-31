@@ -58,3 +58,10 @@ exact source spans, and a sampled Unicode script inventory. These are mechanical
 observations, not learned senses or semantic understanding. PG headers/licenses
 remain preserved but are excluded from body statistics. Import cursors bind to the
 exact manifest identity; changed packages require a safe idempotent restart.
+
+Current evidence separates curriculum, corpus, mechanical observations, licensed
+pronunciation reference and reviewed semantic claims. 1000 editions form only 999
+conservative author/title groups; canonical translation/volume identity is not
+certified. Unknown provider subjects remain bounded blank text, not invented labels.
+All print dates and historical/dialect classifications remain unknown unless
+explicitly established. Actual reviewed linguistic node/link counts remain zero.

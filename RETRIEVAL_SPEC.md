@@ -40,3 +40,12 @@ Context reuses bounded evidence allocation and source citations, adds reviewed
 linguistic links, and avoids duplicating processed whole-book source retrieval.
 Rights display notices remain outside inference evidence budgets and are shown in
 the desktop. User-approved links remain interpretations, not established equivalence.
+
+Actual language-filtered passage search removes the outer event column's affinity
+with SQLite's no-op unary plus, allowing the existing records_event expression
+index to serve the exact validated-text-ID comparison. Numeric-looking text IDs
+and language exclusion are regression-tested. No new index is needed; unfiltered
+whole-book exclusion already uses literary_units' event index. See SQLite expression
+affinity: https://www.sqlite.org/datatype3.html. Natural-corpus broad-term/context
+latency remains unqualified; the benchmark correction fixes CRLF probe construction,
+not semantic retrieval or model ability.

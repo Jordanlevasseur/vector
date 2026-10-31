@@ -155,3 +155,21 @@ the existing dynamic contract registry. No external acquisition directory is nee
 for an already imported library to operate or restore. Offline content packs are
 optional intake inputs, not hidden dependencies. Complete unchanged processing
 checkpoints are reused; explicit derived resets retain authoritative source state.
+
+Large-corpus acceptance exposed an overrun inside SQLite integrity verification.
+A deadline now installs scoped SQLite VM cancellation and clears it on exit;
+interrupted connections/data remain usable. Persistent-record/attestation loops
+check the same budget. No schema, hash, source or reference validation is skipped.
+Native blocking filesystem calls are not a hostile-host hard-time guarantee; an
+acceptance-only watchdog records/stops overruns without treating them as passes.
+The preserved snapshot-ready transfer is retained across the stopped worker and
+retried with unchanged 900-second budgets. See ACCEPTANCE.md for actual results,
+including any blocked large-corpus phases.
+
+Immediate release blocker: the actual 1000-edition export resume timed out after
+900.293 seconds under the unchanged budget. Live integrity passed in 636.371 s;
+no full-library restoration result exists. Instrument the inner export stages and
+resolve this engineering/performance failure before increasing corpus scale. Its
+exact internal bottleneck is not established. Do not treat this as an unavailable
+dependency, skip validation, or raise deadlines to manufacture acceptance.
+Native rerun commands: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/HOST_ACCEPTANCE.md

@@ -317,14 +317,58 @@ See REPORT.md, final-full-installed.log, release-candidate-source.log,
 final-installed-fingerprint.json, benchmark-final-installed.json,
 desktop-installed.json and default-migration-and-restore.json.
 
-## Stage 5D development checkpoint
-Source baseline e64ed9c preserved. Initial literary architecture edf09b1 passed
-122 actual-host tests. The next batch passed 125 source tests, zero skips
-(233.528 s), including native protected literary GUI, resume identity, original
-poetic structure, source-linked interpretations, corruption rebuild and real
-licensed CMU dictionary subset cases. A real 12-edition pilot plus full 135,166-entry
-CMUdict import passed original integrity and actual portable restoration. It has
-17,255 indexed source passages and 12 body-observation records. These are framework/
-deterministic and real-source results, not 43-language or model proficiency.
-User selected U.S.-only acquisition rights. Larger approved partial-mirror transfer
-is still running; raw downloaded files are not counted as verified imports.
+
+## Stage 5D measured checkpoint — 2026-10-30
+Implementation b778fe4; all 41 installed modules match source. Source 130
+passed, 0 skipped (232.241 s). Independent installed
+129 passed, 1 skipped (231.958 s). The skip is
+authenticated encryption: optional cryptography is absent in the isolated interpreter;
+source-host positive encryption passed. No skip is represented as a pass.
+
+Actual default library: 1,000 verified digital editions, 999 conservative author/title
+groups, 550 distinct credited author-name strings, 60 explicitly credited translated
+editions, 19 provider language codes, 1,288,804 source-linked passages and 1,000 body
+observations. All processing states complete. Raw hashes/provider IDs are unique.
+Ariosto's Orlando Furioso has two retained editions. Canonical work identities across
+translations/aliases/volumes remain unreviewed; 1,000 distinct underlying works is not
+certified. All 1,000 print dates remain unknown. No 10,000-book trial was run.
+
+User selected U.S.-only rights. All 1,000 passed source/RDF hashes, provider identity,
+U.S. rights assertions, header-notice and full-license checks. Full originals and
+licenses remain available offline; no worldwide clearance is asserted. CMUdict has
+135,166 source pronunciation entries and its original license. Full-library live
+integrity passed with 2,003 events/2,002 managed objects, zero errors; the original
+28,715-byte user event and SHA-256 are unchanged. Full-corpus export/restoration acceptance remains BLOCKED/UNVERIFIED at resume-preserved-snapshot: Export deadline reached; staged transfer can be resumed.. Staging and live originals are retained; incomplete phases are not passes.
+
+The original 70/100 retrieval result is retained: LF-only probe construction against
+CRLF text caused clipped words and cross-paragraph probes in all 30 misses. The
+pre-registered corrected original-paragraph protocol found the expected source
+97/98 eligible times, top1 87/98; two unusable probes are not passes. Exact original
+quotations 345/345, context fragment/hash attribution 763/763. One global miss matches
+235 passages across 109 editions; six hits exist within its expected source, but
+its global miss is retained. Baseline context median/p95 7.389/38.084 s remains poor.
+No unfiltered retrieval speedup is claimed for later display/deadline/filter/count fixes.
+
+Actual installed protected GUI on the real library passed under the same 60-second
+request wait: clean CRLF display with original quotes untouched, complete license
+viewer, language-filtered search, exact counts and IPv4/IPv6/Unix socket denial.
+Ready 1.264 s; frontend peak 41660 KiB. Screenshot
+visually inspected. Earlier stats timeout retained; exact rowid counting now scans
+the existing grouped index. SQL integrity verification has VM deadline interruption
+and connection-recovery coverage; no hash/schema checks or 900-second budgets were
+relaxed. Existing event indexes are reused for language filtering; no new index.
+
+43 curriculum targets, zero qualified language proficiencies. Actual reviewed
+linguistic records/typed links remain zero; body form candidates and dictionary
+references are not semantic knowledge or neural training. No new model trial;
+previous Qwen 0.5B 0/3 remains historical evidence. No large model was downloaded.
+
+Stage 5D is incomplete; VECTOR is not release-ready. Next: profile actual broad-term
+FTS/context and verification I/O with persistent probe evidence; preserve independent
+expectations, hashes, bounds and approval. Curate work/edition identities and print
+metadata, build scholar-reviewed English/historical-language gold sets and attested
+resources, then separately qualify a capable local model. Installed optional
+encryption, cold-cache/human/RTL GUI, physical power-loss, hostile-host and actual
+cross-computer acceptance remain open. HELIX was not modified.
+
+Full 14-field report and raw evidence: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/REPORT.md

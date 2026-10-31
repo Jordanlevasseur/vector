@@ -79,3 +79,11 @@ licensed dictionary import and pronunciation references. Project links reuse exi
 source associations. Corpus downloads are not an application action. Print dates
 unknown in the provider catalog remain unknown and do not match period filters.
 Automated local-display checks do not establish human usability or RTL quality.
+
+Source CRLF/CR is normalized only when inserting text into reader/license widgets.
+The current passage retains its original quote/character offsets for observations,
+interpretations and exact exports. Native regressions use CRLF originals. Statistics
+count actual rowids through the existing grouped passage index rather than trusting
+processing summaries; partial/reset/rebuild counts remain exact. Real-library GUI
+acceptance kept its 60-second wait and asserted all 1,288,804 passages. Cold-cache
+and human usability remain separate gates.

@@ -122,3 +122,32 @@ Final installed protected GUI: ready 2.106 s; frontend peak 29,564 KiB, backend
 RSS 24,640 KiB; two sources reused across projects, source-switch claim paging
 passed and zero reported errors. Raw final JSON/PNG evidence is in the directory
 listed in PROGRESS.md; these are automated checks, not human usability acceptance.
+
+## Stage 5D real literary workload — Lenovo, 2026-10-30
+1000 editions / 999 author-title groups / 1,288,804 passages. All originals preserved.
+First 400: import 652.634 s; processing 1949.491 s;
+main-process peak 98376 KiB. Next 600: import 702.820 s;
+processing/resume scan 5603.617 s; peak 87936 KiB.
+Concurrent regression/ordinary host activity and a small labelled cache diagnostic
+affect timings. Cache experiment did not establish benefit; shipped 4 MiB target
+and all worker/OS/durability controls remain unchanged.
+
+Corrected original-paragraph benchmark: 97/98 eligible recall@20, 87/98 top1, two
+unusable of 100 desired probes. Quotes 345/345; context fragment/hash matches 763/763.
+One ambiguous global miss remains a miss (235 matching passages / 109 editions).
+The original LF-only probe result (70/100) and its validity audit remain retained;
+correcting probe construction is not a retrieval/model improvement.
+
+Measured baseline backend f82e124: retrieval median/p95
+636.554/2074.825 ms; context
+7389.061/38084.204 ms; max context 6646 bytes.
+CPU including probe/attribution work 308.105 s; query-process
+peak 72624 KiB, excluding OS cache/other processes. SQLite
+1,326,497,792 bytes; literary FTS 202,305,536 bytes.
+No final-build end-to-end unfiltered retiming or semantic/translation accuracy claim.
+
+Installed b778fe4 GUI ready 1.264 s, frontend peak
+41660 KiB; actual screenshot/reader/license/filter checks passed.
+An exact grouped-index rowid count measured 1,288,804 in 20.057 s. That is not an
+estimate, checkpoint sum or a cold-cache performance guarantee. Full-corpus export/restoration acceptance remains BLOCKED/UNVERIFIED at resume-preserved-snapshot: Export deadline reached; staged transfer can be resumed.. Staging and live originals are retained; incomplete phases are not passes.
+Raw protocols, per-probe results, failed attempts and recovery evidence: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d.

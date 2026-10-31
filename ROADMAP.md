@@ -87,3 +87,21 @@ lexical cues or human-authored mappings to demonstrated language intelligence.
 Expand toward 10,000 only after measured corpus quality, capacity, throughput and
 recovery justify it. Physical-power-loss, hostile-host, optional installed encryption
 and human desktop/RTL acceptance remain separate open gates.
+
+The measured 1000-edition checkpoint requires performance work before 10000 books:
+profile real broad-term FTS/context paths, repeated original verification and
+large-snapshot I/O with durable per-probe evidence. Preserve hashes, source offsets,
+resource/security limits and exact expectations; do not mask failures with skipped
+probes, larger budgets or unverified caches. Existing event indexes already serve
+direct lookups; optimize only demonstrated query plans, not speculative new indexes.
+Then curate canonical works/editions/translation identities and independent English/
+historical-language gold sets. Model qualification and human/host recovery gates
+remain separate from source storage and deterministic observation tests.
+
+Immediate release blocker: the actual 1000-edition export resume timed out after
+900.293 seconds under the unchanged budget. Live integrity passed in 636.371 s;
+no full-library restoration result exists. Instrument the inner export stages and
+resolve this engineering/performance failure before increasing corpus scale. Its
+exact internal bottleneck is not established. Do not treat this as an unavailable
+dependency, skip validation, or raise deadlines to manufacture acceptance.
+Native rerun commands: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/HOST_ACCEPTANCE.md
