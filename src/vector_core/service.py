@@ -30,6 +30,13 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('science_'):
+            from vector_core.science import ScientificLibrary
+            library=ScientificLibrary(memory)
+            if operation=='science_editions':return library.editions(p.get('after',0),p.get('limit',30))
+            if operation=='science_import':return library.import_pack(p['directory'],offset=p.get('offset',0),limit=p.get('limit',1),manifest_sha256=p.get('manifest_sha256'),approved=p.get('approved',False))
+            if operation=='science_index':return library.index(p['directory'],p['id'],limit=p.get('limit',10),deadline_seconds=p.get('seconds',5),approved=p.get('approved',False))
+            raise ValueError('Unknown scientific operation.')
         if operation.startswith('investigation_'):
             from vector_core.investigation import Investigations,Budget
             investigations=Investigations(memory,self.adapter,self.generation)

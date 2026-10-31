@@ -82,6 +82,9 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
             if row and row[0]=='provider-unrestricted-us':
                 from vector_core.literature import PG_NOTICE
                 result['rights_notice']=PG_NOTICE
+        if result.get('resource_type')=='scientific-extracted-text':
+            from vector_core.science import provenance
+            result['scientific_provenance']=provenance(memory,result['event_id'])
         results.append(result)
     return results
 

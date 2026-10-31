@@ -169,7 +169,7 @@ class Memory:
         return {'event_id':event_id,'output':str(path),'complete':True}
 
     @write_operation
-    def ingest_file(self,path,*,name=None,media_type='application/octet-stream',metadata=None,parent_id=None,source_id=None):
+    def ingest_file(self,path,*,name=None,media_type='application/octet-stream',metadata=None,parent_id=None,source_id=None,expected_sha256=None):
         from pathlib import Path
         from vector_core.storage import import_object
         name=name or Path(path).name
@@ -177,7 +177,12 @@ class Memory:
         if not isinstance(media_type,str) or not 1<=len(media_type)<=128:raise ValueError('Media type required.')
         encoded=canonical(metadata or {})
         if len(encoded.encode())>16384:raise ValueError('Metadata too large.')
+        if expected_sha256 is not None:
+            from vector_core.storage import DIGEST
+            if not isinstance(expected_sha256,str) or not DIGEST.fullmatch(expected_sha256):raise ValueError('Invalid expected original checksum.')
         digest=import_object(self,path,reuse_legacy=True)
+        if expected_sha256 is not None and digest!=expected_sha256:
+            raise ValueError('Original checksum does not match the approved input; no submission acknowledged.')
         obj=self.db.execute('SELECT raw_bytes FROM managed_objects WHERE digest=?',(digest,)).fetchone()
         self.db.execute('BEGIN IMMEDIATE')
         try:

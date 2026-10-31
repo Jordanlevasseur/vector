@@ -61,6 +61,7 @@ def main(argv=None):
             action.add_argument('question');action.add_argument('--model');action.add_argument('--context',type=int,default=2048)
             action.add_argument('--output-tokens',type=int,default=256);action.add_argument('--timeout',type=float,default=30)
     action=commands.add_parser('calculate');action.add_argument('operation');action.add_argument('parameters');action.add_argument('--approve',action='store_true')
+    science=commands.add_parser('science');science.add_argument('action',choices=['import','index','list','search']);science.add_argument('--package');science.add_argument('--edition');science.add_argument('--query');science.add_argument('--offset',type=int,default=0);science.add_argument('--limit',type=int,default=1);science.add_argument('--manifest-sha256');science.add_argument('--approve',action='store_true')
     args=parser.parse_args(argv)
     transport=None;startup_error=None
     if args.command in ('ask','models','investigation') and (args.models_directory or args.managed):
@@ -106,6 +107,16 @@ def main(argv=None):
                         from vector_core.inference import GenerationConfig
                         application.handle('select_model',{'configuration':asdict(GenerationConfig(args.model,args.context,args.output_tokens,args.timeout)),'authorize_external':True})
                     result=application.handle('ask',{'question':args.question})
+            elif command=='science':
+                from vector_core.science import ScientificLibrary
+                library=ScientificLibrary(memory)
+                if args.action=='list':result=library.editions(after=args.offset,limit=args.limit)
+                elif args.action=='search':
+                    from vector_core.retrieval import search
+                    result=search(memory,args.query,limit=args.limit,metadata={'resource_type':'scientific-extracted-text'})
+                elif not args.package:raise ValueError('Explicit offline scientific package path required.')
+                elif args.action=='import':result=library.import_pack(args.package,offset=args.offset,limit=args.limit,manifest_sha256=args.manifest_sha256,approved=args.approve)
+                else:result=library.index(args.package,args.edition,limit=args.limit,approved=args.approve)
             elif command=='health':
                 result={'policy':policy,'database_integrity':memory.db.execute('PRAGMA quick_check').fetchone()[0],
                     'schema_version':memory.db.execute('PRAGMA user_version').fetchone()[0],

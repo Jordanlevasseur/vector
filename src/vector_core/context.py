@@ -107,6 +107,7 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
         excerpt=row['excerpt']
         source={'event_id':row['event_id'],'source_id':row['source_id'],'sha256':row['sha256'],
                 'start':row.get('start',0),'end':row.get('end',len(excerpt)),'quote':excerpt,'name':row['name'],'occurred':row.get('occurred')}
+        if row.get('scientific_provenance'):source['scientific_provenance']=row['scientific_provenance']
         context['sources'].append(source)
         if len(canonical(context).encode())>budget_bytes:
             match=re.search('|'.join(re.escape(term) for term in terms),excerpt,re.IGNORECASE) if terms else None

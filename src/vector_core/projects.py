@@ -28,6 +28,9 @@ def latest(memory,contract,key):
 
 def validate_record(db,contract,key,p):
     """Also used on portable imports, before activation of externally supplied state."""
+    if contract in {'scientific_editions','scientific_runs'}:
+        from vector_core.science import validate_record as scientific_validate
+        return scientific_validate(db,contract,key,p)
     if contract in {'investigations','investigation_events'}:
         from vector_core.investigation import validate_record as validate_investigation
         return validate_investigation(db,contract,key,p)
