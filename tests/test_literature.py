@@ -44,6 +44,25 @@ class LiteraryTests(unittest.TestCase):
   self.assertEqual(license_view['quote'],self.memory.original(record['rights_event_id']).decode())
   from vector_core.literary_analysis import observe
   observed=observe(self.memory,event,0,len(body));self.assertEqual(observed['nonblank_lines'],3);self.assertEqual(observed['stanzas'],2);self.assertEqual(observed['lines'][1]['text'],'Second line')
+ def test_language_filter_uses_event_index_and_keeps_numeric_text_identifiers(self):
+  from types import SimpleNamespace
+  from unittest.mock import patch
+  from vector_core.memory import Submission
+  from vector_core.retrieval import search
+  root,entry=self.fixture('Alpha lexical fixture\n\nSecond paragraph.\n')
+  numeric='0'*31+'1'
+  with patch('vector_core.memory.uuid4',side_effect=[SimpleNamespace(hex=v) for v in ('a'*32,'b'*32,'c'*32,numeric)]):
+   record=self.library.import_entry(root,entry,approved=True)
+  self.assertEqual(record['event_id'],numeric);self.process(numeric)
+  ordinary=self.memory.ingest(Submission(b'Alpha ordinary control','Ordinary control'))
+  self.assertEqual([r['event_id'] for r in search(self.memory,'Alpha',omit_literary=True)],[ordinary['event_id']])
+  statements=[];self.memory.db.set_trace_callback(statements.append)
+  try:results=self.library.search('Alpha',language='en')
+  finally:self.memory.db.set_trace_callback(None)
+  self.assertEqual([r['event_id'] for r in results],[numeric]);self.assertEqual(self.library.search('Alpha',language='fr'),[])
+  statement=next(q for q in statements if q.startswith('SELECT u.id,') and 'EXISTS' in q)
+  plan=list(self.memory.db.execute('EXPLAIN QUERY PLAN '+statement))
+  self.assertTrue(any('records_event' in row[-1] and '<expr>=?' in row[-1] for row in plan),plan)
  def test_rights_hash_unsafe_paths_and_unapproved_import_fail_closed(self):
   root,entry=self.fixture()
   with self.assertRaises(PermissionError):self.library.import_entry(root,entry)

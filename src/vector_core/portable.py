@@ -74,6 +74,7 @@ def validate_database(db,data_root=None,deadline=None):
             if version!=1:raise ValueError('Unsupported persistence contract version: '+contract)
         from vector_core.persistence import validate_model
         for contract,record_key,payload in db.execute('SELECT contract,record_key,payload FROM persistent_records'):
+            if deadline is not None and time.monotonic()>deadline:raise TimeoutError('Persistent record verification deadline reached.')
             decoded=json.loads(payload,object_pairs_hook=unique,parse_constant=lambda value:(_ for _ in ()).throw(ValueError(value)))
             if contract=='models':validate_model(db,decoded)
             from vector_core.projects import validate_record
@@ -84,6 +85,7 @@ def validate_database(db,data_root=None,deadline=None):
                 from vector_core.memory import Memory
                 reader=Memory.__new__(Memory);reader.db=db;reader.config=SimpleNamespace(data_dir=data_root)
                 for attestation in decoded['attestations']:
+                    if deadline is not None and time.monotonic()>deadline:raise TimeoutError('Attestation verification deadline reached.')
                     if reader.read_text_span(attestation['event_id'],attestation['start'],attestation['end'])!=attestation['quote']:raise ValueError('Linguistic attestation differs from original.')
             if contract=='preferences':
                 from vector_core.persistence import validate_preference

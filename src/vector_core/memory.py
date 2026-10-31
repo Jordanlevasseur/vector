@@ -278,6 +278,26 @@ def extract(content,media_type):
 
 
 def verify_connection(db,root=None,deadline=None):
+    if deadline is None:
+        return _verify_connection(db,root,deadline)
+    import sqlite3,time
+    def expired():return time.monotonic()>deadline
+    if expired():raise TimeoutError('Integrity verification deadline reached.')
+    # Long SQLite checks need VM cancellation, not only checks between rows.
+    db.set_progress_handler(lambda:int(expired()),1000)
+    try:
+        result=_verify_connection(db,root,deadline)
+        if expired():raise TimeoutError('Integrity verification deadline reached.')
+        return result
+    except sqlite3.OperationalError as error:
+        if getattr(error,'sqlite_errorcode',None)==sqlite3.SQLITE_INTERRUPT and expired():
+            raise TimeoutError('SQLite integrity verification deadline reached.') from error
+        raise
+    finally:
+        db.set_progress_handler(None,0)
+
+
+def _verify_connection(db,root=None,deadline=None):
     errors=[]
     for row in db.execute('PRAGMA integrity_check'):
         if row[0]!='ok':errors.append(row[0])

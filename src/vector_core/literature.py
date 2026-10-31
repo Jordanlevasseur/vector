@@ -247,7 +247,8 @@ class Library:
         conditions=['literary_search MATCH ?'];parameters=[' AND '.join('"'+t+'"' for t in terms)]
         if event_id:conditions.append('u.event_id=?');parameters.append(identity(event_id))
         if language:
-            conditions.append("EXISTS (SELECT 1 FROM persistent_records r WHERE r.contract='literary_editions' AND json_extract(r.payload,'$.event_id')=u.event_id AND json_extract(r.payload,'$.metadata.language')=?)");parameters.append(language_id(language))
+            # IDs are validated text; remove column affinity to use records_event.
+            conditions.append("EXISTS (SELECT 1 FROM persistent_records r WHERE r.contract='literary_editions' AND json_extract(r.payload,'$.event_id')=+u.event_id AND json_extract(r.payload,'$.metadata.language')=?)");parameters.append(language_id(language))
         rows=self.db.execute('SELECT u.id,bm25(literary_search) AS rank FROM literary_units u JOIN literary_search ON literary_search.rowid=u.rowid WHERE '+' AND '.join(conditions)+' ORDER BY rank,u.event_id,u.ordinal LIMIT ?',parameters+[limit]).fetchall()
         results=[]
         for row in rows:
