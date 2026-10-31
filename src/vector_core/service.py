@@ -15,6 +15,14 @@ class Application:
         self.session=self.preference('desktop_session') or {'conversation_id':uuid4().hex,'project_id':None}
         self.generation=GenerationConfig(**(self.preference('generation') or {})).validate()
         if self.preference('desktop_session') is None:put(memory,'preferences','desktop_session',self.session)
+    def prepare_inference(self):
+        if self.transport and self.transport.qualified and self.generation.model:
+            if getattr(self.transport,'managed',False):
+                from vector_core.models import materialize
+                materialize(self.memory,self.generation.model,self.transport.model_directory)
+            else:
+                from vector_core.models import register_external
+                register_external(self.memory,self.transport.model_directory,self.generation.model)
     def preference(self,key):
         row=self.memory.db.execute("SELECT payload FROM persistent_records WHERE contract='preferences' AND record_key=? ORDER BY rowid DESC LIMIT 1",(key,)).fetchone()
         return json.loads(row[0]) if row else None
@@ -22,6 +30,18 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('investigation_'):
+            from vector_core.investigation import Investigations,Budget
+            investigations=Investigations(memory,self.adapter,self.generation)
+            if operation=='investigation_create':return investigations.create(p['goal'],p.get('steps'),calculation=p.get('calculation'),explore=p.get('explore',False),project_id=self.session['project_id'],approved=p.get('approved',False))
+            if operation=='investigation_get':return investigations.get(p['id'])
+            if operation=='investigation_history':return investigations.history(p['id'],p.get('after',0),p.get('limit',50))
+            if operation=='investigation_control':return investigations.control(p['id'],p['action'],p['revision'],steps=p.get('steps'),goal=p.get('goal'),approved=p.get('approved',False))
+            if operation=='investigation_run':
+                investigations.authority.ordinary(p.get('approved',False))
+                self.prepare_inference()
+                return investigations.run(p['id'],budget=Budget(**p.get('budget',{})),approved=p.get('approved',False))
+            raise ValueError('Unknown investigation operation.')
         if operation.startswith('library_'):
             from vector_core.library_service import dispatch
             return dispatch(self,operation,p)
@@ -53,13 +73,7 @@ class Application:
         if operation=='managed_models':
             return [dict(row) for row in memory.db.execute("SELECT record_key AS name,payload FROM persistent_records r WHERE contract='models' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='models' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 100")]
         if operation=='ask':
-            if self.transport and self.transport.qualified and self.generation.model:
-                if getattr(self.transport,'managed',False):
-                    from vector_core.models import materialize
-                    materialize(memory,self.generation.model,self.transport.model_directory)
-                else:
-                    from vector_core.models import register_external
-                    register_external(memory,self.transport.model_directory,self.generation.model)
+            self.prepare_inference()
             return ask(memory,p['question'],adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,
                        conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'))
         if operation=='search':

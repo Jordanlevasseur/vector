@@ -99,3 +99,9 @@ keep original/transliteration/morphology/gloss/translation/commentary/disagreeme
 separate; no fabricated paradigms or etymologies are supplied. There is no new model
 qualification or fine-tuning. Existing real-model failures remain qualification
 evidence; synthetic framework responses never substitute for real-model results.
+
+## Stage 6A extension
+The existing source-answer contract remains intact. The separate investigation
+path supports unverified uncited hypotheses, dependency plans, verification and
+recoverable control, with no model-issued actions or privileged phrase trigger.
+See INVESTIGATION_SPEC.md; scope and model qualification remain explicitly separate.

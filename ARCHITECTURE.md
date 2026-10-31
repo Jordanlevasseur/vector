@@ -79,3 +79,11 @@ operations, not permanent cognitive ceilings. Scoped claim assumptions are not a
 general authenticated owner-control mechanism. No such mechanism is implemented
 by adopting these requirements; existing evidence, offline and authorization
 boundaries remain in force. Material normative changes require owner authorization.
+
+## Stage 6A investigation pathway
+`investigation` adds renewable checkpointed reasoning slices over existing evidence,
+adapters and Decimal tools; `authority` leaves privileged override fail-closed.
+The shared service/CLI exposes ordinary approved lifecycle control. Versioned
+registered investigation records participate in existing portable validation,
+without a schema migration or alternate memory engine. See INVESTIGATION_SPEC.md
+and STAGE6A_RESEARCH.md for mechanisms, limits and qualification boundaries.

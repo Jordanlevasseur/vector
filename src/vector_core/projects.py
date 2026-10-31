@@ -28,6 +28,9 @@ def latest(memory,contract,key):
 
 def validate_record(db,contract,key,p):
     """Also used on portable imports, before activation of externally supplied state."""
+    if contract in {'investigations','investigation_events'}:
+        from vector_core.investigation import validate_record as validate_investigation
+        return validate_investigation(db,contract,key,p)
     if contract=='capabilities' and key=='english-pronunciation':
         required={'event_id','license_event_id','sha256','offset','entries','complete','source_url','method'}
         if not isinstance(p,dict) or set(p)!=required:raise ValueError('Invalid pronunciation capability record.')

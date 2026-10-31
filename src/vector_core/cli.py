@@ -53,6 +53,8 @@ def main(argv=None):
     action=commands.add_parser('register-contract');action.add_argument('name');action.add_argument('description')
     action=commands.add_parser('state-put');action.add_argument('contract');action.add_argument('key');action.add_argument('json_file')
     action=commands.add_parser('state-list');action.add_argument('contract');action.add_argument('--after',type=int,default=0);action.add_argument('--limit',type=int,default=100)
+    inv=commands.add_parser('investigation');inv.add_argument('action',choices=['create','get','history','control','run']);inv.add_argument('parameters',help='JSON trusted-user parameters; model text is never dispatched')
+    inv.add_argument('--models-directory');inv.add_argument('--managed',action='store_true');inv.add_argument('--model');inv.add_argument('--context',type=int,default=4096);inv.add_argument('--output-tokens',type=int,default=512);inv.add_argument('--timeout',type=float,default=120)
     for name in ('ask','models'):
         action=commands.add_parser(name);action.add_argument('--models-directory');action.add_argument('--managed',action='store_true')
         if name=='ask':
@@ -61,7 +63,7 @@ def main(argv=None):
     action=commands.add_parser('calculate');action.add_argument('operation');action.add_argument('parameters');action.add_argument('--approve',action='store_true')
     args=parser.parse_args(argv)
     transport=None;startup_error=None
-    if args.command in ('ask','models') and (args.models_directory or args.managed):
+    if args.command in ('ask','models','investigation') and (args.models_directory or args.managed):
         try:
             from vector_core.worker_launcher import launch,launch_managed
             transport=launch_managed() if args.managed else launch(args.models_directory)
@@ -87,10 +89,16 @@ def main(argv=None):
         with Memory(config) as memory:
             log=logger(config.data_dir)
             log.info('Operation started: %s',command)
-            if command in ('ask','models','calculate'):
+            if command in ('ask','models','calculate','investigation'):
                 from vector_core.service import Application
                 application=Application(memory,transport,startup_error);application.policy=policy
                 if command=='models':result=application.handle('models',{})
+                elif command=='investigation':
+                    if args.model and transport:
+                        from dataclasses import asdict
+                        from vector_core.inference import GenerationConfig
+                        application.handle('select_model',{'configuration':asdict(GenerationConfig(args.model,args.context,args.output_tokens,args.timeout)),'authorize_external':True})
+                    result=application.handle('investigation_'+args.action,json.loads(args.parameters))
                 elif command=='calculate':result=application.handle('tool',{'name':args.operation,'parameters':json.loads(args.parameters),'approved':args.approve})
                 else:
                     if args.model and transport:

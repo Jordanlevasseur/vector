@@ -130,3 +130,8 @@ The initial curriculum lists 40 modern and three historical languages; this is n
 a proficiency claim. Literary observations are mechanical and interpretations
 require review. PG acquisition is U.S.-only by the user's choice; no worldwide
 rights assurance is made. See LINGUISTIC_SPEC.md and current ACCEPTANCE.md.
+
+Stage 6A source workflow: see [INVESTIGATION_SPEC.md](INVESTIGATION_SPEC.md) for
+checkpointed investigations, pure-tool routing, speculative proposals and CLI
+examples. [STAGE6A_RESEARCH.md](STAGE6A_RESEARCH.md) distinguishes researched
+mechanisms from implemented and independently measured capabilities.

@@ -87,6 +87,15 @@ def validate_database(db,data_root=None,deadline=None):
                 for attestation in decoded['attestations']:
                     if deadline is not None and time.monotonic()>deadline:raise TimeoutError('Attestation verification deadline reached.')
                     if reader.read_text_span(attestation['event_id'],attestation['start'],attestation['end'])!=attestation['quote']:raise ValueError('Linguistic attestation differs from original.')
+            if contract=='investigation_events':
+                if data_root is None:raise ValueError('Original root needed for investigation citations.')
+                from types import SimpleNamespace
+                from vector_core.memory import Memory
+                reader=Memory.__new__(Memory);reader.db=db;reader.config=SimpleNamespace(data_dir=data_root)
+                citations=decoded['result'].get('citations',[])+decoded['result'].get('context',{}).get('sources',[])
+                for citation in citations:
+                    if deadline is not None and time.monotonic()>deadline:raise TimeoutError('Investigation citation verification deadline reached.')
+                    if reader.read_text_span(citation['event_id'],citation['start'],citation['end'])!=citation['quote']:raise ValueError('Investigation quote differs from original.')
             if contract=='preferences':
                 from vector_core.persistence import validate_preference
                 validate_preference(record_key,decoded)

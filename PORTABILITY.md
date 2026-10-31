@@ -173,3 +173,10 @@ resolve this engineering/performance failure before increasing corpus scale. Its
 exact internal bottleneck is not established. Do not treat this as an unavailable
 dependency, skip validation, or raise deadlines to manufacture acceptance.
 Native rerun commands: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage5d/HOST_ACCEPTANCE.md
+
+Stage 6A registers investigations/investigation_events only when first used.
+Their plan/control/observation history is versioned in existing persistent_records,
+with no new filesystem storage or schema migration. Imported original references,
+hashes and quoted spans are checked, including restored context/candidate citations.
+Recovery retains in-flight status until explicit user control; no imported record
+is itself execution authority. See INVESTIGATION_SPEC.md for safe continuation.
