@@ -63,6 +63,17 @@ class LiteraryTests(unittest.TestCase):
   statement=next(q for q in statements if q.startswith('SELECT u.id,') and 'EXISTS' in q)
   plan=list(self.memory.db.execute('EXPLAIN QUERY PLAN '+statement))
   self.assertTrue(any('records_event' in row[-1] and '<expr>=?' in row[-1] for row in plan),plan)
+ def test_passage_count_is_exact_during_partial_processing_and_rebuild(self):
+  body='Alpha.\n\nBeta.\n\nGamma.\n';record=self.imported(body);event=record['event_id']
+  self.library.process(event,limit=1);self.assertEqual(self.library.stats()['passages'],1)
+  self.process(event);statements=[];self.memory.db.set_trace_callback(statements.append)
+  try:self.assertEqual(self.library.stats()['passages'],3)
+  finally:self.memory.db.set_trace_callback(None)
+  query=next(q for q in statements if q.startswith('SELECT count(') and 'FROM literary_units' in q)
+  plan=list(self.memory.db.execute('EXPLAIN QUERY PLAN '+query))
+  self.assertTrue(any('COVERING INDEX literary_event' in row[-1] for row in plan),[tuple(r) for r in plan])
+  self.library.reset_index(approved=True);self.assertEqual(self.library.stats()['passages'],0)
+  self.process(event);self.assertEqual(self.library.stats()['passages'],3);self.assertEqual(self.memory.original(event),body.encode())
  def test_rights_hash_unsafe_paths_and_unapproved_import_fail_closed(self):
   root,entry=self.fixture()
   with self.assertRaises(PermissionError):self.library.import_entry(root,entry)
