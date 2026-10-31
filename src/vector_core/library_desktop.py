@@ -2,6 +2,10 @@
 import json
 from vector_core.literature import PG_NOTICE
 
+def _display_text(source):
+    # Rendering only: source bytes, quotes and citation offsets stay unchanged.
+    return source.replace('\r\n','\n').replace('\r','\n')
+
 class LiteraryDesktop:
     def __init__(self,app):
         self.app=app;self.tk=app.tk;self.ttk=app.ttk;self.selected=None;self.units={};self.editions={};self.offset=0;self.unit_cursor=-1;self.current_passage=None;self.stop_batch=False
@@ -64,7 +68,7 @@ class LiteraryDesktop:
         elif index in self.units:self.app.call('library_passage',{'id':self.units[index]['id']},self.show_passage)
     def show_passage(self,record):
         self.selected={'id':record['edition_id'],'event_id':record['event_id'],'metadata':{'language':record['language'],'rights':{'status':record['rights_status'],'basis':record['rights_notice']}}};self.notice.set(record['rights_notice'])
-        self.current_passage=record;self.reader.configure(state='normal');self.reader.delete('1.0','end');self.reader.insert('1.0',record['quote']);self.reader.configure(state='disabled')
+        self.current_passage=record;self.reader.configure(state='normal');self.reader.delete('1.0','end');self.reader.insert('1.0',_display_text(record['quote']));self.reader.configure(state='disabled')
         self.app.selected_event=record['event_id']
     def rights(self):
         if self.selected:self.app.call('library_edition',{'id':self.selected['id']},self.app.show_result)
@@ -72,7 +76,7 @@ class LiteraryDesktop:
         if not self.selected:return
         def loaded(result):
             from tkinter.scrolledtext import ScrolledText
-            window=self.tk.Toplevel(self.window);window.title('Original attached license / rights evidence');view=ScrolledText(window,wrap='word',width=100,height=28);view.pack(fill='both',expand=True);view.insert('1.0',result['quote']);view.configure(state='disabled')
+            window=self.tk.Toplevel(self.window);window.title('Original attached license / rights evidence');view=ScrolledText(window,wrap='word',width=100,height=28);view.pack(fill='both',expand=True);view.insert('1.0',_display_text(result['quote']));view.configure(state='disabled')
         self.app.call('library_license',{'id':self.selected['id']},loaded)
     def search(self):
         p={'query':self.query.get()}

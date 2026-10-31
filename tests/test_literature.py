@@ -188,7 +188,7 @@ from pathlib import Path
 from vector_core.desktop import bootstrap,Desktop
 with tempfile.TemporaryDirectory() as directory:
  rootpath=Path(directory);pack=rootpath/'pack';(pack/'objects').mkdir(parents=True)
- raw=b'First poetic line\nSecond poetic line\n\nAnother stanza.\n';evidence=b'User-authored CC0 fixture';digest=hashlib.sha256(raw).hexdigest();proof=hashlib.sha256(evidence).hexdigest()
+ raw=b'First poetic line\r\nSecond poetic line\r\n\r\nAnother stanza.\r\n';evidence=b'User-authored CC0 fixture';digest=hashlib.sha256(raw).hexdigest();proof=hashlib.sha256(evidence).hexdigest()
  (pack/'objects'/digest).write_bytes(raw);(pack/'objects'/proof).write_bytes(evidence)
  entry={'provider_id':'fixture:gui','title':'Explicit GUI fixture','authors':['Fixture author'],'language':'en','edition':'Fixture','publication_date':None,'digital_release':None,'translators':[],'subjects':'Fixture','genre':'poetry','source_url':'urn:fixture:gui','sha256':digest,'bytes':len(raw),'metadata_sha256':proof,'rights':{'status':'cc0','jurisdiction':'fixture','basis':'User authored test data','evidence_url':'urn:fixture','license_url':'urn:fixture'},'acquired':'fixture','print_edition_note':'No print edition','transport':'local'}
  (pack/'manifest.ndjson').write_text(json.dumps({'format':'vector-literary-pack-v1'})+'\n'+json.dumps(entry)+'\n')
@@ -207,6 +207,7 @@ with tempfile.TemporaryDirectory() as directory:
  library.titles();wait();assert library.listing.size()==1
  library.listing.selection_set(0);library.select();wait();library.next_units();wait();assert library.listing.size()>0
  library.listing.selection_set(0);library.select();wait();assert 'First poetic line\nSecond poetic line' in library.reader.get('1.0','end')
+ assert '\r\n' in library.current_passage['quote'];assert '\r' not in library.reader.get('1.0','end')
  library.observe();wait();assert app.last_response['result']['nonblank_lines']==2
  library.body_observations();wait();assert app.last_response['result']['nonblank_lines']==3
  for family in (socket.AF_INET,socket.AF_INET6,socket.AF_UNIX):
