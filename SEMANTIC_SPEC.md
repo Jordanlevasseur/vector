@@ -137,3 +137,14 @@ worker swap. Baseline/resource monitoring stops on low memory, new OOM, material
 swap-out, monitor failure or sustained full-memory pressure. Optional `--case`
 and `--mode` evaluate an untouched cell after another cell's timeout closed its
 worker; they do not retry a failed answer or alter expected criteria.
+
+The production-scale pilot found that keyword retrieval could consume its entire
+60-second slice before an already-qualified source query reached the grounded
+step. Existing checkpoint resumption completed that saved query without repeating
+retrieval. Fully specified selectors with matching reviewed evidence now assemble
+that complete qualified package first, including all comparable alternatives and
+original rights notices, without searching unrelated unannotated full text. This
+choice is explicit in the returned qualifications; it makes no corpus-wide truth
+or absence claim. General, unknown and incomplete catalog requests retain direct
+passage search as fallback. This does not replace the independent direct baseline
+or solve its known corpus-scale latency.

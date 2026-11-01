@@ -9,6 +9,14 @@ from vector_core.memory import canonical
 
 STOP={'what','which','where','when','why','how','is','are','was','the','a','an','of','to','and','in','does','do','please','tell','me','about'}
 
+def display_notices(memory,event_ids):
+    notices=[]
+    from vector_core.literature import PG_NOTICE
+    for event_id in event_ids:
+        row=memory.db.execute("SELECT json_extract(payload,'$.metadata.rights.status') AS status,json_extract(payload,'$.rights_event_id') AS evidence FROM persistent_records WHERE contract='literary_editions' AND json_extract(payload,'$.event_id')=? LIMIT 1",(event_id,)).fetchone()
+        if row and row['status']=='provider-unrestricted-us':notices.append({'event_id':event_id,'notice':PG_NOTICE,'rights_event_id':row['evidence']})
+    return notices
+
 def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project_id=None,conversation_id=None,project_only=False,semantic=False,semantic_selector=None,investigation_id=None):
     if type(semantic) is not bool:raise ValueError('Semantic retrieval flag must be boolean.')
     if semantic:
@@ -160,10 +168,6 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     if context['conflicts']:unanswered.append('Comparable source disagreement remains unresolved; user overrides are assumptions.')
     if unanswered:optional('unanswered_questions',unanswered)
     context['truncated']|=len(ordered)>len(context['sources'])
-    notices=[]
-    from vector_core.literature import PG_NOTICE
-    for event_id in selected:
-        row=memory.db.execute("SELECT json_extract(payload,'$.metadata.rights.status') AS status,json_extract(payload,'$.rights_event_id') AS evidence FROM persistent_records WHERE contract='literary_editions' AND json_extract(payload,'$.event_id')=? LIMIT 1",(event_id,)).fetchone()
-        if row and row['status']=='provider-unrestricted-us':notices.append({'event_id':event_id,'notice':PG_NOTICE,'rights_event_id':row['evidence']})
+    notices=display_notices(memory,selected)
     return {'display_notices':notices,'context':context,'bytes':len(canonical(context).encode()),'seconds':time.perf_counter()-started,
             'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'ranking':'explicit project preference, literal overlap, FTS rank, stable ID; exact-entity/one-hop expansion; not semantic ranking'}

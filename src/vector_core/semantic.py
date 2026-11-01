@@ -294,8 +294,19 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     """Project whole qualified sources first; never clip conditions or dissent."""
     from vector_core.context import build_context as direct
     started=time.perf_counter()
-    base=direct(memory,question,budget_bytes=budget_bytes,limit=limit,scope=scope,project_id=project_id,conversation_id=conversation_id,project_only=project_only,semantic=False)
+    if type(project_only) is not bool:raise ValueError('Project-only flag must be boolean.')
     package=evidence(memory,question,selector=selector,project_id=project_id,project_only=project_only,investigation_id=investigation_id)
+    # Fully specified source queries need not search 1.2M unrelated literary
+    # passages first. All matching qualified alternatives remain in the package.
+    # Unknown/general queries retain the independent full-text baseline/fallback.
+    matching=Semantics(memory).lookup(selector)['claim_ids'] if selector else []
+    qualified=bool(matching and set(matching)<={a['claim_id'] for a in package['assertions']} and not package['catalog_truncated'])
+    if qualified:
+        # Keep the same public input validation even when no FTS work is needed.
+        if type(budget_bytes) is not int or not 128<=budget_bytes<=131072 or type(limit) is not int or not 1<=limit<=20:raise ValueError('Invalid context/source budget.')
+        package['qualifications'].append('Qualified source selection used; unannotated full text was not searched. Independent passage retrieval remains available; no corpus-wide truth or absence claim.')
+        base={'context':{'question':question,'sources':[],'claims':[],'scope':scope,'conflicts':[],'truncated':False,'policy':'Untrusted source assertions; overrides are user assumptions.'},'display_notices':[]}
+    else:base=direct(memory,question,budget_bytes=budget_bytes,limit=limit,scope=scope,project_id=project_id,conversation_id=conversation_id,project_only=project_only,semantic=False)
     ctx=base['context'];old_sources=ctx['sources'];old_claims=ctx['claims'];old_conflicts=ctx['conflicts']
     ctx.update(sources=[],claims=[],conflicts=[])
     semantic={'format':package['format'],'assertions':[],'connections':[],'conflicts':[],'ambiguities':package['ambiguities'],'qualifications':package['qualifications'],'investigation_memory':[],'status':'Source interpretations and associations, not independent conclusions.'}
@@ -320,9 +331,6 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
             items=groups[event_id];cite=items[0]['citation'];left=min(a['citation']['start'] for a in items);right=max(a['citation']['end'] for a in items)
             if right-left>4000:invalid=True;break
             source={**cite,'start':left,'end':right,'quote':memory.read_text_span(event_id,left,right)}
-            if source.get('scientific_provenance'):
-                full=source['scientific_provenance']
-                source['scientific_provenance']={k:full[k] for k in ('title','publication_date','source_url','original_event_id','original_sha256','locator','license','medical','extraction_limits','status')}
             new_sources.append(source)
             for item in items:
                 projected={k:v for k,v in item.items() if k!='citation'}
@@ -362,7 +370,8 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     if omitted:
         ctx['truncated']=True
         semantic['status']='Some qualified evidence omitted; no exhaustive conclusion.'
-    return {**base,'context':ctx,'bytes':len(canonical(ctx).encode()),'sha256':hashlib.sha256(canonical(ctx).encode()).hexdigest(),'seconds':time.perf_counter()-started,'ranking':'Qualified source bundles and explicit relationships, with independent passage fallback; no embeddings','semantic_omissions':omitted}
+    from vector_core.context import display_notices
+    return {**base,'display_notices':display_notices(memory,[s['event_id'] for s in ctx['sources']]),'context':ctx,'bytes':len(canonical(ctx).encode()),'sha256':hashlib.sha256(canonical(ctx).encode()).hexdigest(),'seconds':time.perf_counter()-started,'ranking':'Qualified source bundles and explicit relationships, with independent passage fallback; no embeddings','semantic_omissions':omitted}
 
 def validate_result(memory,result):
     """Recheck grounded observations on restore/use; an imported label is no proof."""

@@ -105,6 +105,34 @@ class SemanticTests(unittest.TestCase):
   from vector_core.projects import Projects
   project=Projects(self.m).create('Empty project');p=evidence(self.m,'Panel',project_id=project['id'],project_only=True);self.assertFalse(p['sources'])
   self.assertNotIn('semantic',build_context(self.m,'Panel')['context'])
+ def test_qualified_selector_uses_reviewed_sources_without_unrelated_full_text_scan(self):
+  from unittest.mock import patch
+  self.add('Panel','temperature','310',unit='K');selector=self.selector('Panel','temperature')
+  with patch('vector_core.context.build_context',side_effect=AssertionError('Unrelated full-text scan must not run for an explicit qualified source request.')):
+   from vector_core.semantic import build_context as connected
+   result=connected(self.m,'Panel temperature',selector=selector)
+  self.assertEqual(len(result['context']['sources']),1);self.assertTrue(any('unannotated full text was not searched' in q for q in result['context']['semantic']['qualifications']))
+  from vector_core.semantic import build_context as connected
+  with patch('vector_core.context.build_context',side_effect=ValueError('Independent fallback called')):
+   with self.assertRaisesRegex(ValueError,'Independent fallback'):connected(self.m,'Unknown property',selector=self.selector('Unknown','temperature'))
+   with self.assertRaisesRegex(ValueError,'Independent fallback'):connected(self.m,'Panel unknown property',selector=self.selector('Panel','unknown'))
+ def test_qualified_only_literary_source_retains_full_original_rights_notice(self):
+  import shutil
+  from vector_core.literature import Library,PG_NOTICE
+  fixtures=Path(__file__).parent/'fixtures';entry=json.loads((fixtures/'pg1-provenance.json').read_text());pack=self.root/'pg';(pack/'objects').mkdir(parents=True)
+  shutil.copyfile(fixtures/'pg1-original.txt',pack/'objects'/entry['sha256']);shutil.copyfile(fixtures/'pg1-rights.rdf',pack/'objects'/entry['metadata_sha256'])
+  record=Library(self.m).import_entry(pack,entry,approved=True);original=self.m.original(record['event_id']).decode();left=original.index('Declaration of Independence');right=left+len('Declaration of Independence')
+  claim=Knowledge(self.m).add_claim(ClaimDraft(record['event_id'],left,right,'Declaration','includes term','Independence','citation-rights-check'));self.sem.qualify(claim['id'],{'sense':'title','status':'reviewed','epistemic':'source-assertion','polarity':'affirmed','reason':'Literal title term; not a scientific claim.'},approved=True)
+  result=build_context(self.m,'Declaration title',semantic=True,semantic_selector={'subject':'Declaration','sense':'title','predicate':'includes term','scope':'citation-rights-check'})
+  self.assertEqual(result['display_notices'],[{'event_id':record['event_id'],'notice':PG_NOTICE,'rights_event_id':record['rights_event_id']}])
+ def test_scientific_qualified_source_keeps_attribution_and_complete_provenance(self):
+  from test_science import fixture
+  from vector_core.science import ScientificLibrary,provenance
+  body='Gauge N has a reading of 8 Pa. Explicit scientific test premise only.';pack=self.root/'science';entry=fixture(pack,pages=[body]);library=ScientificLibrary(self.m);edition=library.import_entry(pack,entry,approved=True);library.index(pack,edition['id'],approved=True)
+  event=self.m.db.execute("SELECT id FROM events WHERE json_extract(metadata,'$.resource_type')='scientific-extracted-text'").fetchone()[0]
+  claim=Knowledge(self.m).add_claim(ClaimDraft(event,0,len(body),'Gauge N','reading','8','fixture','Pa','attribute',True));self.sem.qualify(claim['id'],{'sense':'equipment','status':'reviewed','epistemic':'source-assertion','polarity':'affirmed','reason':'Explicit scientific test fixture, not an observed measurement.'},approved=True)
+  ctx=build_context(self.m,'Gauge N',semantic=True,semantic_selector=self.selector('Gauge N','reading',scope='fixture'),budget_bytes=8192)['context']
+  self.assertEqual(ctx['sources'][0]['scientific_provenance'],provenance(self.m,event));self.assertEqual(ctx['sources'][0]['scientific_provenance']['attribution'],'Fixture author')
  def test_existing_investigation_pause_resume_and_memory_connect_to_grounded_result(self):
   request=self.energy();inv=Investigations(self.m);state=inv.create('Energy for Lamp A',semantic_request=request,approved=True)
   first=inv.run(state['id'],budget=Budget(1,0,30),approved=True);self.assertEqual(first['state']['status'],'paused')
