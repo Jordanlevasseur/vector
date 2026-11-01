@@ -118,3 +118,23 @@ work over the existing protected service. Privileged owner authentication/contro
 requires separate authorized design. The 900-second export bottleneck still needs
 its separately authorized Phase 1B diagnosis; Stage 6A did not retry or optimize it.
 No subsequent milestone is initiated by these recommendations.
+
+
+## After Stage 6B (proposed; not started)
+
+The reviewed source/tool bridge is integrated and tested; neural-answer improvement
+was not demonstrated, so the experimental path stays default-off.
+
+1. Add a strict server-owned candidate format and short source handles, expanding
+   references only through existing authorized hash/span checks. Address lexical
+   fallback relevance and make question-to-selector/formula proposals reviewable.
+   Retest with unchanged objective criteria and unfamiliar owner questions.
+2. Index qualified sense/relation lookups rather than depending on the bounded
+   catalog scan; retain explicit incomplete/uncertain results and source history.
+3. Improve incremental annotation review and desktop presentation of checked
+   results, unverified model proposals, pause/resume and unresolved evidence.
+4. Qualify stronger local model adapters separately when authorized; preserve
+   model independence/offline enforcement and require separate default changes.
+
+These are future engineering priorities, not accomplished scientific intelligence,
+new owner privileges, automatic graph authority or authorization to start a stage.

@@ -414,3 +414,28 @@ Functional foundation verified; model-dependent reasoning/discovery acceptance
 remains incomplete. No release readiness or full-library portability is claimed.
 Detailed A–J report, all failures, fingerprints, independent protocols, model
 transcripts and logs: /home/mint/Documents/Codex/2026-10-29/read-agents-md-and-inspect-the/outputs/vector-stage6a/REPORT.md
+
+
+## Stage 6B measured implementation
+
+Reused existing Knowledge/entities, Memory/persistence, context, tools, model
+adapter and Stage 6A controller. Added versioned qualified interpretations, explicit
+senses/aliases/conditions/dates/negation, conservative unit compatibility, bounded
+source joins, source quantity bindings and independently replayed results. Existing
+service/CLI/investigations and a default-false desktop control use it. Schema 8
+unchanged; the semantic_claims contract registers through the existing registry.
+
+Final runtime checkpoint 92701d5: source 187 passed 357.203 s; independent installed 186
+passed/one optional cryptography roundtrip skipped 390.129 s. All 45 installed modules
+match the local source/wheel. Source encryption positive passed; no dependency
+was downloaded. The 40 external gold cases passed before/after precision hardening.
+Actual installed 0.5B paired comparison (stable e7c11ef runtime): A 1/12, B 1/12,
+C 0/12 accepted neural answers; independent C source/tool results 12/12. This is
+functional integration, not a demonstrated neural intelligence improvement.
+
+Fourteen real-source interpretations reference existing scientific events; no
+fictional premises were installed into production. A preserved production
+checkpoint resumed correctly; explicit known-source selection avoids an unrelated
+corpus search. No default-model, law, owner-override or HELIX change. Experimental
+mode remains off by default. Full preservation evidence, failures, resource
+measurements and limitations are recorded in STAGE6B_REPORT.md and STAGE6B_AUDIT.md.

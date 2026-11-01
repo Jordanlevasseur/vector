@@ -150,3 +150,5 @@ Experimental Stage 6B connected evidence is documented in
 checkbox); ordinary retrieval and the selected model remain unchanged. Reviewed
 source relationships and independently computed results are not empirical truth
 or a claim of general semantic intelligence.
+
+Stage6B measurements and limits: [report](STAGE6B_REPORT.md) and [architecture audit](STAGE6B_AUDIT.md). The experimental path remains default-off.
