@@ -172,11 +172,11 @@ class Semantics:
         if problems:return {'kind':'grounded-calculation','status':status,'premises':premises,'citations':list(citations.values()),'qualifications':problems,'epistemic_status':'Calculation withheld for unresolved premises; hypotheses remain available for investigation.'}
         args={'expression':parameters['expression'],'variables':variables};result=compute('arithmetic',args)
         if 'target_unit' in parameters:
-            destination=unit(parameters['target_unit'])
-            if list(destination.dimensions)!=result['si_dimensions']:raise ValueError('Requested result unit is dimensionally inconsistent.')
             from decimal import localcontext
             with localcontext() as context:
-                context.prec=40;result.update(value=str(number(number(result['value'])/destination.value)),unit=parameters['target_unit'])
+                context.prec=40;destination=unit(parameters['target_unit'])
+                if list(destination.dimensions)!=result['si_dimensions']:raise ValueError('Requested result unit is dimensionally inconsistent.')
+                result.update(value=str(number(number(result['value'])/destination.value)),unit=parameters['target_unit'])
         return {'kind':'grounded-calculation','status':'tool-verified','tool':'arithmetic','parameters':args,'result':result,'value':result['value'],'answer':result['value'],'premises':premises,'citations':list(citations.values()),'qualifications':['Verified computation over source assertions, not verified empirical premises.'],'epistemic_status':'tool-verified for the stated source premises; model output supplied neither values nor authority'}
 
 def validate_selector(p):
@@ -188,10 +188,19 @@ def validate_selector(p):
 
 def value_key(item):
     from vector_core.tools import quantity
+    from decimal import localcontext,Inexact
     c=item['claim']
-    try:
-        q=quantity(c['value'],c['unit'] or '1');value=('quantity',str(q.value.normalize()),q.dimensions)
-    except ValueError:value=('literal',normalized(c['value']),item['object_sense'])
+    # Compatibility must not inherit the ambient 28-digit Decimal context and
+    # erase distinctions that the existing 40-digit tools preserve. If a unit
+    # conversion cannot be represented exactly, retain literal units rather than
+    # certifying rounded values as equivalent. Original inputs are <=128 chars.
+    with localcontext() as context:
+        context.prec=256;context.clear_flags()
+        try:
+            q=quantity(c['value'],c['unit'] or '1')
+            if context.flags[Inexact]:raise ValueError('Inexact comparison conversion.')
+            value=('quantity',str(q.value.normalize()),q.dimensions)
+        except ValueError:value=('literal',normalized(c['value']),c['unit'],item['object_sense'])
     return (value,item['polarity'])
 
 def disagrees(items):
@@ -407,11 +416,11 @@ def validate_result(memory,result):
         if actual!={'value':v['value'],'unit':v['unit'] or '1'} or any(x['polarity']!='affirmed' for x in p['values']):raise ValueError('Calculation variables differ from source bindings.')
     expected=compute('arithmetic',result['parameters']);stored=result['result'];value=number(stored['value'])
     if 'unit' in stored:
-        destination=unit(stored['unit'])
-        if list(destination.dimensions)!=expected['si_dimensions']:raise ValueError('Grounded result dimensions changed.')
         from decimal import localcontext
         with localcontext() as context:
-            context.prec=40;expected_value=number(expected['value'])/destination.value
+            context.prec=40;destination=unit(stored['unit'])
+            if list(destination.dimensions)!=expected['si_dimensions']:raise ValueError('Grounded result dimensions changed.')
+            expected_value=number(expected['value'])/destination.value
     else:expected_value=number(expected['value'])
     if value!=expected_value or stored['si_dimensions']!=expected['si_dimensions'] or number(result['answer'])!=number(stored['value']) or number(result['value'])!=number(stored['value']):raise ValueError('Grounded calculation does not reproduce under the verified tool.')
 

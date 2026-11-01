@@ -148,3 +148,11 @@ choice is explicit in the returned qualifications; it makes no corpus-wide truth
 or absence claim. General, unknown and incomplete catalog requests retain direct
 passage search as fallback. This does not replace the independent direct baseline
 or solve its known corpus-scale latency.
+
+Source-quantity compatibility uses its own256-digit comparison context, independent
+of ambient Decimal settings. It never rounds away distinctions preserved by the
+existing40-digit computation tool. Unsupported or inexact conversion comparisons
+retain literal units and conservatively withhold equivalence; they cannot silently
+merge different unit labels or high-precision conflicting assertions. This changes
+source compatibility checks, not the existing calculation precision or acceptance
+criteria.

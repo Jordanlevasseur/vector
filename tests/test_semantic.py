@@ -73,6 +73,25 @@ class SemanticTests(unittest.TestCase):
   q=self.selector('Rod','length');self.assertEqual(self.sem.lookup(q)['status'],'source-supported')
   r=self.sem.calculate('arithmetic',{'expression':'x','target_unit':'cm'},{'x':q});self.assertEqual(Decimal(r['value']),Decimal('100'));validate_result(self.m,r)
   self.add('Rod','length','2',unit='m');self.assertEqual(self.sem.lookup(q)['status'],'disputed');r=self.sem.calculate('arithmetic',{'expression':'x'},{'x':q});self.assertEqual(r['status'],'disputed');self.assertNotIn('answer',r);self.assertEqual(len(r['citations']),3)
+ def test_high_precision_source_disagreement_is_not_rounded_into_equivalence(self):
+  from decimal import localcontext
+  first='1.000000000000000000000000000001';second='1.000000000000000000000000000002'
+  self.add('Precision rod','length',first,unit='m');self.add('Precision rod','length',second,unit='m');q=self.selector('Precision rod','length')
+  with localcontext() as context:
+   context.prec=12
+   self.assertEqual(self.sem.lookup(q)['status'],'disputed');self.assertEqual(self.sem.calculate('arithmetic',{'expression':'x'},{'x':q})['status'],'disputed')
+  self.add('Exact rod','length',first,unit='m');self.add('Exact rod','length','100.0000000000000000000000000001',unit='cm');self.assertEqual(self.sem.lookup(self.selector('Exact rod','length'))['status'],'source-supported')
+ def test_unknown_or_inexact_unit_labels_cannot_establish_false_equivalence(self):
+  self.add('Unknown scale','reading','3',unit='unsupported_A');self.add('Unknown scale','reading','3',unit='unsupported_B');q=self.selector('Unknown scale','reading');self.assertEqual(self.sem.lookup(q)['status'],'disputed');self.assertEqual(self.sem.calculate('arithmetic',{'expression':'x'},{'x':q})['status'],'disputed')
+ def test_output_unit_conversion_and_replay_preserve_tool_precision(self):
+  from decimal import localcontext
+  self.add('Reciprocal scale','reading','1',unit='1/m');q=self.selector('Reciprocal scale','reading')
+  with localcontext() as context:
+   context.prec=12
+   result=self.sem.calculate('arithmetic',{'expression':'x','target_unit':'1/ft'},{'x':q});validate_result(self.m,result)
+  with localcontext() as context:
+   context.prec=80
+   self.assertLess(abs(Decimal(result['value'])-Decimal('.3048')),Decimal('1e-38'))
  def test_multivalued_properties_and_nonoverlapping_contexts_are_not_false_disputes(self):
   self.add('Kit','contains','Bolt',exclusive=False);self.add('Kit','contains','Nut',exclusive=False);self.assertEqual(self.sem.lookup(self.selector('Kit','contains'))['status'],'source-supported')
   self.add('Gauge','reading','3',unit='Pa',conditions={'mode':'A'});self.add('Gauge','reading','8',unit='Pa',conditions={'mode':'B'})
