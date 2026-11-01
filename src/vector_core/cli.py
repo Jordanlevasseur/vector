@@ -54,12 +54,14 @@ def main(argv=None):
     action=commands.add_parser('state-put');action.add_argument('contract');action.add_argument('key');action.add_argument('json_file')
     action=commands.add_parser('state-list');action.add_argument('contract');action.add_argument('--after',type=int,default=0);action.add_argument('--limit',type=int,default=100)
     inv=commands.add_parser('investigation');inv.add_argument('action',choices=['create','get','history','control','run']);inv.add_argument('parameters',help='JSON trusted-user parameters; model text is never dispatched')
+    sem=commands.add_parser('semantic');sem.add_argument('action',choices=['qualify','get','catalog','evidence','reason']);sem.add_argument('parameters',help='Explicit trusted-user JSON; reviewed interpretations never become facts')
     inv.add_argument('--models-directory');inv.add_argument('--managed',action='store_true');inv.add_argument('--model');inv.add_argument('--context',type=int,default=4096);inv.add_argument('--output-tokens',type=int,default=512);inv.add_argument('--timeout',type=float,default=120)
     for name in ('ask','models'):
         action=commands.add_parser(name);action.add_argument('--models-directory');action.add_argument('--managed',action='store_true')
         if name=='ask':
             action.add_argument('question');action.add_argument('--model');action.add_argument('--context',type=int,default=2048)
             action.add_argument('--output-tokens',type=int,default=256);action.add_argument('--timeout',type=float,default=30)
+            action.add_argument('--semantic',action='store_true',help='Experimental connected evidence; default remains direct retrieval')
     action=commands.add_parser('calculate');action.add_argument('operation');action.add_argument('parameters');action.add_argument('--approve',action='store_true')
     science=commands.add_parser('science');science.add_argument('action',choices=['import','index','list','search']);science.add_argument('--package');science.add_argument('--edition');science.add_argument('--query');science.add_argument('--offset',type=int,default=0);science.add_argument('--limit',type=int,default=1);science.add_argument('--manifest-sha256');science.add_argument('--approve',action='store_true')
     args=parser.parse_args(argv)
@@ -90,10 +92,11 @@ def main(argv=None):
         with Memory(config) as memory:
             log=logger(config.data_dir)
             log.info('Operation started: %s',command)
-            if command in ('ask','models','calculate','investigation'):
+            if command in ('ask','models','calculate','investigation','semantic'):
                 from vector_core.service import Application
                 application=Application(memory,transport,startup_error);application.policy=policy
                 if command=='models':result=application.handle('models',{})
+                elif command=='semantic':result=application.handle('semantic_'+args.action,json.loads(args.parameters))
                 elif command=='investigation':
                     if args.model and transport:
                         from dataclasses import asdict
@@ -106,7 +109,7 @@ def main(argv=None):
                         from dataclasses import asdict
                         from vector_core.inference import GenerationConfig
                         application.handle('select_model',{'configuration':asdict(GenerationConfig(args.model,args.context,args.output_tokens,args.timeout)),'authorize_external':True})
-                    result=application.handle('ask',{'question':args.question})
+                    result=application.handle('ask',{'question':args.question,'semantic':args.semantic})
             elif command=='science':
                 from vector_core.science import ScientificLibrary
                 library=ScientificLibrary(memory)

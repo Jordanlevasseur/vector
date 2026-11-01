@@ -12,7 +12,7 @@ from vector_core.coordination import write_operation
 from vector_core.inference import GenerationConfig,UnavailableAdapter,InferenceError
 from vector_core.authority import DecisionAuthority
 
-STRATEGIES={'retrieve','calculate','generate','critique','synthesize','reconcile','verify','relate','select','constraints'}
+STRATEGIES={'retrieve','calculate','generate','critique','synthesize','reconcile','verify','relate','select','constraints','grounded'}
 MODEL={'generate','critique','synthesize'}
 
 @dataclass(frozen=True)
@@ -38,8 +38,12 @@ def plan(steps):
         seen.add(s['id'])
     return steps
 
-def route(goal,*,calculation=None,explore=False):
+def route(goal,*,calculation=None,explore=False,semantic_request=None):
     """Capability/request-based transparent routing; not a learned semantic classifier."""
+    if semantic_request is not None:
+        selector=semantic_request.get('selector') if isinstance(semantic_request,dict) else None
+        return [{'id':'evidence','strategy':'retrieve','depends':[],'input':{'query':goal[:512],'semantic':True,'evidence_budget':8192,**({'selector':selector} if selector else {})}},
+                {'id':'grounded','strategy':'grounded','depends':['evidence'],'input':{'request':semantic_request}}]
     if calculation is not None:return [{'id':'calculate','strategy':'calculate','depends':[],'input':calculation}]
     result=[{'id':'evidence','strategy':'retrieve','depends':[],'input':{'query':goal[:512]}}]
     result.append({'id':'candidate','strategy':'synthesize' if explore else 'generate','depends':['evidence'],'input':{}})
@@ -110,12 +114,12 @@ class Investigations:
             if e['status']=='failed':feedback[e['step']]=e['error']
         return good,feedback
     @write_operation
-    def create(self,goal,steps=None,*,calculation=None,explore=False,project_id=None,approved=False):
+    def create(self,goal,steps=None,*,calculation=None,explore=False,project_id=None,approved=False,semantic_request=None):
         self.authority.ordinary(approved);text(goal,2000)
         from vector_core.persistence import register
         for name in ('investigations','investigation_events'):
             if self.db.execute('SELECT 1 FROM persistence_contracts WHERE name=?',(name,)).fetchone() is None:register(self.memory,name,'Versioned reasoning investigations and evidence; never execution authority')
-        p={'id':uuid4().hex,'goal':goal,'project_id':project_id,'plan':plan(steps or route(goal,calculation=calculation,explore=explore)),'status':'ready','active':None,'reason':'Explicit user delegation of pure local reasoning steps; no privileged owner authentication.','created':now(),'updated':now()}
+        p={'id':uuid4().hex,'goal':goal,'project_id':project_id,'plan':plan(steps or route(goal,calculation=calculation,explore=explore,semantic_request=semantic_request)),'status':'ready','active':None,'reason':'Explicit user delegation of pure local reasoning steps; no privileged owner authentication.','created':now(),'updated':now()}
         return self._save(p,new=True)
     def _save(self,p,*,expected=None,new=False):
         from vector_core.projects import append
@@ -150,6 +154,10 @@ class Investigations:
         return current,valid
     def _execute(self,p,step,results,feedback,cancellation,end):
         strategy=step['strategy'];args=step['input']
+        if strategy=='grounded':
+            from vector_core.semantic import reason,validate_result
+            result=reason(self.memory,args['request']);validate_result(self.memory,result)
+            return result
         if strategy=='constraints':
             from operator import eq,ne,lt,le,gt,ge
             from vector_core.tools import evaluate,number
@@ -175,6 +183,10 @@ class Investigations:
                 if len(solutions)>=128:break
             return {'kind':'finite-constraint-observation','solutions':solutions,'next_offset':offset+examined,'complete':offset+examined==total,'examined':examined,'epistemic_status':'verified supplied finite constraints, not a general logical proof'}
         if strategy=='calculate':
+            if 'source_bindings' in args:
+                from vector_core.semantic import Semantics,validate_result
+                result=Semantics(self.memory).calculate(args['operation'],args['parameters'],args['source_bindings']);validate_result(self.memory,result)
+                return result
             from vector_core.tools import compute
             parameters=dict(args['parameters'])
             if 'bindings' in args:
@@ -202,14 +214,19 @@ class Investigations:
         if strategy in {'retrieve','reconcile'}:
             from vector_core.context import build_context
             evidence_budget=8192 if strategy=='reconcile' else max(512,min(16000,self.config.prompt_bytes-len(INSTRUCTIONS.encode())-len(p['goal'].encode())-1024))
-            built=build_context(self.memory,args.get('query',p['goal'])[:512],budget_bytes=evidence_budget,project_id=p['project_id'])
+            if 'evidence_budget' in args:evidence_budget=args['evidence_budget']
+            built=build_context(self.memory,args.get('query',p['goal'])[:512],budget_bytes=evidence_budget,project_id=p['project_id'],semantic=args.get('semantic',False),semantic_selector=args.get('selector'),investigation_id=p['id'] if args.get('semantic') else None)
             return {'kind':'source-linked-evidence','context':built['context'],'seconds':built['seconds']}
         if strategy not in MODEL:raise ValueError('Unknown strategy.')
         context={'sources':[]};prior=[]
         for dependency in step['depends']:
             result=results[dependency]
             if 'context' in result:context=result['context']
-            else:prior.append({'step':dependency,'result':result})
+            else:
+                if result.get('kind') in {'grounded-lookup','grounded-calculation'}:
+                    from vector_core.semantic import model_observation
+                    result=model_observation(self.memory,result)
+                prior.append({'step':dependency,'result':result})
         data={'goal':p['goal'],'strategy':strategy,'request':args.get('request',''),'context':context,'prior':prior,'feedback':feedback.get(step['id'],'')}
         prompt=INSTRUCTIONS+canonical(data)
         if len(prompt.encode())>self.config.prompt_bytes:raise ValueError('Investigation context exceeds model byte budget; revise scope/configuration; no silent truncation.')

@@ -9,7 +9,11 @@ from vector_core.memory import canonical
 
 STOP={'what','which','where','when','why','how','is','are','was','the','a','an','of','to','and','in','does','do','please','tell','me','about'}
 
-def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project_id=None,conversation_id=None,project_only=False):
+def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project_id=None,conversation_id=None,project_only=False,semantic=False,semantic_selector=None,investigation_id=None):
+    if type(semantic) is not bool:raise ValueError('Semantic retrieval flag must be boolean.')
+    if semantic:
+        from vector_core.semantic import build_context as connected_context
+        return connected_context(memory,question,budget_bytes=budget_bytes,limit=limit,scope=scope,project_id=project_id,conversation_id=conversation_id,project_only=project_only,selector=semantic_selector,investigation_id=investigation_id)
     if not isinstance(question,str) or not 1<=len(question)<=2000:raise ValueError('Question must contain 1–2000 characters.')
     if type(budget_bytes) is not int or not 128<=budget_bytes<=131072:raise ValueError('Invalid context byte budget.')
     if type(limit) is not int or not 1<=limit<=20:raise ValueError('Invalid source budget.')

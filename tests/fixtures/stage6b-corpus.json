@@ -1,0 +1,2798 @@
+{
+  "format": "vector-stage6b-gold-v1",
+  "jurisdiction": "US",
+  "source_policy": "Local approved source excerpts only, with original/container/page SHA and publication dates. Fictional fixtures are explicitly not scientific observations. No natural-medicine coverage or current clinical authority is assumed.",
+  "sources": [
+    {
+      "key": "imaginary",
+      "kind": "verified-local-excerpt",
+      "text": "An Imaginary number is the square root of a negative number.",
+      "name": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2 (1992-06) / PDF page 82",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1014/2-92",
+        "title": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "original_sha256": "f3f3272d738e9bdfcf1369df24c04bda1f616056835f2792193d4964e1ac0715",
+        "derived_page_sha256": "7c6fc5922f6683ebc9a01d7a9152b8e91ee92a0b50f3ad3b0ff7b12e9ef2132d",
+        "page": 82,
+        "locator": "PDF page 82",
+        "start": 278,
+        "end": 338,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Mathematics, Volume 2 of 2. doe:DOE-HDBK-1014/2-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "triangle",
+      "kind": "verified-local-excerpt",
+      "text": "A right triangle has one of its angles equal to 90° and is the most\nimportant triangle for our studies (triangle GHI).",
+      "name": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2 (1992-06) / PDF page 24",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1014/2-92",
+        "title": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "original_sha256": "f3f3272d738e9bdfcf1369df24c04bda1f616056835f2792193d4964e1ac0715",
+        "derived_page_sha256": "2661519976a028fdd0879f33083bec75a3edd58576abb1e39f234ec3c5d128b3",
+        "page": 24,
+        "locator": "PDF page 24",
+        "start": 1870,
+        "end": 1988,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Mathematics, Volume 2 of 2. doe:DOE-HDBK-1014/2-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "inertia",
+      "kind": "verified-local-excerpt",
+      "text": "Inertia is the tendency of a body to resist a change in its state\nof motion.",
+      "name": "DOE Fundamentals Handbook: Classical Physics (1992-06) / PDF page 112",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1010-92",
+        "title": "DOE Fundamentals Handbook: Classical Physics",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1010-92.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1010-92.pdf",
+        "original_sha256": "28c3ecc396f5b8c5831627cf3def477fb73affffb3cc78191b5b33aa55bbfec0",
+        "derived_page_sha256": "e336c6b98464c5fbd89d47f28d8cb8eed812b7ab1f6ad99c8bc3fd8bbf5a08bd",
+        "page": 112,
+        "locator": "PDF page 112",
+        "start": 1426,
+        "end": 1502,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Classical Physics. doe:DOE-HDBK-1010-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1010-92.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "current",
+      "kind": "verified-local-excerpt",
+      "text": "The basic measurement for current is the ampere (A). One ampere of current is\ndefined as the movement of one coulomb of charge past any given point of a conductor during\none second of time.",
+      "name": "DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4 (1992-06) / PDF page 34",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1011/1-92",
+        "title": "DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+        "original_sha256": "6b70b143a998b6f5d006dabbfbf0c29c857a8ed2a3b74e43b1fd98b59106fdf7",
+        "derived_page_sha256": "c8c9281adb8a6937b12637c89d647a6f1a1cf35d4db6b22b6355dbb6a24f559f",
+        "page": 34,
+        "locator": "PDF page 34",
+        "start": 1681,
+        "end": 1870,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4. doe:DOE-HDBK-1011/1-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "resistance",
+      "kind": "verified-local-excerpt",
+      "text": "Resistance is defined as the opposition to current flow.",
+      "name": "DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4 (1992-06) / PDF page 38",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1011/1-92",
+        "title": "DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+        "original_sha256": "6b70b143a998b6f5d006dabbfbf0c29c857a8ed2a3b74e43b1fd98b59106fdf7",
+        "derived_page_sha256": "baf5ca8d640d589b1d9e26a98846fd8557bac01bfdc0d322a83802f4743fea16",
+        "page": 38,
+        "locator": "PDF page 38",
+        "start": 535,
+        "end": 591,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Electrical Science, Volume 1 of 4. doe:DOE-HDBK-1011/1-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1011-92_VOL1.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "electron",
+      "kind": "verified-local-excerpt",
+      "text": "An atom is composed of a positively-charged nucleus orbited by one or more negatively-charged\nparticles called electrons.",
+      "name": "DOE Fundamentals Handbook: Chemistry, Volume 1 of 2 (1993-01) / PDF page 24",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1015/1-93",
+        "title": "DOE Fundamentals Handbook: Chemistry, Volume 1 of 2",
+        "publication_date": "1993-01",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1015-93_VOL1.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1015-93_VOL1.pdf",
+        "original_sha256": "73627c9e9b6924d09e7207a435886ddc93cbc9057869b3ef39c8ff5765e73846",
+        "derived_page_sha256": "2791c35e8a3272e0c312e121476bc25c41112ca928e06ef6b3045f20f15c49d8",
+        "page": 24,
+        "locator": "PDF page 24",
+        "start": 566,
+        "end": 687,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Chemistry, Volume 1 of 2. doe:DOE-HDBK-1015/1-93; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1015-93_VOL1.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "red-cells",
+      "kind": "verified-local-excerpt",
+      "text": "In humans, as in all mammals, the mature RBC lacks a nucleus. This allows the cell more room to store\nhemoglobin, the oxygen-binding protein, enabling the RBC to transport more oxygen. RBCs are also biconcave\nin shape; this shape increases their surface area for the diffusion of oxygen across their surfaces. In non-\nmammalian vertebrates such as birds and fish, mature RBCs do have a nucleus.",
+      "name": "Blood Groups and Red Cell Antigens (2005) / Archive member rbcantigen_NBK2261/TOC.pdf; PDF page 14",
+      "provenance": {
+        "provider_id": "nlm:NBK2261",
+        "title": "Blood Groups and Red Cell Antigens",
+        "publication_date": "2005",
+        "source_url": "https://ncbi.nlm.nih.gov/books/NBK2261/?lang=en",
+        "download_url": "https://ftp.ncbi.nlm.nih.gov/pub/litarch/0f/63/rbcantigen_NBK2261.tar.gz",
+        "original_sha256": "77c47e791b2ebd8afd27cd0adc6fae03c2cb8de71ef0cdc121bf1a1086b97f33",
+        "derived_page_sha256": "d9161947a2756e38fc27b1ddefb9d0acadbcbc241c01a014d249d9aa0e43e49c",
+        "page": 14,
+        "locator": "Archive member rbcantigen_NBK2261/TOC.pdf; PDF page 14",
+        "start": 883,
+        "end": 1277,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "Specific NLM publication page explicitly states that the publication is in the public domain; author affiliation and publisher NCBI/NIH are verified in the preserved original TOC XML. Complete package acquired only through the designated NLM LitArch FTP mirror.",
+          "attribution": "Laura Dean. Blood Groups and Red Cell Antigens. NCBI Bookshelf NBK2261. https://ncbi.nlm.nih.gov/books/NBK2261/?lang=en",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": true,
+          "temporal_status": "historical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "insulin",
+      "kind": "verified-local-excerpt",
+      "text": "The insulin-making cells of the body are called beta cells, and they are found in the pancreas gland.",
+      "name": "The Genetic Landscape of Diabetes (2004) / Archive member diabetes_NBK1667/TOC.pdf; PDF page 22",
+      "provenance": {
+        "provider_id": "nlm:NBK1667",
+        "title": "The Genetic Landscape of Diabetes",
+        "publication_date": "2004",
+        "source_url": "https://www.ncbi.nlm.nih.gov/sites/books/NBK1667/",
+        "download_url": "https://ftp.ncbi.nlm.nih.gov/pub/litarch/ec/9a/diabetes_NBK1667.tar.gz",
+        "original_sha256": "466d79adb6fc2c1788621f2ce1a5ca07c22d870fa513930bc67d62432ca3dbc6",
+        "derived_page_sha256": "1694a69f6e004c1edfbbe4d185d2f7a4c5377344291b22c78c1a3f5c3df47cc0",
+        "page": 22,
+        "locator": "Archive member diabetes_NBK1667/TOC.pdf; PDF page 22",
+        "start": 1251,
+        "end": 1352,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "Specific NLM publication page explicitly states that the publication is in the public domain; author affiliations, title, publisher and 2004 date are verified against original TOC XML. Complete package acquired only through the designated NLM LitArch FTP mirror.",
+          "attribution": "Laura Dean; Jo McEntyre. The Genetic Landscape of Diabetes. NCBI Bookshelf NBK1667. https://www.ncbi.nlm.nih.gov/sites/books/NBK1667/",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": true,
+          "temporal_status": "historical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "calculus",
+      "kind": "verified-local-excerpt",
+      "text": "For example, velocity is the first derivative of distance traveled with\nrespect to time, v = ds/dt; acceleration is the derivative of velocity with respect to time, a = dv/dt.",
+      "name": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2 (1992-06) / PDF page 104",
+      "provenance": {
+        "provider_id": "doe:DOE-HDBK-1014/2-92",
+        "title": "DOE Fundamentals Handbook: Mathematics, Volume 2 of 2",
+        "publication_date": "1992-06",
+        "source_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "download_url": "https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+        "original_sha256": "f3f3272d738e9bdfcf1369df24c04bda1f616056835f2792193d4964e1ac0715",
+        "derived_page_sha256": "c511defac496ac28f99890f5dd7eeb05ac745035f8d28446f66913a035dda6d0",
+        "page": 104,
+        "locator": "PDF page 104",
+        "start": 1523,
+        "end": 1698,
+        "rights": {
+          "license": "US-GOV-PUBLIC-DOMAIN",
+          "jurisdiction": "US",
+          "basis": "DOE government-information public-domain policy plus this specific complete handbook's institutional attribution and Distribution Statement A. Accessible-text review found no copyright/reprint/permission/courtesy markers. Known third-party chart volume was excluded; no worldwide rights or training clearance claimed.",
+          "attribution": "U.S. Department of Energy, Training Coordination Program. DOE Fundamentals Handbook: Mathematics, Volume 2 of 2. doe:DOE-HDBK-1014/2-92; Revision 0. https://www.energy.gov/sites/default/files/2026-04/DOE-HDBK-1014-92_VOL2.pdf",
+          "restrictions": [
+            "U.S.-only rights classification. Preserve source credits and avoid implying government endorsement. No separate logo/third-party content grant or future training clearance is inferred."
+          ],
+          "reviewed_uses": [
+            "preservation",
+            "text-indexing",
+            "source-linked-retrieval"
+          ],
+          "future_training": "requires-separate-review",
+          "ai_retrieval_permitted": true
+        },
+        "medical": {
+          "is_medical": false,
+          "temporal_status": "not-medical"
+        },
+        "scope": "Exact excerpt from already-preserved approved local publication; US-only reuse boundary retained. Not current medical guidance."
+      }
+    },
+    {
+      "key": "lumen-power",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Lumen test rig has power 15 W. Its archive nickname is light rig.",
+      "name": "Explicit fictional fixture lumen-power",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "lumen-duration",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Lumen test rig runs for duration 19 s.",
+      "name": "Explicit fictional fixture lumen-duration",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "delta-voltage",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Delta test circuit has voltage 18 V.",
+      "name": "Explicit fictional fixture delta-voltage",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "delta-resistance",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Delta test circuit has resistance 6 ohm.",
+      "name": "Explicit fictional fixture delta-resistance",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "rod-metric",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Reference bar has length 1 m.",
+      "name": "Explicit fictional fixture rod-metric",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "rod-centimetre",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Reference bar has length 100 cm.",
+      "name": "Explicit fictional fixture rod-centimetre",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "fluid-rate",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Fluid rig has rate 2 L/s.",
+      "name": "Explicit fictional fixture fluid-rate",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "fluid-time",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Fluid rig has duration 30 s.",
+      "name": "Explicit fictional fixture fluid-time",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "assembly",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Silver drive uses Rotor K. Its workshop nickname is spindle unit.",
+      "name": "Explicit fictional fixture assembly",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "rotor",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Rotor K has material Alloy Z.",
+      "name": "Explicit fictional fixture rotor",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "alloy",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Alloy Z has density 7.4 g/cm^3.",
+      "name": "Explicit fictional fixture alloy",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "rated-a",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Motor R has rated power 10 W in load case A.",
+      "name": "Explicit fictional fixture rated-a",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "rated-b",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Motor R has rated power 20 W in load case A.",
+      "name": "Explicit fictional fixture rated-b",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "seal-positive",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Seal T contains latex.",
+      "name": "Explicit fictional fixture seal-positive",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "seal-negative",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Seal T does not contain latex.",
+      "name": "Explicit fictional fixture seal-negative",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "wet",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Gauge N has reading 8 Pa when wet.",
+      "name": "Explicit fictional fixture wet",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "dry",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Gauge N has reading 3 Pa when dry.",
+      "name": "Explicit fictional fixture dry",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "schedule-old",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Valve V has limit 5 Pa for the 2020 schedule only.",
+      "name": "Explicit fictional fixture schedule-old",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "schedule-new",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Valve V has limit 7 Pa for the 2021 schedule only.",
+      "name": "Explicit fictional fixture schedule-new",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "cell-electrical",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. In the fictional laboratory, Cell Q has class battery in the electrical catalogue.",
+      "name": "Explicit fictional fixture cell-electrical",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "cell-biology",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. In the fictional laboratory, Cell Q has class culture in the biological catalogue.",
+      "name": "Explicit fictional fixture cell-biology",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "pending",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Predicted unit has power 99 W in a pending interpretation only.",
+      "name": "Explicit fictional fixture pending",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    },
+    {
+      "key": "hypothesis",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST FIXTURE. Not a report of real equipment or a scientific fact. Hypothetical unit has power 88 W only as an untested hypothesis.",
+      "name": "Explicit fictional fixture hypothesis",
+      "provenance": {
+        "license": "CC0-1.0",
+        "author": "Owner-authorized test fixture",
+        "jurisdiction": "US",
+        "status": "Synthetic premises only; no empirical truth claim"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "key": "imaginary-definition",
+      "source": "imaginary",
+      "draft": {
+        "start": 0,
+        "end": 60,
+        "subject": "Imaginary number",
+        "predicate": "definition",
+        "value": "square root of a negative number",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "mathematics",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "triangle-angle",
+      "source": "triangle",
+      "draft": {
+        "start": 0,
+        "end": 118,
+        "subject": "right triangle",
+        "predicate": "angle",
+        "value": "90°",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "mathematics",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "inertia-definition",
+      "source": "inertia",
+      "draft": {
+        "start": 0,
+        "end": 76,
+        "subject": "Inertia",
+        "predicate": "definition",
+        "value": "tendency of a body to resist a change in its state\nof motion",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "physics",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "current-unit",
+      "source": "current",
+      "draft": {
+        "start": 0,
+        "end": 189,
+        "subject": "current",
+        "predicate": "unit",
+        "value": "ampere",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "electrical",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "resistance-definition",
+      "source": "resistance",
+      "draft": {
+        "start": 0,
+        "end": 56,
+        "subject": "Resistance",
+        "predicate": "definition",
+        "value": "opposition to current flow",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "electrical",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "electron-charge",
+      "source": "electron",
+      "draft": {
+        "start": 0,
+        "end": 121,
+        "subject": "electrons",
+        "predicate": "charge",
+        "value": "negatively-charged",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "chemistry",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "hemoglobin-target",
+      "source": "red-cells",
+      "draft": {
+        "start": 0,
+        "end": 394,
+        "subject": "hemoglobin",
+        "predicate": "binds",
+        "value": "oxygen",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": false
+      },
+      "qualification": {
+        "sense": "protein",
+        "object_sense": "molecule",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "rbc-stores",
+      "source": "red-cells",
+      "draft": {
+        "start": 0,
+        "end": 394,
+        "subject": "RBC",
+        "predicate": "stores",
+        "value": "hemoglobin",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": false
+      },
+      "qualification": {
+        "sense": "cell",
+        "object_sense": "protein",
+        "aliases": [
+          "red blood cell"
+        ],
+        "polarity": "affirmed",
+        "conditions": {
+          "organism": "mammal",
+          "maturity": "mature"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "rbc-mammal-nucleus",
+      "source": "red-cells",
+      "draft": {
+        "start": 0,
+        "end": 61,
+        "subject": "RBC",
+        "predicate": "has",
+        "value": "nucleus",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "cell",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "negated",
+        "conditions": {
+          "organism": "mammal",
+          "maturity": "mature"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "rbc-bird-nucleus",
+      "source": "red-cells",
+      "draft": {
+        "start": 310,
+        "end": 394,
+        "subject": "RBC",
+        "predicate": "has",
+        "value": "nucleus",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "cell",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "organism": "bird-or-fish",
+          "maturity": "mature"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "insulin-source",
+      "source": "insulin",
+      "draft": {
+        "start": 0,
+        "end": 101,
+        "subject": "insulin",
+        "predicate": "made by",
+        "value": "beta cells",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "hormone",
+        "object_sense": "cell",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "beta-location",
+      "source": "insulin",
+      "draft": {
+        "start": 0,
+        "end": 101,
+        "subject": "beta cells",
+        "predicate": "located in",
+        "value": "pancreas gland",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "cell",
+        "object_sense": "organ",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "velocity-derivative",
+      "source": "calculus",
+      "draft": {
+        "start": 0,
+        "end": 175,
+        "subject": "velocity",
+        "predicate": "derivative of",
+        "value": "distance traveled",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "physics",
+        "object_sense": "quantity",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "independent variable": "time"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "acceleration-derivative",
+      "source": "calculus",
+      "draft": {
+        "start": 0,
+        "end": 175,
+        "subject": "acceleration",
+        "predicate": "derivative of",
+        "value": "velocity",
+        "scope": "source-pilot",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "physics",
+        "object_sense": "physics",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "independent variable": "time"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "lumen-power",
+      "source": "lumen-power",
+      "draft": {
+        "start": 0,
+        "end": 153,
+        "subject": "Lumen test rig",
+        "predicate": "power",
+        "value": "15",
+        "scope": "fixture",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [
+          "light rig"
+        ],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "lumen-duration",
+      "source": "lumen-duration",
+      "draft": {
+        "start": 0,
+        "end": 126,
+        "subject": "Lumen test rig",
+        "predicate": "duration",
+        "value": "19",
+        "scope": "fixture",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "delta-voltage",
+      "source": "delta-voltage",
+      "draft": {
+        "start": 0,
+        "end": 124,
+        "subject": "Delta test circuit",
+        "predicate": "voltage",
+        "value": "18",
+        "scope": "fixture",
+        "unit": "V",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "delta-resistance",
+      "source": "delta-resistance",
+      "draft": {
+        "start": 0,
+        "end": 128,
+        "subject": "Delta test circuit",
+        "predicate": "resistance",
+        "value": "6",
+        "scope": "fixture",
+        "unit": "ohm",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "bar-length1",
+      "source": "rod-metric",
+      "draft": {
+        "start": 0,
+        "end": 117,
+        "subject": "Reference bar",
+        "predicate": "length",
+        "value": "1",
+        "scope": "fixture",
+        "unit": "m",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "bar-length 100",
+      "source": "rod-centimetre",
+      "draft": {
+        "start": 0,
+        "end": 120,
+        "subject": "Reference bar",
+        "predicate": "length",
+        "value": "100",
+        "scope": "fixture",
+        "unit": "cm",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "fluid-rate",
+      "source": "fluid-rate",
+      "draft": {
+        "start": 0,
+        "end": 113,
+        "subject": "Fluid rig",
+        "predicate": "rate",
+        "value": "2",
+        "scope": "fixture",
+        "unit": "L/s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "fluid-time",
+      "source": "fluid-time",
+      "draft": {
+        "start": 0,
+        "end": 116,
+        "subject": "Fluid rig",
+        "predicate": "duration",
+        "value": "30",
+        "scope": "fixture",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "uses",
+      "source": "assembly",
+      "draft": {
+        "start": 0,
+        "end": 153,
+        "subject": "Silver drive",
+        "predicate": "uses",
+        "value": "Rotor K",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": "equipment",
+        "aliases": [
+          "spindle unit"
+        ],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "material",
+      "source": "rotor",
+      "draft": {
+        "start": 0,
+        "end": 117,
+        "subject": "Rotor K",
+        "predicate": "material",
+        "value": "Alloy Z",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": "materials",
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "density",
+      "source": "alloy",
+      "draft": {
+        "start": 0,
+        "end": 119,
+        "subject": "Alloy Z",
+        "predicate": "density",
+        "value": "7.4",
+        "scope": "fixture",
+        "unit": "g/cm^3",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "materials",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "rated-a",
+      "source": "rated-a",
+      "draft": {
+        "start": 0,
+        "end": 132,
+        "subject": "Motor R",
+        "predicate": "power",
+        "value": "10",
+        "scope": "fixture",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "load": "A"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "rated-b",
+      "source": "rated-b",
+      "draft": {
+        "start": 0,
+        "end": 132,
+        "subject": "Motor R",
+        "predicate": "power",
+        "value": "20",
+        "scope": "fixture",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "load": "A"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "seal-positive",
+      "source": "seal-positive",
+      "draft": {
+        "start": 0,
+        "end": 110,
+        "subject": "Seal T",
+        "predicate": "contains",
+        "value": "latex",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "seal-negative",
+      "source": "seal-negative",
+      "draft": {
+        "start": 0,
+        "end": 118,
+        "subject": "Seal T",
+        "predicate": "contains",
+        "value": "latex",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "negated",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "wet",
+      "source": "wet",
+      "draft": {
+        "start": 0,
+        "end": 122,
+        "subject": "Gauge N",
+        "predicate": "reading",
+        "value": "8",
+        "scope": "fixture",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "surface": "wet"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "dry",
+      "source": "dry",
+      "draft": {
+        "start": 0,
+        "end": 122,
+        "subject": "Gauge N",
+        "predicate": "reading",
+        "value": "3",
+        "scope": "fixture",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {
+          "surface": "dry"
+        },
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "schedule-old",
+      "source": "schedule-old",
+      "draft": {
+        "start": 0,
+        "end": 138,
+        "subject": "Valve V",
+        "predicate": "limit",
+        "value": "5",
+        "scope": "fixture",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": "2020-01-01",
+        "valid_until": "2020-12-31",
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "schedule-new",
+      "source": "schedule-new",
+      "draft": {
+        "start": 0,
+        "end": 138,
+        "subject": "Valve V",
+        "predicate": "limit",
+        "value": "7",
+        "scope": "fixture",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": "2021-01-01",
+        "valid_until": "2021-12-31",
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "cell-electrical",
+      "source": "cell-electrical",
+      "draft": {
+        "start": 0,
+        "end": 170,
+        "subject": "Cell Q",
+        "predicate": "class",
+        "value": "battery",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "electrical",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "cell-biology",
+      "source": "cell-biology",
+      "draft": {
+        "start": 0,
+        "end": 170,
+        "subject": "Cell Q",
+        "predicate": "class",
+        "value": "culture",
+        "scope": "fixture",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "biology",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "pending",
+      "source": "pending",
+      "draft": {
+        "start": 0,
+        "end": 151,
+        "subject": "Predicted unit",
+        "predicate": "power",
+        "value": "99",
+        "scope": "fixture",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "source-assertion",
+        "status": "candidate",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    },
+    {
+      "key": "hypothesis",
+      "source": "hypothesis",
+      "draft": {
+        "start": 0,
+        "end": 152,
+        "subject": "Hypothetical unit",
+        "predicate": "power",
+        "value": "88",
+        "scope": "fixture",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "object_sense": null,
+        "aliases": [],
+        "polarity": "affirmed",
+        "conditions": {},
+        "valid_from": null,
+        "valid_until": null,
+        "epistemic": "untested-hypothesis",
+        "status": "reviewed",
+        "reason": "Inspected, source-linked test interpretation; reviewed does not mean scientifically verified. Original qualifications and US rights retained."
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "D1",
+      "category": "direct-source",
+      "question": "According to the physics excerpt, what is the definition of Inertia?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Inertia",
+          "predicate": "definition",
+          "scope": "source-pilot",
+          "sense": "physics"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "tendency of a body to resist a change in its state of motion",
+        "numeric": false,
+        "sources": [
+          "inertia"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "D2",
+      "category": "direct-source",
+      "question": "What defines an Imaginary number in the mathematics excerpt?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Imaginary number",
+          "predicate": "definition",
+          "scope": "source-pilot",
+          "sense": "mathematics"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "square root of a negative number",
+        "numeric": false,
+        "sources": [
+          "imaginary"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "D3",
+      "category": "direct-source",
+      "question": "What angle identifies a right triangle according to the excerpt?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "right triangle",
+          "predicate": "angle",
+          "scope": "source-pilot",
+          "sense": "mathematics"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "90°",
+        "numeric": false,
+        "sources": [
+          "triangle"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "D4",
+      "category": "direct-source",
+      "question": "What unit measures current in the electrical handbook?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "current",
+          "predicate": "unit",
+          "scope": "source-pilot",
+          "sense": "electrical"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "ampere",
+        "numeric": false,
+        "sources": [
+          "current"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "D5",
+      "category": "direct-source",
+      "question": "What is the electrical definition of Resistance in the source?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Resistance",
+          "predicate": "definition",
+          "scope": "source-pilot",
+          "sense": "electrical"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "opposition to current flow",
+        "numeric": false,
+        "sources": [
+          "resistance"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "D6",
+      "category": "direct-source",
+      "question": "What charge do electrons have according to the chemistry source?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "electrons",
+          "predicate": "charge",
+          "scope": "source-pilot",
+          "sense": "chemistry"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "negatively-charged",
+        "numeric": false,
+        "sources": [
+          "electron"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "D7",
+      "category": "direct-source",
+      "question": "According to the historical 2005 source, what does hemoglobin bind?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "hemoglobin",
+          "predicate": "binds",
+          "scope": "source-pilot",
+          "sense": "protein"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "oxygen",
+        "numeric": false,
+        "sources": [
+          "red-cells"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "D8",
+      "category": "direct-source",
+      "question": "According to the historical 2004 source, which cells make insulin?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "insulin",
+          "predicate": "made by",
+          "scope": "source-pilot",
+          "sense": "hormone"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "beta cells",
+        "numeric": false,
+        "sources": [
+          "insulin"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "Q1",
+      "category": "verified-calculation",
+      "question": "Use energy=power*time. What energy does Lumen test rig use for the stated run?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "p*t",
+          "target_unit": "J"
+        },
+        "bindings": {
+          "p": {
+            "subject": "Lumen test rig",
+            "predicate": "power",
+            "scope": "fixture",
+            "sense": "equipment"
+          },
+          "t": {
+            "subject": "Lumen test rig",
+            "predicate": "duration",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "285",
+        "numeric": true,
+        "sources": [
+          "lumen-power",
+          "lumen-duration"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "Q2",
+      "category": "verified-calculation",
+      "question": "Use current=voltage/resistance. What current flows in Delta test circuit?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "v/r",
+          "target_unit": "A"
+        },
+        "bindings": {
+          "v": {
+            "subject": "Delta test circuit",
+            "predicate": "voltage",
+            "scope": "fixture",
+            "sense": "equipment"
+          },
+          "r": {
+            "subject": "Delta test circuit",
+            "predicate": "resistance",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "3",
+        "numeric": true,
+        "sources": [
+          "delta-voltage",
+          "delta-resistance"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "Q3",
+      "category": "units",
+      "question": "What is the single compatible Reference bar length in centimetres?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "x",
+          "target_unit": "cm"
+        },
+        "bindings": {
+          "x": {
+            "subject": "Reference bar",
+            "predicate": "length",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "100",
+        "numeric": true,
+        "sources": [
+          "rod-metric",
+          "rod-centimetre"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "Q4",
+      "category": "units",
+      "question": "Use volume=rate*time. What volume does Fluid rig deliver in litres?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "q*t",
+          "target_unit": "L"
+        },
+        "bindings": {
+          "q": {
+            "subject": "Fluid rig",
+            "predicate": "rate",
+            "scope": "fixture",
+            "sense": "equipment"
+          },
+          "t": {
+            "subject": "Fluid rig",
+            "predicate": "duration",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "60",
+        "numeric": true,
+        "sources": [
+          "fluid-rate",
+          "fluid-time"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "J1",
+      "category": "multi-document-join",
+      "question": "For spindle unit, follow uses then material. What density is reported for the terminal material?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "spindle unit",
+          "predicate": "density",
+          "scope": "fixture",
+          "sense": "equipment",
+          "path": [
+            "uses",
+            "material"
+          ]
+        }
+      },
+      "gold": {
+        "status": "inferred",
+        "value": "7.4",
+        "numeric": true,
+        "sources": [
+          "assembly",
+          "rotor",
+          "alloy"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "J2",
+      "category": "biological-join",
+      "question": "In the historical source, for a mature mammal red blood cell follow stores to its protein. What molecule does that protein bind?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "red blood cell",
+          "predicate": "binds",
+          "scope": "source-pilot",
+          "sense": "cell",
+          "path": [
+            "stores"
+          ],
+          "conditions": {
+            "organism": "mammal",
+            "maturity": "mature"
+          }
+        }
+      },
+      "gold": {
+        "status": "inferred",
+        "value": "oxygen",
+        "numeric": false,
+        "sources": [
+          "red-cells"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "J3",
+      "category": "biological-join",
+      "question": "In the historical source, follow insulin made by, then locate those cells. What organ is reported?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "insulin",
+          "predicate": "located in",
+          "scope": "source-pilot",
+          "sense": "hormone",
+          "path": [
+            "made by"
+          ]
+        }
+      },
+      "gold": {
+        "status": "inferred",
+        "value": "pancreas gland",
+        "numeric": false,
+        "sources": [
+          "insulin"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "J4",
+      "category": "multi-document-join",
+      "question": "For Silver drive follow uses then material. What density is reported at the terminal node?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Silver drive",
+          "predicate": "density",
+          "scope": "fixture",
+          "sense": "equipment",
+          "path": [
+            "uses",
+            "material"
+          ]
+        }
+      },
+      "gold": {
+        "status": "inferred",
+        "value": "7.4",
+        "numeric": true,
+        "sources": [
+          "assembly",
+          "rotor",
+          "alloy"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "X1",
+      "category": "contradiction",
+      "question": "What power is established for Motor R at load A? If comparable sources disagree, return disputed.",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Motor R",
+          "predicate": "power",
+          "scope": "fixture",
+          "sense": "equipment",
+          "conditions": {
+            "load": "A"
+          }
+        }
+      },
+      "gold": {
+        "status": "disputed",
+        "value": "disputed",
+        "numeric": false,
+        "sources": [
+          "rated-a",
+          "rated-b"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "X2",
+      "category": "contradiction",
+      "question": "Compute x*2 from Motor R power at load A only if evidence agrees.",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "x*2",
+          "target_unit": "W"
+        },
+        "bindings": {
+          "x": {
+            "subject": "Motor R",
+            "predicate": "power",
+            "scope": "fixture",
+            "sense": "equipment",
+            "conditions": {
+              "load": "A"
+            }
+          }
+        }
+      },
+      "gold": {
+        "status": "disputed",
+        "value": "disputed",
+        "numeric": false,
+        "sources": [
+          "rated-a",
+          "rated-b"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "X3",
+      "category": "negation-conflict",
+      "question": "Can latex content of Seal T be established without choosing a conflicting source?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Seal T",
+          "predicate": "contains",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "disputed",
+        "value": "disputed",
+        "numeric": false,
+        "sources": [
+          "seal-positive",
+          "seal-negative"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "X4",
+      "category": "missing-condition",
+      "question": "Can Motor R power be established with no load case specified?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Motor R",
+          "predicate": "power",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "C1",
+      "category": "condition",
+      "question": "What reading applies to Gauge N when wet?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Gauge N",
+          "predicate": "reading",
+          "scope": "fixture",
+          "sense": "equipment",
+          "conditions": {
+            "surface": "wet"
+          }
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "8",
+        "numeric": true,
+        "sources": [
+          "wet"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "C2",
+      "category": "condition",
+      "question": "What reading applies to Gauge N when dry?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Gauge N",
+          "predicate": "reading",
+          "scope": "fixture",
+          "sense": "equipment",
+          "conditions": {
+            "surface": "dry"
+          }
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "3",
+        "numeric": true,
+        "sources": [
+          "dry"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "C3",
+      "category": "biological-context",
+      "question": "According to the historical source, does a mature mammal RBC have a nucleus?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "RBC",
+          "predicate": "has",
+          "scope": "source-pilot",
+          "sense": "cell",
+          "conditions": {
+            "organism": "mammal",
+            "maturity": "mature"
+          }
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "not nucleus",
+        "numeric": false,
+        "sources": [
+          "red-cells"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "C4",
+      "category": "biological-context",
+      "question": "According to the historical source, does a mature bird-or-fish RBC have a nucleus?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "RBC",
+          "predicate": "has",
+          "scope": "source-pilot",
+          "sense": "cell",
+          "conditions": {
+            "organism": "bird-or-fish",
+            "maturity": "mature"
+          }
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "nucleus",
+        "numeric": false,
+        "sources": [
+          "red-cells"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "T1",
+      "category": "temporal",
+      "question": "What Valve V limit applies on 2020-06-15?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Valve V",
+          "predicate": "limit",
+          "scope": "fixture",
+          "sense": "equipment",
+          "at": "2020-06-15"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "5",
+        "numeric": true,
+        "sources": [
+          "schedule-old"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "T2",
+      "category": "temporal",
+      "question": "What Valve V limit applies on 2021-06-15?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Valve V",
+          "predicate": "limit",
+          "scope": "fixture",
+          "sense": "equipment",
+          "at": "2021-06-15"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "7",
+        "numeric": true,
+        "sources": [
+          "schedule-new"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "T3",
+      "category": "temporal-missing",
+      "question": "What Valve V limit is established without specifying any date?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Valve V",
+          "predicate": "limit",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "T4",
+      "category": "temporal-outside",
+      "question": "What Valve V limit is established for 2023-01-01?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Valve V",
+          "predicate": "limit",
+          "scope": "fixture",
+          "sense": "equipment",
+          "at": "2023-01-01"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "N1",
+      "category": "natural-medicine-negative",
+      "question": "Can the selected sources establish a current curative herbal regimen for type 1 diabetes? Return insufficient when not established.",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "herbal regimen",
+          "predicate": "current curative efficacy",
+          "scope": "source-pilot",
+          "sense": "natural medicine"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": false
+    },
+    {
+      "id": "N2",
+      "category": "current-medicine-negative",
+      "question": "Can the historical 2004 source alone establish a current insulin dose for a patient?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "insulin",
+          "predicate": "current individual dose",
+          "scope": "source-pilot",
+          "sense": "hormone"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "N3",
+      "category": "unknown-entity",
+      "question": "What strength is established for an unmentioned polymer Unknown Q?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Unknown Q",
+          "predicate": "strength",
+          "scope": "source-pilot",
+          "sense": "materials"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "N4",
+      "category": "no-causal-transitivity",
+      "question": "Is a direct Silver drive causes Alloy Z assertion established by the uses/material associations?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Silver drive",
+          "predicate": "causes",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "M1",
+      "category": "continuation",
+      "question": "Resume the evidence-grounded Lumen energy investigation after its first checkpoint. What energy follows from the supplied premises?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "p*t",
+          "target_unit": "J"
+        },
+        "bindings": {
+          "p": {
+            "subject": "Lumen test rig",
+            "predicate": "power",
+            "scope": "fixture",
+            "sense": "equipment"
+          },
+          "t": {
+            "subject": "Lumen test rig",
+            "predicate": "duration",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "285",
+        "numeric": true,
+        "sources": [
+          "lumen-power",
+          "lumen-duration"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": true,
+      "continuation": true
+    },
+    {
+      "id": "M2",
+      "category": "continuation",
+      "question": "Resume and finish Delta current computation after its evidence checkpoint.",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "v/r",
+          "target_unit": "A"
+        },
+        "bindings": {
+          "v": {
+            "subject": "Delta test circuit",
+            "predicate": "voltage",
+            "scope": "fixture",
+            "sense": "equipment"
+          },
+          "r": {
+            "subject": "Delta test circuit",
+            "predicate": "resistance",
+            "scope": "fixture",
+            "sense": "equipment"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "3",
+        "numeric": true,
+        "sources": [
+          "delta-voltage",
+          "delta-resistance"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": true
+    },
+    {
+      "id": "M3",
+      "category": "continuation",
+      "question": "Resume qualified evidence lookup for Gauge N when dry.",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Gauge N",
+          "predicate": "reading",
+          "scope": "fixture",
+          "sense": "equipment",
+          "conditions": {
+            "surface": "dry"
+          }
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "3",
+        "numeric": true,
+        "sources": [
+          "dry"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": true
+    },
+    {
+      "id": "M4",
+      "category": "continuation",
+      "question": "Resume Motor R lookup at load A without resolving its source disagreement.",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Motor R",
+          "predicate": "power",
+          "scope": "fixture",
+          "sense": "equipment",
+          "conditions": {
+            "load": "A"
+          }
+        }
+      },
+      "gold": {
+        "status": "disputed",
+        "value": "disputed",
+        "numeric": false,
+        "sources": [
+          "rated-a",
+          "rated-b"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": true
+    },
+    {
+      "id": "S1",
+      "category": "sense",
+      "question": "What class does Cell Q have in the electrical catalogue?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Cell Q",
+          "predicate": "class",
+          "scope": "fixture",
+          "sense": "electrical"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "battery",
+        "numeric": false,
+        "sources": [
+          "cell-electrical"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "S2",
+      "category": "sense",
+      "question": "What class does Cell Q have in the biological catalogue?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Cell Q",
+          "predicate": "class",
+          "scope": "fixture",
+          "sense": "biology"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "culture",
+        "numeric": false,
+        "sources": [
+          "cell-biology"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "S3",
+      "category": "pending-negative",
+      "question": "What reviewed power can be established for Predicted unit?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Predicted unit",
+          "predicate": "power",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": [],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    },
+    {
+      "id": "S4",
+      "category": "hypothesis",
+      "question": "What is the epistemic status and proposed power of Hypothetical unit?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Hypothetical unit",
+          "predicate": "power",
+          "scope": "fixture",
+          "sense": "equipment"
+        }
+      },
+      "gold": {
+        "status": "hypothetical",
+        "value": "88",
+        "numeric": true,
+        "sources": [
+          "hypothesis"
+        ],
+        "scope": "Correct result for the supplied source assertions/fictional premises; not proof of source truth."
+      },
+      "live": false,
+      "continuation": false
+    }
+  ],
+  "scoring": "External expected status, numeric Decimal equality/text labels, required original source spans and provenance. Model is not a judge. Retrieval alone is not a correct inferred/calculated answer. Gold values never supplied to generation."
+}

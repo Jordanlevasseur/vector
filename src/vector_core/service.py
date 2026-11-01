@@ -30,6 +30,21 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('semantic_'):
+            from vector_core.semantic import Semantics,evidence
+            semantics=Semantics(memory)
+            if operation=='semantic_qualify':return semantics.qualify(p['claim_id'],p['spec'],approved=p.get('approved',False),revision=p.get('revision'))
+            if operation=='semantic_get':return semantics.get(p['claim_id'])
+            if operation=='semantic_catalog':return semantics.catalog(after=p.get('after',0),limit=p.get('limit',256))
+            if operation=='semantic_evidence':return evidence(memory,p['question'],selector=p.get('selector'),project_id=self.session['project_id'],project_only=p.get('project_only',False),investigation_id=p.get('investigation_id'))
+            if operation=='semantic_reason':
+                from vector_core.investigation import Investigations,Budget
+                inv=Investigations(memory,self.adapter,self.generation)
+                state=inv.create(p['question'],semantic_request=p['request'],project_id=self.session['project_id'],approved=p.get('approved',False))
+                execution=inv.run(state['id'],budget=Budget(2,0,p.get('seconds',30)),approved=p.get('approved',False))
+                results,_=inv._results(state['id'])
+                return {'investigation_id':state['id'],'execution':execution,'result':results.get('grounded'),'experimental':True}
+            raise ValueError('Unknown semantic operation.')
         if operation.startswith('science_'):
             from vector_core.science import ScientificLibrary
             library=ScientificLibrary(memory)
@@ -40,7 +55,7 @@ class Application:
         if operation.startswith('investigation_'):
             from vector_core.investigation import Investigations,Budget
             investigations=Investigations(memory,self.adapter,self.generation)
-            if operation=='investigation_create':return investigations.create(p['goal'],p.get('steps'),calculation=p.get('calculation'),explore=p.get('explore',False),project_id=self.session['project_id'],approved=p.get('approved',False))
+            if operation=='investigation_create':return investigations.create(p['goal'],p.get('steps'),calculation=p.get('calculation'),explore=p.get('explore',False),project_id=self.session['project_id'],approved=p.get('approved',False),semantic_request=p.get('semantic_request'))
             if operation=='investigation_get':return investigations.get(p['id'])
             if operation=='investigation_history':return investigations.history(p['id'],p.get('after',0),p.get('limit',50))
             if operation=='investigation_control':return investigations.control(p['id'],p['action'],p['revision'],steps=p.get('steps'),goal=p.get('goal'),approved=p.get('approved',False))
@@ -82,7 +97,7 @@ class Application:
         if operation=='ask':
             self.prepare_inference()
             return ask(memory,p['question'],adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,
-                       conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'))
+                       conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'),semantic=p.get('semantic',False),semantic_selector=p.get('selector'),investigation_id=p.get('investigation_id'))
         if operation=='search':
             from vector_core.retrieval import search
             return search(memory,p['query'],limit=20)

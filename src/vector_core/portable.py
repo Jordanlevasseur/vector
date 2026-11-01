@@ -79,6 +79,15 @@ def validate_database(db,data_root=None,deadline=None):
             if contract=='models':validate_model(db,decoded)
             from vector_core.projects import validate_record
             validate_record(db,contract,record_key,decoded)
+            if contract=='semantic_claims':
+                if data_root is None:raise ValueError('Original root needed for semantic claim verification.')
+                from types import SimpleNamespace
+                from vector_core.memory import Memory
+                from vector_core.knowledge import Knowledge
+                reader=Memory.__new__(Memory);reader.db=db;reader.config=SimpleNamespace(data_dir=data_root)
+                previous_factory=db.row_factory;db.row_factory=sqlite3.Row
+                try:Knowledge(reader).claim(decoded['claim_id'])
+                finally:db.row_factory=previous_factory
             if contract=='linguistic_records':
                 if data_root is None:raise ValueError('Original root needed for linguistic attestation verification.')
                 from types import SimpleNamespace
@@ -96,6 +105,11 @@ def validate_database(db,data_root=None,deadline=None):
                 for citation in citations:
                     if deadline is not None and time.monotonic()>deadline:raise TimeoutError('Investigation citation verification deadline reached.')
                     if reader.read_text_span(citation['event_id'],citation['start'],citation['end'])!=citation['quote']:raise ValueError('Investigation quote differs from original.')
+                if decoded['result'].get('kind') in {'grounded-lookup','grounded-calculation'}:
+                    from vector_core.semantic import validate_result
+                    previous_factory=db.row_factory;db.row_factory=sqlite3.Row
+                    try:validate_result(reader,decoded['result'])
+                    finally:db.row_factory=previous_factory
             if contract=='preferences':
                 from vector_core.persistence import validate_preference
                 validate_preference(record_key,decoded)

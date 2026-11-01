@@ -38,7 +38,7 @@ def validate_answer(memory,text,context):
     return answer
 
 
-def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_id=None,scope=None,cancellation=None,max_attempts=2):
+def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_id=None,scope=None,cancellation=None,max_attempts=2,semantic=False,semantic_selector=None,investigation_id=None):
     config=(config or GenerationConfig()).validate();adapter=adapter or UnavailableAdapter()
     if type(max_attempts) is not int or not 1<=max_attempts<=3:raise ValueError('Reasoning attempts must be 1–3.')
     for identity in (conversation_id,project_id):
@@ -52,7 +52,10 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
              'context':None,'outcome':{'status':'pending','answer':None,'generation':None,'errors':[]},'trace':trace,'plan':task_plan}
     put(memory,'conversations',key,pending)  # Durable user input precedes retrieval and model execution.
     budget=config.prompt_bytes-len(INSTRUCTIONS.encode())-200
-    try:built=build_context(memory,question,budget_bytes=budget,scope=scope,project_id=project_id,conversation_id=conversation_id)
+    # Evidence-only display has no neural context window. Keep full qualified
+    # bundles visible; an unavailable adapter cannot later dispatch this prompt.
+    if semantic and isinstance(adapter,UnavailableAdapter):budget=max(8192,budget)
+    try:built=build_context(memory,question,budget_bytes=budget,scope=scope,project_id=project_id,conversation_id=conversation_id,semantic=semantic,semantic_selector=semantic_selector,investigation_id=investigation_id)
     except Exception as error:
         pending['outcome'].update(status='failed',errors=[str(error)[:1000]])
         put(memory,'conversations',key,pending)

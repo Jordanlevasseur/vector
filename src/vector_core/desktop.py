@@ -113,6 +113,8 @@ class Desktop:
         ttk.Button(line,text='Ask VECTOR',command=self.send_chat).pack(side='left',padx=6)
         ttk.Button(line,text='New conversation',command=lambda:self.call('new_conversation',{},lambda r:self.reset_history('New conversation.'))).pack(side='left')
         ttk.Button(self.tabs['Assistant'],text='Load saved conversation',command=self.load_history).pack(anchor='w')
+        self.semantic_enabled=tk.BooleanVar(value=False)
+        ttk.Checkbutton(self.tabs['Assistant'],text='Connected evidence (experimental)',variable=self.semantic_enabled).pack(anchor='w')
         ttk.Button(self.tabs['Assistant'],text='Find / resume older conversations',command=self.conversations).pack(anchor='w')
         tab=self.tabs['Knowledge'];bar=ttk.Frame(tab);bar.pack(fill='x')
         self.search=ttk.Entry(bar);self.search.pack(side='left',fill='x',expand=True);self.search.bind('<Return>',lambda event:self.search_sources())
@@ -191,7 +193,7 @@ class Desktop:
         if not question.strip():return
         if self.client.pending:
             self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
-        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question},self.answer)
+        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get()},self.answer)
     def answer(self,record):
         for notice in (record.get('context') or {}).get('display_notices',[]):self.show_chat(notice['notice'])
         outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['status'])
@@ -209,6 +211,11 @@ class Desktop:
         for claim in record['context']['context']['claims']:
             if claim['override']:self.show_chat('Scoped user assumption: '+claim['subject']+' '+claim['predicate']+' '+claim['operating_conclusion']+' ['+claim['scope']+']; source says '+claim['value'])
         for conflict in record['context']['context']['conflicts']:self.show_chat('Conflicting sources: '+conflict['subject']+' / '+conflict['predicate'])
+        connected=record['context']['context'].get('semantic')
+        if connected:
+            self.show_chat('Connected evidence contains source interpretations; relationships alone do not establish a conclusion.')
+            for conflict in connected['conflicts']:self.show_chat('Disputed evidence: '+conflict['subject']+' / '+conflict['predicate'])
+            for note in connected['qualifications']:self.show_chat('Evidence qualification: '+note)
     def reset_history(self,message):
         self.history_cursor=0;self.show_chat(message)
     def source_link(self,identity):

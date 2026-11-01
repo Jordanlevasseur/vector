@@ -87,3 +87,13 @@ The shared service/CLI exposes ordinary approved lifecycle control. Versioned
 registered investigation records participate in existing portable validation,
 without a schema migration or alternate memory engine. See INVESTIGATION_SPEC.md
 and STAGE6A_RESEARCH.md for mechanisms, limits and qualification boundaries.
+
+## Stage 6B qualified source reasoning (experimental)
+`semantic` qualifies existing source-linked claims through registered versioned
+records, preserving explicit senses, conditions, dates, polarity and epistemic
+status. Context/Ask can opt into connected evidence; existing investigations bind
+reviewed source quantities to Decimal/SI tools and retain independently replayable
+results. The existing service, CLI and desktop opt-in expose these capabilities.
+No additional graph database, memory engine, controller, embedding model or SQL
+migration is introduced. Runtime defaults remain unchanged. See SEMANTIC_SPEC.md
+for interfaces, trust boundaries, bounded operation semantics and evaluation limits.

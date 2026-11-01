@@ -144,3 +144,9 @@ The first Lenovo pilot preserves 22 publication files / volume editions from
 approximately 14 title families; 21 have searchable text and one remains
 original-only pending accepted OCR. This is source indexing, not neural training
 or demonstrated scientific understanding. No model/default configuration changed.
+
+Experimental Stage 6B connected evidence is documented in
+[SEMANTIC_SPEC.md](SEMANTIC_SPEC.md). It is opt-in (`ask --semantic` or the desktop
+checkbox); ordinary retrieval and the selected model remain unchanged. Reviewed
+source relationships and independently computed results are not empirical truth
+or a claim of general semantic intelligence.
