@@ -146,7 +146,7 @@ try:
  memory=Memory(Config.load(data_dir=str(work/'data')));mapping=load_fixture(memory,corpus)
  # Rotate order by case to avoid always favoring a warmer/cooler mode.
  for index,case in enumerate(c for c in corpus['cases'] if c['live']):
-  if a.case and c['id']!=a.case:continue
+  if a.case and case['id']!=a.case:continue
   modes=[a.mode] if a.mode else ['A','B','C'];modes=modes[index%len(modes):]+modes[:index%len(modes)]
   for mode in modes:
    if cancel.cancelled:break
