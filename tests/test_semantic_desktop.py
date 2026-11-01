@@ -23,6 +23,10 @@ with tempfile.TemporaryDirectory() as directory:
  app.call('semantic_qualify',{'claim_id':claim['id'],'approved':True,'spec':{'sense':'equipment','status':'reviewed','epistemic':'source-assertion','polarity':'affirmed','reason':'Explicit fictional GUI acceptance fixture.'}});wait()
  app.semantic_enabled.set(True);app.question.insert(0,'Gauge N');app.send_chat();wait()
  record=app.last_response['result'];assert record['outcome']['status']=='evidence-only',record;assert record['context']['context']['semantic']['assertions'],record;assert not errors,errors
+ app.call('semantic_answer',{'question':'Reading and missing mass','requests':[{'kind':'lookup','selector':{'subject':'Gauge N','sense':'equipment','predicate':'reading','scope':'fixture'}},{'kind':'lookup','selector':{'subject':'Gauge N','sense':'equipment','predicate':'mass','scope':'fixture'}}],'approved':True});wait()
+ checked=app.last_response['result'];assert checked['answer']['summary']['partial'],checked
+ app.checked_answer({'answer':checked['answer'],'notices':[]});assert 'Source reports:' in app.chat.get('1.0','end');assert 'Unknown or not completed' in app.chat.get('1.0','end')
+ app.checked_results();wait();assert app.last_response['result']['items'];assert not errors,errors
  app.close();print(json.dumps({'passed':True,'default_disabled':True,'actual_connected_context':True}))
 '''
   env={**os.environ,'PYTHONPATH':str(Path(__file__).resolve().parents[1]/'src'),'PYTHONDONTWRITEBYTECODE':'1'}

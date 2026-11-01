@@ -152,3 +152,34 @@ source relationships and independently computed results are not empirical truth
 or a claim of general semantic intelligence.
 
 Stage6B measurements and limits: [report](STAGE6B_REPORT.md) and [architecture audit](STAGE6B_AUDIT.md). The experimental path remains default-off.
+
+### Checked cognitive answers (Stage6C, explicit operation)
+
+`semantic answer` composes a direct, source-linked answer from an explicit source
+request without loading a model. For example, substitute an actually reviewed
+subject/sense/scope in this request; missing evidence is reported as unknown:
+
+```sh
+vector semantic answer '{"question":"What mass is recorded?","request":{"kind":"lookup","selector":{"subject":"Example device","sense":"equipment","predicate":"mass","scope":"my-project"}},"approved":true}' --text
+vector investigation list '{}'
+vector investigation answer '{"id":"INVESTIGATION_ID"}' --text
+```
+
+The JSON output (omit `--text`) retains immutable finding/state references,
+complete source provenance and machine-readable statuses. `requests` accepts a
+bounded list for partial/multipart answers. Existing trusted investigation plans
+can add `compose` depending on their source/calculation/proposal steps; earlier
+failed/pending observations remain unknown, never successful work.
+
+The Assistant tab's **Checked investigation results (no model required)** button
+browses saved investigations and displays checked/partial results with original
+source links. Normal chat and the default model selection are unchanged. The
+explicit service `semantic_answer` operation may request `explain=true` only with
+a qualified existing local adapter; an invalid/oversize/timed-out optional model
+contribution leaves the checked answer intact. Commentary remains unverified and
+cannot replace calculations, disagreements or citations. No inference loop or
+model-issued action is introduced.
+
+See `STAGE6C_AUDIT.md` for the twelve original failures and `STAGE6C_REPORT.md` for
+measured results and limitations. These results are not a release qualification
+or proof of novel general reasoning.

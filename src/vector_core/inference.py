@@ -23,6 +23,14 @@ CLAIM_SCHEMA={'type':'object','properties':{'drafts':{'type':'array','maxItems':
     'required':['event_id','start','end','subject','predicate','value','scope','unit','kind','exclusive'],
     'additionalProperties':False}}},'required':['drafts'],'additionalProperties':False}
 
+FINDING_NOTES_SCHEMA={'type':'object','properties':{
+    'order':{'type':'array','minItems':1,'maxItems':32,'items':{'type':'string'}},
+    'notes':{'type':'array','maxItems':4,'items':{'type':'object','properties':{
+        'kind':{'type':'string','enum':['hypothesis','interpretation']},'text':{'type':'string'},
+        'evidence':{'type':'array','maxItems':8,'items':{'type':'string'}}},
+        'required':['kind','text','evidence'],'additionalProperties':False}}},
+    'required':['order','notes'],'additionalProperties':False}
+
 class InferenceError(RuntimeError):pass
 
 @dataclass(frozen=True)

@@ -53,8 +53,8 @@ def main(argv=None):
     action=commands.add_parser('register-contract');action.add_argument('name');action.add_argument('description')
     action=commands.add_parser('state-put');action.add_argument('contract');action.add_argument('key');action.add_argument('json_file')
     action=commands.add_parser('state-list');action.add_argument('contract');action.add_argument('--after',type=int,default=0);action.add_argument('--limit',type=int,default=100)
-    inv=commands.add_parser('investigation');inv.add_argument('action',choices=['create','get','history','control','run']);inv.add_argument('parameters',help='JSON trusted-user parameters; model text is never dispatched')
-    sem=commands.add_parser('semantic');sem.add_argument('action',choices=['qualify','get','catalog','evidence','reason']);sem.add_argument('parameters',help='Explicit trusted-user JSON; reviewed interpretations never become facts')
+    inv=commands.add_parser('investigation');inv.add_argument('action',choices=['create','get','history','control','run','list','answer']);inv.add_argument('--text',action='store_true',help='Print checked answer text for answer action');inv.add_argument('parameters',help='JSON trusted-user parameters; model text is never dispatched')
+    sem=commands.add_parser('semantic');sem.add_argument('action',choices=['qualify','get','catalog','evidence','reason','answer']);sem.add_argument('--text',action='store_true',help='Print checked answer text for answer action');sem.add_argument('parameters',help='Explicit trusted-user JSON; reviewed interpretations never become facts')
     inv.add_argument('--models-directory');inv.add_argument('--managed',action='store_true');inv.add_argument('--model');inv.add_argument('--context',type=int,default=4096);inv.add_argument('--output-tokens',type=int,default=512);inv.add_argument('--timeout',type=float,default=120)
     for name in ('ask','models'):
         action=commands.add_parser(name);action.add_argument('--models-directory');action.add_argument('--managed',action='store_true')
@@ -179,7 +179,14 @@ def main(argv=None):
             elif command=='export':
                 memory.export_original(args.event_id,args.output)
                 result={'exported':str(Path(args.output).absolute()),'event_id':args.event_id}
-            print(json.dumps(result,indent=2,ensure_ascii=False))
+            if command in ('semantic','investigation') and args.text:
+                if args.action!='answer' or not result.get('answer'):raise ValueError('Text output requires a completed checked answer.')
+                print(result['answer']['text'])
+                for notice in result.get('notices',[]):print(notice)
+                if result.get('commentary'):
+                    print('Optional model commentary (unverified; not merged into checked findings):')
+                    for note in result['commentary']['notes']:print(note['kind']+': '+note['text'])
+            else:print(json.dumps(result,indent=2,ensure_ascii=False))
             return 1 if isinstance(result,dict) and result.get('passed') is False else 0
     except (ValueError,OSError,RuntimeError,KeyError,sqlite3.Error) as error:
         print('VECTOR operation blocked: '+str(error),file=sys.stderr)

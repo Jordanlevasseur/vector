@@ -1,0 +1,842 @@
+{
+  "format": "vector-stage6c-unseen-v1",
+  "jurisdiction": "US",
+  "sources": [
+    {
+      "key": "power",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Heater U power 17 W. No empirical assertion.",
+      "name": "Unseen fictional fixture power",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "duration",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Heater U duration 23 s. No empirical assertion.",
+      "name": "Unseen fictional fixture duration",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "force",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Press U force 84 N. No empirical assertion.",
+      "name": "Unseen fictional fixture force",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "area",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Press U area 12 cm^2. No empirical assertion.",
+      "name": "Unseen fictional fixture area",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "join1",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Frame U uses Hub U . No empirical assertion.",
+      "name": "Unseen fictional fixture join1",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "join2",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Hub U made of Ceramic U . No empirical assertion.",
+      "name": "Unseen fictional fixture join2",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "terminal",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Ceramic U density 2.7 g/cm^3. No empirical assertion.",
+      "name": "Unseen fictional fixture terminal",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "dispute1",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Gauge U reading 31 Pa. No empirical assertion.",
+      "name": "Unseen fictional fixture dispute1",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "dispute2",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Gauge U reading 43 Pa. No empirical assertion.",
+      "name": "Unseen fictional fixture dispute2",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "negation",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Seal U contains latex . No empirical assertion.",
+      "name": "Unseen fictional fixture negation",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "condition",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Panel U conductivity high . No empirical assertion.",
+      "name": "Unseen fictional fixture condition",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "hypothesis",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Idea U power 29 W. No empirical assertion.",
+      "name": "Unseen fictional fixture hypothesis",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "owner",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Belief U power 37 W. No empirical assertion.",
+      "name": "Unseen fictional fixture owner",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "sense",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Current U unit ampere . No empirical assertion.",
+      "name": "Unseen fictional fixture sense",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    },
+    {
+      "key": "conversion",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL TEST PREMISE ONLY. Bar U length 2.54 cm. No empirical assertion.",
+      "name": "Unseen fictional fixture conversion",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Synthetic premises, not empirical truth"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "key": "power",
+      "source": "power",
+      "draft": {
+        "start": 0,
+        "end": 84,
+        "subject": "Heater U",
+        "predicate": "power",
+        "value": "17",
+        "scope": "unseen",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "duration",
+      "source": "duration",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Heater U",
+        "predicate": "duration",
+        "value": "23",
+        "scope": "unseen",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "force",
+      "source": "force",
+      "draft": {
+        "start": 0,
+        "end": 83,
+        "subject": "Press U",
+        "predicate": "force",
+        "value": "84",
+        "scope": "unseen",
+        "unit": "N",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "area",
+      "source": "area",
+      "draft": {
+        "start": 0,
+        "end": 85,
+        "subject": "Press U",
+        "predicate": "area",
+        "value": "12",
+        "scope": "unseen",
+        "unit": "cm^2",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "join1",
+      "source": "join1",
+      "draft": {
+        "start": 0,
+        "end": 84,
+        "subject": "Frame U",
+        "predicate": "uses",
+        "value": "Hub U",
+        "scope": "unseen",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise.",
+        "object_sense": "equipment"
+      }
+    },
+    {
+      "key": "join2",
+      "source": "join2",
+      "draft": {
+        "start": 0,
+        "end": 89,
+        "subject": "Hub U",
+        "predicate": "made of",
+        "value": "Ceramic U",
+        "scope": "unseen",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise.",
+        "object_sense": "materials"
+      }
+    },
+    {
+      "key": "terminal",
+      "source": "terminal",
+      "draft": {
+        "start": 0,
+        "end": 93,
+        "subject": "Ceramic U",
+        "predicate": "density",
+        "value": "2.7",
+        "scope": "unseen",
+        "unit": "g/cm^3",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "materials",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "dispute1",
+      "source": "dispute1",
+      "draft": {
+        "start": 0,
+        "end": 86,
+        "subject": "Gauge U",
+        "predicate": "reading",
+        "value": "31",
+        "scope": "unseen",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "dispute2",
+      "source": "dispute2",
+      "draft": {
+        "start": 0,
+        "end": 86,
+        "subject": "Gauge U",
+        "predicate": "reading",
+        "value": "43",
+        "scope": "unseen",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "negation",
+      "source": "negation",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Seal U",
+        "predicate": "contains",
+        "value": "latex",
+        "scope": "unseen",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "negated",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "condition",
+      "source": "condition",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Panel U",
+        "predicate": "conductivity",
+        "value": "high",
+        "scope": "unseen",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise.",
+        "conditions": {
+          "surface": "wet"
+        },
+        "valid_from": "2023-01-01",
+        "valid_until": "2023-12-31"
+      }
+    },
+    {
+      "key": "hypothesis",
+      "source": "hypothesis",
+      "draft": {
+        "start": 0,
+        "end": 82,
+        "subject": "Idea U",
+        "predicate": "power",
+        "value": "29",
+        "scope": "unseen",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "untested-hypothesis",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "owner",
+      "source": "owner",
+      "draft": {
+        "start": 0,
+        "end": 84,
+        "subject": "Belief U",
+        "predicate": "power",
+        "value": "37",
+        "scope": "unseen",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "owner-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "sense",
+      "source": "sense",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Current U",
+        "predicate": "unit",
+        "value": "ampere",
+        "scope": "unseen",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "electricity",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    },
+    {
+      "key": "conversion",
+      "source": "conversion",
+      "draft": {
+        "start": 0,
+        "end": 85,
+        "subject": "Bar U",
+        "predicate": "length",
+        "value": "2.54",
+        "scope": "unseen",
+        "unit": "cm",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independently specified fictional evaluation premise."
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "U1",
+      "category": "unseen",
+      "question": "Energy for Heater U over the stated duration?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "p*t",
+          "target_unit": "J"
+        },
+        "bindings": {
+          "p": {
+            "subject": "Heater U",
+            "predicate": "power",
+            "sense": "equipment",
+            "scope": "unseen"
+          },
+          "t": {
+            "subject": "Heater U",
+            "predicate": "duration",
+            "sense": "equipment",
+            "scope": "unseen"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "391",
+        "numeric": true,
+        "sources": [
+          "power",
+          "duration"
+        ],
+        "unit": "J"
+      },
+      "live": true
+    },
+    {
+      "id": "U2",
+      "category": "unseen",
+      "question": "Pressure of Press U in Pa?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "f/a",
+          "target_unit": "Pa"
+        },
+        "bindings": {
+          "f": {
+            "subject": "Press U",
+            "predicate": "force",
+            "sense": "equipment",
+            "scope": "unseen"
+          },
+          "a": {
+            "subject": "Press U",
+            "predicate": "area",
+            "sense": "equipment",
+            "scope": "unseen"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "70000",
+        "numeric": true,
+        "sources": [
+          "force",
+          "area"
+        ],
+        "unit": "Pa"
+      },
+      "live": false
+    },
+    {
+      "id": "U3",
+      "category": "unseen",
+      "question": "Density of material used by Frame U hub?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Frame U",
+          "predicate": "density",
+          "sense": "equipment",
+          "scope": "unseen",
+          "path": [
+            "uses",
+            "made of"
+          ]
+        }
+      },
+      "gold": {
+        "status": "inferred",
+        "value": "2.7",
+        "numeric": true,
+        "sources": [
+          "join1",
+          "join2",
+          "terminal"
+        ],
+        "unit": "g/cm^3"
+      },
+      "live": true
+    },
+    {
+      "id": "U4",
+      "category": "unseen",
+      "question": "What reading is established for Gauge U?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Gauge U",
+          "predicate": "reading",
+          "sense": "equipment",
+          "scope": "unseen"
+        }
+      },
+      "gold": {
+        "status": "disputed",
+        "value": "disputed",
+        "numeric": false,
+        "sources": [
+          "dispute1",
+          "dispute2"
+        ]
+      },
+      "live": true
+    },
+    {
+      "id": "U5",
+      "category": "unseen",
+      "question": "Does Seal U contain latex?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Seal U",
+          "predicate": "contains",
+          "sense": "equipment",
+          "scope": "unseen"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "not latex",
+        "numeric": false,
+        "sources": [
+          "negation"
+        ]
+      },
+      "live": false
+    },
+    {
+      "id": "U6",
+      "category": "unseen",
+      "question": "Panel U conductivity when wet during June2023?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Panel U",
+          "predicate": "conductivity",
+          "sense": "equipment",
+          "scope": "unseen",
+          "conditions": {
+            "surface": "wet"
+          },
+          "at": "2023-06-01"
+        }
+      },
+      "gold": {
+        "status": "source-supported",
+        "value": "high",
+        "numeric": false,
+        "sources": [
+          "condition"
+        ]
+      },
+      "live": false
+    },
+    {
+      "id": "U7",
+      "category": "unseen",
+      "question": "Panel U conductivity when dry?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Panel U",
+          "predicate": "conductivity",
+          "sense": "equipment",
+          "scope": "unseen",
+          "conditions": {
+            "surface": "dry"
+          },
+          "at": "2023-06-01"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": []
+      },
+      "live": false
+    },
+    {
+      "id": "U8",
+      "category": "unseen",
+      "question": "Current Panel U conductivity in2026?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Panel U",
+          "predicate": "conductivity",
+          "sense": "equipment",
+          "scope": "unseen",
+          "conditions": {
+            "surface": "wet"
+          },
+          "at": "2026-01-01"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": []
+      },
+      "live": false
+    },
+    {
+      "id": "U9",
+      "category": "unseen",
+      "question": "What proposed power and status apply to Idea U?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Idea U",
+          "predicate": "power",
+          "sense": "equipment",
+          "scope": "unseen"
+        }
+      },
+      "gold": {
+        "status": "hypothetical",
+        "value": "29",
+        "numeric": true,
+        "sources": [
+          "hypothesis"
+        ],
+        "unit": "W"
+      },
+      "live": false
+    },
+    {
+      "id": "U10",
+      "category": "unseen",
+      "question": "What does owner belief say for Belief U?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Belief U",
+          "predicate": "power",
+          "sense": "equipment",
+          "scope": "unseen"
+        }
+      },
+      "gold": {
+        "status": "owner-assertion",
+        "value": "37",
+        "numeric": true,
+        "sources": [
+          "owner"
+        ],
+        "unit": "W"
+      },
+      "live": false
+    },
+    {
+      "id": "U11",
+      "category": "unseen",
+      "question": "Current U clinical guideline?",
+      "request": {
+        "kind": "lookup",
+        "selector": {
+          "subject": "Current U",
+          "predicate": "guideline",
+          "sense": "clinical",
+          "scope": "unseen"
+        }
+      },
+      "gold": {
+        "status": "insufficient",
+        "value": "insufficient",
+        "numeric": false,
+        "sources": []
+      },
+      "live": true
+    },
+    {
+      "id": "U12",
+      "category": "unseen",
+      "question": "Length of Bar U in mm?",
+      "request": {
+        "kind": "calculate",
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "x",
+          "target_unit": "mm"
+        },
+        "bindings": {
+          "x": {
+            "subject": "Bar U",
+            "predicate": "length",
+            "sense": "equipment",
+            "scope": "unseen"
+          }
+        }
+      },
+      "gold": {
+        "status": "tool-verified",
+        "value": "25.4",
+        "numeric": true,
+        "sources": [
+          "conversion"
+        ],
+        "unit": "mm"
+      },
+      "live": false
+    }
+  ]
+}

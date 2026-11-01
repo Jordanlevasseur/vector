@@ -37,6 +37,19 @@ class Application:
             if operation=='semantic_get':return semantics.get(p['claim_id'])
             if operation=='semantic_catalog':return semantics.catalog(after=p.get('after',0),limit=p.get('limit',256))
             if operation=='semantic_evidence':return evidence(memory,p['question'],selector=p.get('selector'),project_id=self.session['project_id'],project_only=p.get('project_only',False),investigation_id=p.get('investigation_id'))
+            if operation=='semantic_answer':
+                from vector_core.investigation import Investigations,Budget
+                requests=p.get('requests',[p['request']] if 'request' in p else [])
+                if not isinstance(requests,list) or not 1<=len(requests)<=32:raise ValueError('Select 1–32 explicit source requests per answer operation.')
+                steps=[{'id':'finding-'+str(i+1),'strategy':'grounded','depends':[],'input':{'request':q}} for i,q in enumerate(requests)]
+                steps.append({'id':'answer','strategy':'compose','depends':[s['id'] for s in steps],'input':{}})
+                if p.get('explain') is True:steps.append({'id':'commentary','strategy':'explain','depends':['answer'],'input':{}})
+                inv=Investigations(memory,self.adapter,self.generation)
+                state=inv.create(p['question'],steps,project_id=self.session['project_id'],approved=p.get('approved',False))
+                if p.get('explain') is True:self.prepare_inference()
+                execution=inv.run(state['id'],budget=Budget(len(steps),1 if p.get('explain') is True else 0,p.get('seconds',30)),approved=p.get('approved',False))
+                results,_=inv._results(state['id'])
+                return {'investigation_id':state['id'],'execution':execution,'answer':results.get('answer'),'commentary':results.get('commentary'),'experimental':True}
             if operation=='semantic_reason':
                 from vector_core.investigation import Investigations,Budget
                 inv=Investigations(memory,self.adapter,self.generation)
@@ -55,6 +68,15 @@ class Application:
         if operation.startswith('investigation_'):
             from vector_core.investigation import Investigations,Budget
             investigations=Investigations(memory,self.adapter,self.generation)
+            if operation=='investigation_list':
+                after=p.get('after',0);limit=p.get('limit',30)
+                if type(after) is not int or after<0 or type(limit) is not int or not 1<=limit<=100:raise ValueError('Invalid investigation cursor/limit.')
+                rows=memory.db.execute("SELECT rowid,payload,id FROM persistent_records r WHERE contract='investigations' AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='investigations' AND record_key=r.record_key) ORDER BY rowid LIMIT ?",(after,limit)).fetchall()
+                return {'items':[{**json.loads(r['payload']),'revision':r['id']} for r in rows],'next_cursor':rows[-1]['rowid'] if rows else after}
+            if operation=='investigation_answer':
+                from vector_core.findings import compose,current_notices
+                answer=compose(memory,p['id'],p.get('steps'))
+                return {'answer':answer,'notices':current_notices(memory,answer)}
             if operation=='investigation_create':return investigations.create(p['goal'],p.get('steps'),calculation=p.get('calculation'),explore=p.get('explore',False),project_id=self.session['project_id'],approved=p.get('approved',False),semantic_request=p.get('semantic_request'))
             if operation=='investigation_get':return investigations.get(p['id'])
             if operation=='investigation_history':return investigations.history(p['id'],p.get('after',0),p.get('limit',50))

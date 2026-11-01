@@ -10,7 +10,9 @@ from vector_core.config import Config
 from vector_core.memory import Memory,canonical
 from vector_core.investigation import Investigations,Budget,INSTRUCTIONS,candidate
 from vector_core.context import build_context
-p=argparse.ArgumentParser();p.add_argument('--corpus',required=True);p.add_argument('--directory',required=True);p.add_argument('--models-directory',required=True);p.add_argument('--case');p.add_argument('--mode',choices=['A','B','C']);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--corpus',required=True);p.add_argument('--directory',required=True);p.add_argument('--models-directory',required=True);p.add_argument('--case');p.add_argument('--mode',choices=['A','B','C','D']);p.add_argument('--include-unseen',action='store_true');p.add_argument('--unseen-only',action='store_true');p.add_argument('--compare-checked',action='store_true');a=p.parse_args()
+if a.unseen_only and not a.include_unseen:p.error('--unseen-only requires --include-unseen')
+if a.compare_checked and a.mode:p.error('Choose --compare-checked or --mode, not both')
 work=Path(a.directory).absolute();work.mkdir(parents=True,mode=0o700)
 MODEL='qwen2.5-coder:0.5b';MEMORY=768*1048576
 STORE=Path(a.models_directory)
@@ -93,6 +95,18 @@ def run_cell(mode,case,mapping):
    prompt=INSTRUCTIONS+canonical({'goal':goal,'strategy':'generate','request':'','context':context,'prior':[],'feedback':''})
    row['prompt_bytes']=len(prompt.encode());result=adapter.generate(prompt,config,cancel);row['generation']=result
    checked=candidate(memory,result['text'],context);row['candidate']=checked;row['model_grade']=grade_model(memory,case,checked,mapping)
+  elif mode=='D':
+   from evaluate_stage6c import grade
+   steps=[{'id':'grounded','strategy':'grounded','depends':[],'input':{'request':case['request']}},
+          {'id':'answer','strategy':'compose','depends':['grounded'],'input':{}},
+          {'id':'commentary','strategy':'explain','depends':['answer'],'input':{}}]
+   inv=Investigations(memory,adapter,config);state=inv.create(case['question'],steps,approved=True)
+   execution=inv.run(state['id'],budget=Budget(3,1,360),cancellation=cancel,approved=True);results,feedback=inv._results(state['id'])
+   row.update(execution=execution,feedback=feedback,investigation_id=state['id']);row.pop('model_grade')
+   if 'answer' in results:row['checked_answer']=results['answer'];row['user_facing_grade']=grade(memory,case,results['answer'],mapping)
+   row['neural_protocol_grade']={'accepted':bool(results.get('commentary')),'entailment_verified':False,'role':'Optional unverified commentary/order only, not a model-generated answer score.'}
+   if 'commentary' in results:row['commentary']=results['commentary']
+   row['core_grade']=grade_core(memory,case,results['grounded'],mapping);row['grounded_result']=results['grounded']
   else:
    step={'id':'evidence','strategy':'retrieve','depends':[],'input':{'query':case['question'],'evidence_budget':3500,'semantic':mode=='C'}}
    if mode=='C' and case['request']['kind']=='lookup':step['input']['selector']=case['request']['selector']
@@ -120,12 +134,17 @@ def run_cell(mode,case,mapping):
   if not any(p['runner'] for p in latest.get('processes',[])) and time.monotonic()-tick-row['seconds']>=3:break
   time.sleep(.5)
  row['runner_unloaded']=not any(p['runner'] for p in latest.get('processes',[]));row['post_unload_sample']=latest
- persist();print('DONE',json.dumps({k:row.get(k) for k in ('mode','id','seconds','model_attempted','error','feedback','model_grade','core_grade','tokens_per_second','runner_unloaded')}),flush=True)
+ persist();print('DONE',json.dumps({k:row.get(k) for k in ('mode','id','seconds','model_attempted','error','feedback','model_grade','core_grade','user_facing_grade','neural_protocol_grade','tokens_per_second','runner_unloaded')}),flush=True)
  if not row['runner_unloaded']:cancel.cancel();raise RuntimeError('Runner did not unload within bounded recovery window.')
 
 memory=None
 try:
  corpus=read_corpus(a.corpus)
+ if a.include_unseen:
+  unseen=json.loads((Path(__file__).resolve().parents[1]/'tests/fixtures/stage6c-unseen.json').read_text())
+  for key in ('sources','claims','cases'):corpus[key].extend(unseen[key])
+  report['unseen_corpus_sha256']=__import__('hashlib').sha256((Path(__file__).resolve().parents[1]/'tests/fixtures/stage6c-unseen.json').read_bytes()).hexdigest()
+ report['methodology']['D']='Stage6C independent composition, then one optional model contribution. User-facing correctness and unverified neural protocol acceptance are scored separately; this is not a new neural reasoning score.'
  print('BASELINE 15 seconds',flush=True)
  with (work/'resources.ndjson').open('x') as log:
   until=time.monotonic()+15
@@ -147,7 +166,8 @@ try:
  # Rotate order by case to avoid always favoring a warmer/cooler mode.
  for index,case in enumerate(c for c in corpus['cases'] if c['live']):
   if a.case and case['id']!=a.case:continue
-  modes=[a.mode] if a.mode else ['A','B','C'];modes=modes[index%len(modes):]+modes[:index%len(modes)]
+  if a.unseen_only and not case['id'].startswith('U'):continue
+  modes=[a.mode] if a.mode else ['A','C','D'] if a.compare_checked else ['A','B','C'];modes=modes[index%len(modes):]+modes[:index%len(modes)]
   for mode in modes:
    if cancel.cancelled:break
    run_cell(mode,case,mapping)

@@ -55,3 +55,11 @@ class CliTests(unittest.TestCase):
             self.assertEqual(effective['evidence']['value'],'open')
             self.assertEqual(len(run('conflicts')),1)
             self.assertTrue(run('verify')['passed'])
+
+class CheckedOutputCliTests(unittest.TestCase):
+    def test_guarded_checked_answer_text_without_inference(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            request={'question':'Missing device reading','request':{'kind':'lookup','selector':{'subject':'Missing device','predicate':'reading','sense':'equipment','scope':'test'}},'approved':True}
+            result=subprocess.run([sys.executable,'-B','-m','vector_core.cli','--data-dir',str(Path(directory)/'data'),'semantic','answer',json.dumps(request),'--text'],text=True,capture_output=True,timeout=30)
+            self.assertEqual(result.returncode,0,result.stderr);self.assertIn('Unknown or not completed',result.stdout);self.assertNotIn('Source reports:',result.stdout)

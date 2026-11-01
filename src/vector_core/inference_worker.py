@@ -10,7 +10,7 @@ import socket
 import subprocess
 import sys
 import time
-from vector_core.inference import GenerationConfig,ANSWER_SCHEMA,CLAIM_SCHEMA
+from vector_core.inference import GenerationConfig,ANSWER_SCHEMA,CLAIM_SCHEMA,FINDING_NOTES_SCHEMA
 from vector_core.portable import unique
 
 MAX_FRAME=1024*1024
@@ -155,8 +155,8 @@ def main():
                     prompt=request['prompt']
                     if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise ValueError('Prompt byte budget exceeded.')
                     response_kind=request.get('response_kind')
-                    if response_kind not in (None,'answer-v1','claims-v1'):raise ValueError('Unknown structured response format.')
-                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA}.get(response_kind,'json'),'keep_alive':0,
+                    if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1'):raise ValueError('Unknown structured response format.')
+                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,'finding-notes-v1':FINDING_NOTES_SCHEMA}.get(response_kind,'json'),'keep_alive':0,
                         'options':{'num_ctx':config.context_tokens,'num_predict':config.output_tokens,'temperature':config.temperature,
                                    'seed':config.seed,'num_thread':2}},max(.05,config.timeout_seconds-1))
                     result['model_digest']=selected.get('digest','unknown')

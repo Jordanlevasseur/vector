@@ -110,6 +110,11 @@ def validate_database(db,data_root=None,deadline=None):
                     previous_factory=db.row_factory;db.row_factory=sqlite3.Row
                     try:validate_result(reader,decoded['result'])
                     finally:db.row_factory=previous_factory
+                if decoded['result'].get('kind')=='cognitive-answer':
+                    from vector_core.findings import validate_document
+                    previous_factory=db.row_factory;db.row_factory=sqlite3.Row
+                    try:validate_document(reader,decoded['result'])
+                    finally:db.row_factory=previous_factory
             if contract=='preferences':
                 from vector_core.persistence import validate_preference
                 validate_preference(record_key,decoded)

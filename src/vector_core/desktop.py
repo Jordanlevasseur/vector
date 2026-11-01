@@ -113,6 +113,7 @@ class Desktop:
         ttk.Button(line,text='Ask VECTOR',command=self.send_chat).pack(side='left',padx=6)
         ttk.Button(line,text='New conversation',command=lambda:self.call('new_conversation',{},lambda r:self.reset_history('New conversation.'))).pack(side='left')
         ttk.Button(self.tabs['Assistant'],text='Load saved conversation',command=self.load_history).pack(anchor='w')
+        ttk.Button(self.tabs['Assistant'],text='Checked investigation results (no model required)',command=self.checked_results).pack(anchor='w')
         self.semantic_enabled=tk.BooleanVar(value=False)
         ttk.Checkbutton(self.tabs['Assistant'],text='Connected evidence (experimental)',variable=self.semantic_enabled).pack(anchor='w')
         ttk.Button(self.tabs['Assistant'],text='Find / resume older conversations',command=self.conversations).pack(anchor='w')
@@ -410,6 +411,15 @@ class Desktop:
             indices=listing.curselection()
             if indices:inspect(state['rows'][indices[0]])
         self.ttk.Button(window,text='Next page / restart',command=load).pack(side='left');self.ttk.Button(window,text='Inspect / open selected',command=selected).pack(side='right');load()
+    def checked_results(self):
+        self.paged_records('Checked investigation results','investigation_list',lambda r:r['status']+' — '+r['goal'],lambda r:self.call('investigation_answer',{'id':r['id']},self.checked_answer))
+    def checked_answer(self,result):
+        self.show_chat('VECTOR — checked findings\n'+result['answer']['text'])
+        for notice in result.get('notices',[]):self.show_chat(notice)
+        if result.get('commentary'):
+            self.show_chat('Optional model commentary — unverified; checked findings above remain authoritative.')
+            for note in result['commentary']['notes']:self.show_chat(note['kind']+': '+note['text'])
+        for source in result['answer']['sources']:self.source_link(source['event_id'])
     def conversations(self):
         def resume(row):
             def resumed(result):

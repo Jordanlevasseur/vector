@@ -12,8 +12,8 @@ from vector_core.coordination import write_operation
 from vector_core.inference import GenerationConfig,UnavailableAdapter,InferenceError
 from vector_core.authority import DecisionAuthority
 
-STRATEGIES={'retrieve','calculate','generate','critique','synthesize','reconcile','verify','relate','select','constraints','grounded'}
-MODEL={'generate','critique','synthesize'}
+STRATEGIES={'retrieve','calculate','generate','critique','synthesize','reconcile','verify','relate','select','constraints','grounded','compose','explain'}
+MODEL={'generate','critique','synthesize','explain'}
 
 @dataclass(frozen=True)
 class Budget:
@@ -154,6 +154,22 @@ class Investigations:
         return current,valid
     def _execute(self,p,step,results,feedback,cancellation,end):
         strategy=step['strategy'];args=step['input']
+        if strategy=='compose':
+            from vector_core.findings import compose
+            return compose(self.memory,p['id'],step['depends'],question=p['goal'])
+        if strategy=='explain':
+            from vector_core.findings import handoff,contribution,HANDOFF_INSTRUCTIONS
+            if len(step['depends'])!=1:raise ValueError('Explanation requires one independently composed answer.')
+            document=results[step['depends'][0]]
+            package=handoff(self.memory,document,budget_bytes=self.config.prompt_bytes-len(HANDOFF_INSTRUCTIONS.encode()))
+            if not package['available']:raise ValueError(package['reason'])
+            prompt=HANDOFF_INSTRUCTIONS+canonical(package['packet'])
+            config=replace(self.config,timeout_seconds=min(self.config.timeout_seconds,max(.1,end-time.monotonic())))
+            generated=self.adapter.generate(prompt,config,cancellation,response_kind='finding-notes-v1')
+            try:checked=contribution(generated['text'],document)
+            except (ValueError,TypeError,KeyError) as error:
+                error.raw_generation=generated['text'];raise
+            return {**checked,'answer':document['origin'],'generation':generated,'simulated':generated['simulated']}
         if strategy=='grounded':
             from vector_core.semantic import reason,validate_result
             result=reason(self.memory,args['request']);validate_result(self.memory,result)

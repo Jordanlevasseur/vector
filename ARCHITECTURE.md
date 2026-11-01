@@ -97,3 +97,39 @@ results. The existing service, CLI and desktop opt-in expose these capabilities.
 No additional graph database, memory engine, controller, embedding model or SQL
 migration is introduced. Runtime defaults remain unchanged. See SEMANTIC_SPEC.md
 for interfaces, trust boundaries, bounded operation semantics and evaluation limits.
+
+## Stage6C: checked findings and optional evidence handoff
+
+`findings.py` provides typed views over existing immutable investigation event and
+state revisions. There is no second knowledge database, graph, inference service
+or schema migration. Source lookups replay pinned semantic interpretations;
+calculations replay Decimal/SI tools and their recorded request/dependencies.
+Completed outputs are matched against the original plan, not just a `verified`
+label. Findings distinguish source support, checked conditional computation,
+joined source inference, disputed/unknown results, owner assertions, hypotheses,
+and simulation. Source support is never empirical truth certification.
+
+Existing investigation strategies `compose` and `explain` add durable checked
+answer events and optional unverified commentary respectively. Composition builds
+semantic blocks from checked values/units, premises, joins and uncertainty, with
+visible source handles and complete original provenance. It works with inference
+disabled. The shared service exposes `semantic_answer`, `investigation_answer`
+and paginated `investigation_list`; CLI and desktop expose these records. New
+source selection remains explicit trusted-user data, not model-selected actions.
+The ordinary chat/default model/experimental connected-evidence toggle is unchanged.
+
+An optional model receives short local handles plus complete dependency facts,
+conditions, temporal scope, polarity and disagreements. A fixed server-owned
+schema permits a permutation of all findings and up to four explicitly unverified
+interpretation/hypothesis notes. No model field can replace checked blocks,
+quantities, statuses or citations. Notes are never merged into the authoritative
+answer and do not constitute verified inference or execute operations. Oversize
+handoffs refuse optional generation entirely; the checked answer remains usable.
+No repeated inference or global context growth is introduced.
+
+Portable restore independently replays persisted checked answer records against
+pinned history. Later annotation changes/new conflicts leave historical answers
+intact; current views warn that a new evaluation is required. Operation budgets
+are bounded slices with continuation/selection, not claims of permanent cognitive
+capacity limits. Unsupported observation types remain unknown until an independent
+finding adapter exists; there is no generic promotion of arbitrary tool/model text.
