@@ -135,3 +135,12 @@ Stage 6A source workflow: see [INVESTIGATION_SPEC.md](INVESTIGATION_SPEC.md) for
 checkpointed investigations, pure-tool routing, speculative proposals and CLI
 examples. [STAGE6A_RESEARCH.md](STAGE6A_RESEARCH.md) distinguishes researched
 mechanisms from implemented and independently measured capabilities.
+
+## Scientific library
+Reviewed scientific publications use the same permanent original store and search
+system. See [SCIENCE_LIBRARY.md](SCIENCE_LIBRARY.md) for approved offline package
+imports, bounded resumable indexing, source attribution and extraction limits.
+The first Lenovo pilot preserves 22 publication files / volume editions from
+approximately 14 title families; 21 have searchable text and one remains
+original-only pending accepted OCR. This is source indexing, not neural training
+or demonstrated scientific understanding. No model/default configuration changed.
