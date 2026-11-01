@@ -142,7 +142,9 @@ try:
  corpus=read_corpus(a.corpus)
  if a.include_unseen:
   unseen=json.loads((Path(__file__).resolve().parents[1]/'tests/fixtures/stage6c-unseen.json').read_text())
-  for key in ('sources','claims','cases'):corpus[key].extend(unseen[key])
+  from evaluate_stage6c import merge_corpora
+  corpus=merge_corpora(corpus,unseen)
+  report['merged_corpus_sha256']=__import__('hashlib').sha256(canonical(corpus).encode()).hexdigest()
   report['unseen_corpus_sha256']=__import__('hashlib').sha256((Path(__file__).resolve().parents[1]/'tests/fixtures/stage6c-unseen.json').read_bytes()).hexdigest()
  report['methodology']['D']='Stage6C independent composition, then one optional model contribution. User-facing correctness and unverified neural protocol acceptance are scored separately; this is not a new neural reasoning score.'
  print('BASELINE 15 seconds',flush=True)

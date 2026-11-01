@@ -31,9 +31,10 @@ class FindingTests(unittest.TestCase):
  def test_independent_quantity_units_sources_and_no_inference(self):
   d=self.answer([self.energy()])['answer'];f=d['findings'][0]
   self.assertEqual(f['status'],'verified-computation');self.assertEqual(f['values'][0]['value'],'391');self.assertEqual(f['values'][0]['unit'],'J');self.assertIn('391 J',d['text']);self.assertEqual(len(d['sources']),2);self.assertEqual(len(f['premises']),2)
-  for change in ('text','status','value','citation','missing'):
+  for change in ('text','status','value','citation','missing','question'):
    bad=copy.deepcopy(d)
-   if change=='text':bad['text']='result 392'
+   if change=='question':bad['question']='A different question not present in the recorded investigation'
+   elif change=='text':bad['text']='result 392'
    elif change=='status':bad['findings'][0]['status']='source-supported'
    elif change=='value':bad['findings'][0]['values'][0]['value']='392'
    elif change=='citation':bad['sources'][0]['quote']='wrong'

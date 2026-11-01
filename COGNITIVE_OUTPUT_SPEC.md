@@ -3,7 +3,7 @@
 A `vector-cognitive-answer-v1` is a derived view over the existing versioned
 investigation state/events, not an independent fact store. Its origin pins the
 investigation state revision, selected steps, observation time and question.
-Every successful step reference precedes that state checkpoint. A stored answer
+The question must equal the pinned investigation goal; a changed question requires a recorded redirect. Every successful step reference precedes that state checkpoint. A stored answer
 must replay byte-for-byte (canonical JSON), including rendered text and source
 handles; a missing or changed result/status/unit/source/span fails closed.
 

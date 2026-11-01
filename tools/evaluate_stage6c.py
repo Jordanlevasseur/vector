@@ -28,6 +28,19 @@ def grade(memory,case,answer,mapping):
  qualifications=all(all(str(v) in visible for v in p['conditions'].values()) and all(not p[k] or p[k] in visible for k in ('valid_from','valid_until')) for p in f['premises'])
  return {'objective_passed':bool(correct and units and linked and fidelity and status_ok and qualifications),'answer_correct':bool(correct),'status_correct':status_ok,'units_correct':bool(units),'required_sources_visible':linked,'citation_fidelity':fidelity,'qualifiers_visible':qualifications,'expected':gold,'actual_status':f['status'],'actual_value':actual}
 
+def merge_corpora(original,unseen):
+ """Namespace fixture identities when evaluating two independent source packs."""
+ from copy import deepcopy
+ result=deepcopy(original);extra=deepcopy(unseen)
+ for source in extra['sources']:source['key']='unseen/'+source['key']
+ for claim in extra['claims']:
+  claim['key']='unseen/'+claim['key'];claim['source']='unseen/'+claim['source']
+ for case in extra['cases']:case['gold']['sources']=['unseen/'+s for s in case['gold']['sources']]
+ for key in ('sources','claims','cases'):result[key].extend(extra[key])
+ for key,identifier in (('sources','key'),('claims','key'),('cases','id')):
+  if len({x[identifier] for x in result[key]})!=len(result[key]):raise ValueError('Colliding evaluation identities: '+key)
+ return result
+
 def deterministic(corpus,unseen,directory):
  directory=Path(directory);directory.mkdir(parents=True,exist_ok=True);memory=Memory(Config.load(data_dir=str(directory/'data')));rows=[];tick=time.perf_counter()
  try:

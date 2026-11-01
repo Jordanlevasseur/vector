@@ -224,6 +224,7 @@ def compose(memory,investigation_id,steps=None,*,question=None,state_revision=No
     inv=Investigations(memory);current=inv.get(investigation_id)
     state_row,state=_record(memory,state_revision or current['revision'],'investigations')
     if state['id']!=investigation_id:raise ValueError('Answer state belongs to another investigation.')
+    if question is not None and question!=state['goal']:raise ValueError('Answer question differs from its recorded investigation goal; record a redirect before changing it.')
     available={s['id']:s for s in state['plan']}
     if steps is None:steps=[s['id'] for s in state['plan'] if s['strategy'] in {'grounded','calculate','generate','critique','synthesize','relate'}]
     if not isinstance(steps,list) or not 1<=len(steps)<=MAX_FINDINGS or len(set(steps))!=len(steps) or any(s not in available for s in steps):raise ValueError('Select 1–32 distinct recorded finding steps; narrow or continue for more.')
