@@ -114,6 +114,12 @@ class Desktop:
         ttk.Button(line,text='New conversation',command=lambda:self.call('new_conversation',{},lambda r:self.reset_history('New conversation.'))).pack(side='left')
         ttk.Button(self.tabs['Assistant'],text='Load saved conversation',command=self.load_history).pack(anchor='w')
         ttk.Button(self.tabs['Assistant'],text='Checked investigation results (no model required)',command=self.checked_results).pack(anchor='w')
+        self.planning_enabled=tk.BooleanVar(value=False);self.active_planning=None
+        ttk.Checkbutton(self.tabs['Assistant'],text='Plan and investigate question (experimental, model optional)',variable=self.planning_enabled).pack(anchor='w')
+        actions=ttk.Frame(self.tabs['Assistant']);actions.pack(anchor='w')
+        ttk.Button(actions,text='Clarify investigation',command=self.clarify_investigation).pack(side='left')
+        ttk.Button(actions,text='Resume investigation',command=self.resume_investigation).pack(side='left')
+        ttk.Button(actions,text='Explore ideas (unverified)',command=self.explore_investigation).pack(side='left')
         self.semantic_enabled=tk.BooleanVar(value=False)
         ttk.Checkbutton(self.tabs['Assistant'],text='Connected evidence (experimental)',variable=self.semantic_enabled).pack(anchor='w')
         ttk.Button(self.tabs['Assistant'],text='Find / resume older conversations',command=self.conversations).pack(anchor='w')
@@ -194,8 +200,11 @@ class Desktop:
         if not question.strip():return
         if self.client.pending:
             self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
-        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get()},self.answer)
+        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'request_id':uuid4().hex},self.answer)
     def answer(self,record):
+        if record.get('planning') is not None:
+            self.active_planning=record
+            self.planned_answer(record['planning']);return
         for notice in (record.get('context') or {}).get('display_notices',[]):self.show_chat(notice['notice'])
         outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['status'])
         if record.get('context') is None:
@@ -217,6 +226,35 @@ class Desktop:
             self.show_chat('Connected evidence contains source interpretations; relationships alone do not establish a conclusion.')
             for conflict in connected['conflicts']:self.show_chat('Disputed evidence: '+conflict['subject']+' / '+conflict['predicate'])
             for note in connected['qualifications']:self.show_chat('Evidence qualification: '+note)
+    def planned_answer(self,view):
+        self.show_chat('VECTOR — investigation\n'+view['message'])
+        if self.active_planning:self.active_planning['planning']=view
+        if view.get('answer') or view.get('intermediate_answer'):
+            for source in (view.get('answer') or view['intermediate_answer'])['sources']:self.source_link(source['event_id'])
+        for source in view.get('evidence_sources',[]):
+            self.show_chat('Retrieved passage (relevance unverified): '+source['quote']);self.source_link(source['event_id'])
+        if view.get('analysis'):
+            for task in view['analysis']['tasks']:self.show_chat('Planned method: '+task['objective']+' — '+task['method'])
+            for gap in view['analysis']['unresolved']:
+                for option in gap['choices']:
+                    if 'request' in option:
+                        selector=option['request']['selector'];self.show_chat('Possible interpretation: '+selector['subject']+' — '+selector['predicate']+' ('+selector['sense']+'; scope '+selector['scope']+')')
+        for notice in view.get('notices',[]):self.show_chat(notice)
+    def clarify_investigation(self):
+        if not self.active_planning or not self.active_planning['planning'].get('state'):self.dialog.showinfo('Investigation','Ask a planned question first, or load its saved conversation.');return
+        question=self.question.get().strip()
+        if not question:return
+        view=self.active_planning['planning'];self.question.delete(0,'end');self.show_chat('Clarification: '+question)
+        self.call('ask',{'question':question,'planning':True,'request_id':uuid4().hex,'investigation_id':view['id'],'revision':view['state']['revision']},self.answer)
+    def resume_investigation(self):
+        if not self.active_planning:return
+        view=self.active_planning['planning']
+        if not view.get('state'):
+            record=self.active_planning;self.call('ask',{'question':record['question'],'planning':True,'request_id':record['id'],'constraints':record['planning_ref']['constraints']},self.answer);return
+        self.call('question_run',{'id':view['id'],'revision':view['state']['revision'],'resume':view['state']['status'] in {'paused','cancelled','running'},'approved':True},self.planned_answer)
+    def explore_investigation(self):
+        if not self.active_planning or not self.active_planning['planning'].get('state'):return
+        view=self.active_planning['planning'];self.call('question_explore',{'id':view['id'],'revision':view['state']['revision'],'approved':True},self.planned_answer)
     def reset_history(self,message):
         self.history_cursor=0;self.show_chat(message)
     def source_link(self,identity):

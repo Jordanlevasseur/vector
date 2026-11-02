@@ -107,7 +107,13 @@ def _checked_calculation(memory,row,result,step):
 def _finding(memory,revision,handle,source):
     row,event,step=_origin(memory,revision);result=event['result'];kind=result.get('kind','unknown');status='unknown'
     subject=event['step'];predicate='';values=[];operation=None;premises=[];relationships=[];qualifications=[];sources=[];proposal=None
-    if kind in {'grounded-lookup','grounded-calculation'}:
+    if kind=='question-plan' and step['strategy']=='plan':
+        from vector_core.planner import validate_analysis
+        report=validate_analysis(memory,result['analysis'])
+        if canonical(report)!=canonical(step['input']['analysis']):raise ValueError('Planning finding differs from the recorded request.')
+        subject='; '.join(u['objective'] for u in report['unresolved']) or report['objective'];predicate='unresolved investigation requirements'
+        qualifications=['Planning is an interpretation, not a factual finding.']+[u['reason'] for u in report['unresolved']]
+    elif kind in {'grounded-lookup','grounded-calculation'}:
         _check_grounded(memory,result,step)
         status={'tool-verified':'verified-computation','insufficient':'unknown','hypothetical':'hypothesis'}.get(result['status'],result['status'])
         from vector_core.semantic import Semantics
@@ -226,7 +232,7 @@ def compose(memory,investigation_id,steps=None,*,question=None,state_revision=No
     if state['id']!=investigation_id:raise ValueError('Answer state belongs to another investigation.')
     if question is not None and question!=state['goal']:raise ValueError('Answer question differs from its recorded investigation goal; record a redirect before changing it.')
     available={s['id']:s for s in state['plan']}
-    if steps is None:steps=[s['id'] for s in state['plan'] if s['strategy'] in {'grounded','calculate','generate','critique','synthesize','relate'}]
+    if steps is None:steps=[s['id'] for s in state['plan'] if s['strategy'] in {'grounded','calculate','generate','critique','synthesize','relate'} or (s['strategy']=='plan' and s['input']['analysis']['unresolved'])]
     if not isinstance(steps,list) or not 1<=len(steps)<=MAX_FINDINGS or len(set(steps))!=len(steps) or any(s not in available for s in steps):raise ValueError('Select 1–32 distinct recorded finding steps; narrow or continue for more.')
     references=[];pending=[]
     for step in steps:

@@ -1,0 +1,1088 @@
+{
+  "format": "vector-question-planning-gold-v1",
+  "sources": [
+    {
+      "key": "mass",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Oriole module | mass | 4 kg. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture mass",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "power",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Oriole module | power | 17 W. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture power",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "duration",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Oriole module | duration | 23 s. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture duration",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "alias",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Carina device | span | 12 cm. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture alias",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "join1",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Mosaic rig | uses | Hub V . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture join1",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "join2",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Hub V | material | Ceramic R . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture join2",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "density",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Ceramic R | density | 2.7 g/cm^3. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture density",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "conflict1",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Gauge H | reading | 31 Pa. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture conflict1",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "conflict2",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Gauge H | reading | 43 Pa. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture conflict2",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "wet",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Panel S | conductivity | high . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture wet",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "dry",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Panel S | conductivity | low . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture dry",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "time",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Valve P | limit | 8 Pa. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture time",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "sense1",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Mercury | class | metal . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture sense1",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "sense2",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Mercury | class | planet . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture sense2",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "hyp",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Idea K | output | 29 W. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture hyp",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "belief",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Belief J | output | 37 W. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture belief",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "neg",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Seal W | contains | latex . No empirical truth is asserted.",
+      "name": "Independent question-planning fixture neg",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    },
+    {
+      "key": "unanticipated",
+      "kind": "controlled-fixture",
+      "text": "CONTROLLED FICTIONAL PREMISE. Archive zephyr | glimmer coefficient | 11.7 1. No empirical truth is asserted.",
+      "name": "Independent question-planning fixture unanticipated",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US",
+        "status": "Fictional test only"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "key": "mass",
+      "source": "mass",
+      "draft": {
+        "start": 0,
+        "end": 90,
+        "subject": "Oriole module",
+        "predicate": "mass",
+        "value": "4",
+        "scope": "trial",
+        "unit": "kg",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "power",
+      "source": "power",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Oriole module",
+        "predicate": "power",
+        "value": "17",
+        "scope": "trial",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "duration",
+      "source": "duration",
+      "draft": {
+        "start": 0,
+        "end": 94,
+        "subject": "Oriole module",
+        "predicate": "duration",
+        "value": "23",
+        "scope": "trial",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "alias",
+      "source": "alias",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Carina device",
+        "predicate": "span",
+        "value": "12",
+        "scope": "trial",
+        "unit": "cm",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "aliases": [
+          "blue housing"
+        ],
+        "predicate_aliases": [
+          "width"
+        ]
+      }
+    },
+    {
+      "key": "join1",
+      "source": "join1",
+      "draft": {
+        "start": 0,
+        "end": 89,
+        "subject": "Mosaic rig",
+        "predicate": "uses",
+        "value": "Hub V",
+        "scope": "trial",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "object_sense": "equipment"
+      }
+    },
+    {
+      "key": "join2",
+      "source": "join2",
+      "draft": {
+        "start": 0,
+        "end": 92,
+        "subject": "Hub V",
+        "predicate": "material",
+        "value": "Ceramic R",
+        "scope": "trial",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "object_sense": "materials"
+      }
+    },
+    {
+      "key": "density",
+      "source": "density",
+      "draft": {
+        "start": 0,
+        "end": 95,
+        "subject": "Ceramic R",
+        "predicate": "density",
+        "value": "2.7",
+        "scope": "trial",
+        "unit": "g/cm^3",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "materials",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "conflict1",
+      "source": "conflict1",
+      "draft": {
+        "start": 0,
+        "end": 88,
+        "subject": "Gauge H",
+        "predicate": "reading",
+        "value": "31",
+        "scope": "trial",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "conflict2",
+      "source": "conflict2",
+      "draft": {
+        "start": 0,
+        "end": 88,
+        "subject": "Gauge H",
+        "predicate": "reading",
+        "value": "43",
+        "scope": "trial",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "wet",
+      "source": "wet",
+      "draft": {
+        "start": 0,
+        "end": 93,
+        "subject": "Panel S",
+        "predicate": "conductivity",
+        "value": "high",
+        "scope": "trial",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "conditions": {
+          "surface": "wet"
+        }
+      }
+    },
+    {
+      "key": "dry",
+      "source": "dry",
+      "draft": {
+        "start": 0,
+        "end": 92,
+        "subject": "Panel S",
+        "predicate": "conductivity",
+        "value": "low",
+        "scope": "trial",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "conditions": {
+          "surface": "dry"
+        }
+      }
+    },
+    {
+      "key": "time",
+      "source": "time",
+      "draft": {
+        "start": 0,
+        "end": 85,
+        "subject": "Valve P",
+        "predicate": "limit",
+        "value": "8",
+        "scope": "trial",
+        "unit": "Pa",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "valid_from": "2022-01-01",
+        "valid_until": "2022-12-31"
+      }
+    },
+    {
+      "key": "sense1",
+      "source": "sense1",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Mercury",
+        "predicate": "class",
+        "value": "metal",
+        "scope": "trial",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "chemistry",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "sense2",
+      "source": "sense2",
+      "draft": {
+        "start": 0,
+        "end": 88,
+        "subject": "Mercury",
+        "predicate": "class",
+        "value": "planet",
+        "scope": "trial",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "astronomy",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "hyp",
+      "source": "hyp",
+      "draft": {
+        "start": 0,
+        "end": 85,
+        "subject": "Idea K",
+        "predicate": "output",
+        "value": "29",
+        "scope": "trial",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "untested-hypothesis",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "belief",
+      "source": "belief",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Belief J",
+        "predicate": "output",
+        "value": "37",
+        "scope": "trial",
+        "unit": "W",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "owner-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "neg",
+      "source": "neg",
+      "draft": {
+        "start": 0,
+        "end": 89,
+        "subject": "Seal W",
+        "predicate": "contains",
+        "value": "latex",
+        "scope": "trial",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "negated",
+        "reason": "Independent fictional premise, reviewed for test interpretation only."
+      }
+    },
+    {
+      "key": "unanticipated",
+      "source": "unanticipated",
+      "draft": {
+        "start": 0,
+        "end": 108,
+        "subject": "Archive zephyr",
+        "predicate": "glimmer coefficient",
+        "value": "11.7",
+        "scope": "trial",
+        "unit": "1",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "cataloguing",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Independent fictional premise, reviewed for test interpretation only.",
+        "predicate_aliases": [
+          "glimmer index"
+        ]
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "P01",
+      "question": "What is the mass of Oriole module?",
+      "gold": {
+        "values": [
+          "4"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "kg",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P02",
+      "question": "What is the width of blue housing?",
+      "gold": {
+        "values": [
+          "12"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "cm",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P03",
+      "question": "For Mosaic rig follow uses then material. What density is reported?",
+      "gold": {
+        "values": [
+          "2.7"
+        ],
+        "statuses": [
+          "inferred"
+        ],
+        "unit": "g/cm^3",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P04",
+      "question": "What reading is established for Gauge H?",
+      "gold": {
+        "values": [
+          "31",
+          "43"
+        ],
+        "statuses": [
+          "disputed"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P05",
+      "question": "What is Panel S conductivity when wet?",
+      "gold": {
+        "values": [
+          "high"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P06",
+      "question": "What is Panel S conductivity?",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P07",
+      "question": "What is Valve P limit on 2022-06-01?",
+      "gold": {
+        "values": [
+          "8"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "Pa",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P08",
+      "question": "What is Valve P limit on 2025-06-01?",
+      "gold": {
+        "values": [],
+        "statuses": [
+          "unknown"
+        ],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P09",
+      "question": "What class is Mercury?",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P10",
+      "question": "What class is Mercury in astronomy?",
+      "gold": {
+        "values": [
+          "planet"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P11",
+      "question": "What output is proposed for Idea K?",
+      "gold": {
+        "values": [
+          "29"
+        ],
+        "statuses": [
+          "hypothesis"
+        ],
+        "unit": "W",
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P12",
+      "question": "What output does Belief J assert?",
+      "gold": {
+        "values": [
+          "37"
+        ],
+        "statuses": [
+          "owner-assertion"
+        ],
+        "unit": "W",
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P13",
+      "question": "What does Seal W contain?",
+      "gold": {
+        "values": [
+          "latex"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P14",
+      "question": "What is the glimmer index of Archive zephyr?",
+      "gold": {
+        "values": [
+          "11.7"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P15",
+      "question": "Calculate 13 * 7 + 2.",
+      "gold": {
+        "values": [
+          "93"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P16",
+      "question": "Compute (18 + 6) / 3.",
+      "gold": {
+        "values": [
+          "8"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P17",
+      "question": "Convert 25.4 mm to cm.",
+      "gold": {
+        "values": [
+          "2.54"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": "cm",
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P18",
+      "question": "Calculate power * duration for Oriole module in J.",
+      "gold": {
+        "values": [
+          "391"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": "J",
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P19",
+      "question": "Multiply power by duration for Oriole module in J.",
+      "gold": {
+        "values": [
+          "391"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": "J",
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P20",
+      "question": "Calculate (13 + 7) * 2; then divide the result by 8.",
+      "gold": {
+        "values": [
+          "40",
+          "5"
+        ],
+        "statuses": [
+          "verified-computation",
+          "verified-computation"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 2,
+        "dependency": true,
+        "selector": null
+      }
+    },
+    {
+      "id": "P21",
+      "question": "What is Oriole module mass; what is its power?",
+      "gold": {
+        "values": [
+          "4",
+          "17"
+        ],
+        "statuses": [
+          "source-supported",
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P22",
+      "question": "What is Oriole module mass; what is its temperature?",
+      "gold": {
+        "values": [
+          "4"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P23",
+      "question": "Develop competing explanations for oscillations in an unknown tidal membrane.",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P24",
+      "question": "Could a library indexing method inspire an unconventional heat exchanger design?",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P25",
+      "question": "What density does Mosaic rig itself have?",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P26",
+      "question": "Explain the viscosity of unarchived substance Lyra.",
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "P27",
+      "question": "What is the mass of Oriole module?",
+      "gold": {
+        "values": [
+          "4"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "kg",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": {
+          "subject": "Oriole module",
+          "sense": "equipment",
+          "predicate": "mass",
+          "scope": "trial"
+        }
+      }
+    },
+    {
+      "id": "P28",
+      "question": "Compute an explicitly supplied expression.",
+      "gold": {
+        "values": [
+          "15"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      },
+      "explicit_calculation": {
+        "operation": "arithmetic",
+        "parameters": {
+          "expression": "3*5"
+        }
+      }
+    }
+  ]
+}

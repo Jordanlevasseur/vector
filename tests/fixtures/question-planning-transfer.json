@@ -1,0 +1,529 @@
+{
+  "format": "vector-question-planning-gold-v1",
+  "sources": [
+    {
+      "key": "retention",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Signal T | persistence | 9 s. Not an empirical report.",
+      "name": "New transfer fixture retention",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "distance",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Voyager Z | distance | 147 m. Not an empirical report.",
+      "name": "New transfer fixture distance",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "interval",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Voyager Z | interval | 21 s. Not an empirical report.",
+      "name": "New transfer fixture interval",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "charter",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Aurora charter | drafted by | Courier M . Not an empirical report.",
+      "name": "New transfer fixture charter",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "scribe",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Courier M | lives in | Port X . Not an empirical report.",
+      "name": "New transfer fixture scribe",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "region",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Port X | climate | arid . Not an empirical report.",
+      "name": "New transfer fixture region",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "geo",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Delta | classification | estuary . Not an empirical report.",
+      "name": "New transfer fixture geo",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "type",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Delta | classification | symbol . Not an empirical report.",
+      "name": "New transfer fixture type",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "sealed",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Dock Q | temperature | 301 K. Not an empirical report.",
+      "name": "New transfer fixture sealed",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "vented",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Dock Q | temperature | 298 K. Not an empirical report.",
+      "name": "New transfer fixture vented",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    },
+    {
+      "key": "mass",
+      "kind": "controlled-fixture",
+      "text": "EXPLICIT FICTIONAL TRANSFER PREMISE: Lantern J | mass | 6 kg. Not an empirical report.",
+      "name": "New transfer fixture mass",
+      "provenance": {
+        "license": "CC0-1.0",
+        "jurisdiction": "US"
+      }
+    }
+  ],
+  "claims": [
+    {
+      "key": "retention",
+      "source": "retention",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Signal T",
+        "predicate": "persistence",
+        "value": "9",
+        "scope": "transfer",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation.",
+        "predicate_aliases": [
+          "retention span"
+        ]
+      }
+    },
+    {
+      "key": "distance",
+      "source": "distance",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Voyager Z",
+        "predicate": "distance",
+        "value": "147",
+        "scope": "transfer",
+        "unit": "m",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    },
+    {
+      "key": "interval",
+      "source": "interval",
+      "draft": {
+        "start": 0,
+        "end": 90,
+        "subject": "Voyager Z",
+        "predicate": "interval",
+        "value": "21",
+        "scope": "transfer",
+        "unit": "s",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    },
+    {
+      "key": "charter",
+      "source": "charter",
+      "draft": {
+        "start": 0,
+        "end": 103,
+        "subject": "Aurora charter",
+        "predicate": "drafted by",
+        "value": "Courier M",
+        "scope": "transfer",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation.",
+        "object_sense": "person"
+      }
+    },
+    {
+      "key": "scribe",
+      "source": "scribe",
+      "draft": {
+        "start": 0,
+        "end": 93,
+        "subject": "Courier M",
+        "predicate": "lives in",
+        "value": "Port X",
+        "scope": "transfer",
+        "unit": "",
+        "kind": "relationship",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "person",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation.",
+        "object_sense": "geography"
+      }
+    },
+    {
+      "key": "region",
+      "source": "region",
+      "draft": {
+        "start": 0,
+        "end": 87,
+        "subject": "Port X",
+        "predicate": "climate",
+        "value": "arid",
+        "scope": "transfer",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "geography",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    },
+    {
+      "key": "geo",
+      "source": "geo",
+      "draft": {
+        "start": 0,
+        "end": 96,
+        "subject": "Delta",
+        "predicate": "classification",
+        "value": "estuary",
+        "scope": "transfer",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "geography",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    },
+    {
+      "key": "type",
+      "source": "type",
+      "draft": {
+        "start": 0,
+        "end": 95,
+        "subject": "Delta",
+        "predicate": "classification",
+        "value": "symbol",
+        "scope": "transfer",
+        "unit": "",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "typography",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    },
+    {
+      "key": "sealed",
+      "source": "sealed",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Dock Q",
+        "predicate": "temperature",
+        "value": "301",
+        "scope": "transfer",
+        "unit": "K",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation.",
+        "conditions": {
+          "enclosure": "sealed"
+        }
+      }
+    },
+    {
+      "key": "vented",
+      "source": "vented",
+      "draft": {
+        "start": 0,
+        "end": 91,
+        "subject": "Dock Q",
+        "predicate": "temperature",
+        "value": "298",
+        "scope": "transfer",
+        "unit": "K",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation.",
+        "conditions": {
+          "enclosure": "vented"
+        }
+      }
+    },
+    {
+      "key": "mass",
+      "source": "mass",
+      "draft": {
+        "start": 0,
+        "end": 86,
+        "subject": "Lantern J",
+        "predicate": "mass",
+        "value": "6",
+        "scope": "transfer",
+        "unit": "kg",
+        "kind": "attribute",
+        "exclusive": true
+      },
+      "qualification": {
+        "sense": "equipment",
+        "status": "reviewed",
+        "epistemic": "source-assertion",
+        "polarity": "affirmed",
+        "reason": "Fictional independent transfer-test interpretation."
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "H1",
+      "question": "What is the retention span of Signal T?",
+      "required_sources": [
+        "retention"
+      ],
+      "gold": {
+        "values": [
+          "9"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "s",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H2",
+      "question": "Calculate distance / interval for Voyager Z in m/s.",
+      "required_sources": [
+        "distance",
+        "interval"
+      ],
+      "gold": {
+        "values": [
+          "7"
+        ],
+        "statuses": [
+          "verified-computation"
+        ],
+        "unit": "m/s",
+        "unresolved": false,
+        "minimum_calculations": 1,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H3",
+      "question": "For Aurora charter follow drafted by then lives in. What climate is reported?",
+      "required_sources": [
+        "charter",
+        "scribe",
+        "region"
+      ],
+      "gold": {
+        "values": [
+          "arid"
+        ],
+        "statuses": [
+          "inferred"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H4",
+      "question": "How might an archive rhythm suggest an unanticipated cooling experiment?",
+      "required_sources": [],
+      "gold": {
+        "values": [],
+        "statuses": [],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H5",
+      "question": "What classification is Delta in typography?",
+      "required_sources": [
+        "type"
+      ],
+      "gold": {
+        "values": [
+          "symbol"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H6",
+      "question": "Calculate (9 + 6) * 3; then subtract 5 from the result.",
+      "required_sources": [],
+      "gold": {
+        "values": [
+          "45",
+          "40"
+        ],
+        "statuses": [
+          "verified-computation",
+          "verified-computation"
+        ],
+        "unit": null,
+        "unresolved": false,
+        "minimum_calculations": 2,
+        "dependency": true,
+        "selector": null
+      }
+    },
+    {
+      "id": "H7",
+      "question": "What temperature is Dock Q when sealed?",
+      "required_sources": [
+        "sealed"
+      ],
+      "gold": {
+        "values": [
+          "301"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": "K",
+        "unresolved": false,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    },
+    {
+      "id": "H8",
+      "question": "What is Lantern J mass; what is its colour?",
+      "required_sources": [
+        "mass"
+      ],
+      "gold": {
+        "values": [
+          "6"
+        ],
+        "statuses": [
+          "source-supported"
+        ],
+        "unit": null,
+        "unresolved": true,
+        "minimum_calculations": 0,
+        "dependency": false,
+        "selector": null
+      }
+    }
+  ]
+}

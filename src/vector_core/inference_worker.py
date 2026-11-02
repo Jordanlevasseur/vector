@@ -59,6 +59,7 @@ def stream_generation(payload,timeout):
     end=time.monotonic()+timeout;parts=[];size=0
     try:
         payload=dict(payload,stream=True)
+        if payload.get('format') is None:payload.pop('format',None)
         connection.request('POST','/api/generate',json.dumps(payload),{'Content-Type':'application/json'})
         response=connection.getresponse()
         if response.status!=200:raise GenerationFailure('Local generation HTTP '+str(response.status)+': '+response.read(1000).decode('utf-8','replace'),'')
@@ -155,8 +156,8 @@ def main():
                     prompt=request['prompt']
                     if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise ValueError('Prompt byte budget exceeded.')
                     response_kind=request.get('response_kind')
-                    if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1'):raise ValueError('Unknown structured response format.')
-                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,'finding-notes-v1':FINDING_NOTES_SCHEMA}.get(response_kind,'json'),'keep_alive':0,
+                    if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1','proposal-text-v1'):raise ValueError('Unknown structured response format.')
+                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,'finding-notes-v1':FINDING_NOTES_SCHEMA,'proposal-text-v1':None}.get(response_kind,'json'),'keep_alive':0,
                         'options':{'num_ctx':config.context_tokens,'num_predict':config.output_tokens,'temperature':config.temperature,
                                    'seed':config.seed,'num_thread':2}},max(.05,config.timeout_seconds-1))
                     result['model_digest']=selected.get('digest','unknown')

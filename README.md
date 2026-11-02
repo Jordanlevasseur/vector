@@ -183,3 +183,10 @@ model-issued action is introduced.
 See `STAGE6C_AUDIT.md` for the twelve original failures and `STAGE6C_REPORT.md` for
 measured results and limitations. These results are not a release qualification
 or proof of novel general reasoning.
+
+Experimental question planning is available in the Assistant's **Plan and
+investigate question** checkbox and `vector ask 'Calculate 13 * 7 + 2.' --plan`.
+It uses existing source verification and calculation tools without needing a
+model. Clarify/resume controls preserve the investigation; optional exploration
+retains model ideas as unverified proposals. Ordinary Ask remains the default.
+See [PLANNING_SPEC.md](PLANNING_SPEC.md) for scope, recovery and limitations.

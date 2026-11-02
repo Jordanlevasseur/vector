@@ -133,3 +133,15 @@ intact; current views warn that a new evaluation is required. Operation budgets
 are bounded slices with continuation/selection, not claims of permanent cognitive
 capacity limits. Unsupported observation types remain unknown until an independent
 finding adapter exists; there is no generic promotion of arbitrary tool/model text.
+
+## Experimental question planner
+
+`planner.py` translates opted-in ordinary questions into the existing durable
+investigation DAG: reviewed concept/alias/path grounding, explicit calculations,
+checked composition, or explicit unresolved evidence/method requirements.
+Historical plan replay and typed finding verification are separate checks.
+The shared service, CLI and Assistant expose clarification, resume and optional
+unverified neural exploration. Conversation records store durable references;
+views are reconstructed from investigation evidence. No schema, default model,
+OS security policy or privileged authority changes. See [PLANNING_SPEC.md](PLANNING_SPEC.md)
+for trust boundaries, recovery and the tested language scope.

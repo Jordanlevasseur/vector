@@ -30,6 +30,21 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('question_'):
+            from vector_core.planner import Planner
+            from vector_core.investigation import Budget
+            planner=Planner(memory,self.adapter,self.generation)
+            if operation=='question_plan':return planner.create(p['question'],constraints=p.get('constraints'),project_id=self.session['project_id'],approved=p.get('approved',False))
+            if operation=='question_get':return planner.view(p['id'])
+            if operation=='question_revise':return planner.revise(p['id'],p['revision'],clarification=p.get('clarification',''),constraints=p.get('constraints'),steps=p.get('steps'),approved=p.get('approved',False))
+            if operation=='question_explore':
+                state=planner.explore(p['id'],p['revision'],approved=p.get('approved',False));self.prepare_inference()
+                return planner.run(state['id'],budget=Budget(**p.get('budget',{'steps':4,'model_calls':1,'seconds':60})),approved=p.get('approved',False))
+            if operation=='question_run':
+                planner.inv.authority.ordinary(p.get('approved',False))
+                if p.get('resume') is True:planner.inv.control(p['id'],'resume',p['revision'],approved=True)
+                return planner.run(p['id'],budget=Budget(**p.get('budget',{'steps':64,'model_calls':0,'seconds':30})),approved=p.get('approved',False))
+            raise ValueError('Unknown question-planning operation.')
         if operation.startswith('semantic_'):
             from vector_core.semantic import Semantics,evidence
             semantics=Semantics(memory)
@@ -117,6 +132,9 @@ class Application:
         if operation=='managed_models':
             return [dict(row) for row in memory.db.execute("SELECT record_key AS name,payload FROM persistent_records r WHERE contract='models' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='models' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 100")]
         if operation=='ask':
+            if p.get('planning') is True:
+                from vector_core.planner import chat
+                return chat(memory,p['question'],conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],adapter=self.adapter,config=self.generation,request_id=p.get('request_id'),investigation_id=p.get('investigation_id'),revision=p.get('revision'),constraints=p.get('constraints'))
             self.prepare_inference()
             return ask(memory,p['question'],adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,
                        conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'),semantic=p.get('semantic',False),semantic_selector=p.get('selector'),investigation_id=p.get('investigation_id'))
@@ -203,7 +221,11 @@ class Application:
             rows=memory.db.execute("SELECT rowid,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND rowid>? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 100",(self.session['conversation_id'],p.get('after',0)))
             items=[];used=0;cursor=p.get('after',0)
             for row in rows:
-                item=json.loads(row['payload']);size=len(canonical(item).encode())
+                item=json.loads(row['payload']);item.pop('planning',None)
+                if 'planning_ref' in item:
+                    from vector_core.planner import materialize_turn
+                    item=materialize_turn(memory,item)
+                size=len(canonical(item).encode())
                 if used+size>768*1024:
                     if not items:raise ValueError('A saved turn exceeds the desktop page budget; full state remains in portable storage.')
                     break

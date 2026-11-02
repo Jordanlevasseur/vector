@@ -28,6 +28,16 @@ def latest(memory,contract,key):
 
 def validate_record(db,contract,key,p):
     """Also used on portable imports, before activation of externally supplied state."""
+    if contract=='conversations':
+        if 'planning' in p:raise ValueError('Planning views are derived from checked investigation records, not imported answer caches.')
+        if 'planning_ref' in p:
+            ref=p['planning_ref']
+            if not isinstance(ref,dict) or set(ref)!={'investigation_id','constraints','clarification_base'}:raise ValueError('Invalid saved planning reference.')
+            identity(ref['investigation_id'])
+            if ref['clarification_base'] is not None:identity(ref['clarification_base'])
+            from vector_core.planner import _constraints
+            _constraints(ref['constraints'])
+            if p.get('outcome',{}).get('status')!='pending' and not db.execute("SELECT 1 FROM persistent_records WHERE contract='investigations' AND record_key=?",(ref['investigation_id'],)).fetchone():raise ValueError('Missing saved investigation; a completed answer cannot be invented.')
     if contract=='semantic_claims':
         from vector_core.semantic import validate_record as semantic_validate
         return semantic_validate(db,key,p)

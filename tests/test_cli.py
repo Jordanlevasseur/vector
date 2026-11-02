@@ -63,3 +63,12 @@ class CheckedOutputCliTests(unittest.TestCase):
             request={'question':'Missing device reading','request':{'kind':'lookup','selector':{'subject':'Missing device','predicate':'reading','sense':'equipment','scope':'test'}},'approved':True}
             result=subprocess.run([sys.executable,'-B','-m','vector_core.cli','--data-dir',str(Path(directory)/'data'),'semantic','answer',json.dumps(request),'--text'],text=True,capture_output=True,timeout=30)
             self.assertEqual(result.returncode,0,result.stderr);self.assertIn('Unknown or not completed',result.stdout);self.assertNotIn('Source reports:',result.stdout)
+
+class PlanningCliTests(unittest.TestCase):
+    def test_actual_guarded_question_plan_run_and_chat(self):
+        with tempfile.TemporaryDirectory() as directory:
+            def run(*args):
+                r=subprocess.run([sys.executable,'-B','-m','vector_core','--data-dir',str(Path(directory)/'data'),*args],env=ENV,capture_output=True,text=True,timeout=60)
+                self.assertEqual(r.returncode,0,r.stderr);return json.loads(r.stdout)
+            state=run('question','plan',json.dumps({'question':'Calculate 12 * 7.','approved':True}));result=run('question','run',json.dumps({'id':state['id'],'approved':True}));self.assertEqual(result['answer']['findings'][0]['values'][0]['value'],'84')
+            turn=run('ask','Calculate (16 + 9) * 2.','--plan');self.assertEqual(turn['planning']['answer']['findings'][0]['values'][0]['value'],'50')
