@@ -129,13 +129,15 @@ def run_cell(mode,case,mapping):
  if recording.raw:
   r=recording.raw;row['load_seconds']=r.get('load_duration',0)/1e9;row['tokens_per_second']=r.get('eval_count',0)*1e9/r['eval_duration'] if r.get('eval_duration') else None
  stage='unload:'+mode+':'+case['id'];until=time.monotonic()+30
+ with lock:latest=rows[-1] if rows else {}
  while time.monotonic()<until and not cancel.cancelled:
   with lock:latest=rows[-1] if rows else {}
   if not any(p['runner'] for p in latest.get('processes',[])) and time.monotonic()-tick-row['seconds']>=3:break
   time.sleep(.5)
- row['runner_unloaded']=not any(p['runner'] for p in latest.get('processes',[]));row['post_unload_sample']=latest
+ row['runner_unloaded']=None if cancel.cancelled else not any(p['runner'] for p in latest.get('processes',[]));row['post_unload_sample']=latest
+ if cancel.cancelled:row['unload_status']='Cancelled; whole-worker cleanup is verified in the final phase, not inferred from a stale sample.'
  persist();print('DONE',json.dumps({k:row.get(k) for k in ('mode','id','seconds','model_attempted','error','feedback','model_grade','core_grade','user_facing_grade','neural_protocol_grade','tokens_per_second','runner_unloaded')}),flush=True)
- if not row['runner_unloaded']:cancel.cancel();raise RuntimeError('Runner did not unload within bounded recovery window.')
+ if not cancel.cancelled and not row['runner_unloaded']:cancel.cancel();raise RuntimeError('Runner did not unload within bounded recovery window.')
 
 memory=None
 try:
