@@ -17,7 +17,22 @@ def display_notices(memory,event_ids):
         if row and row['status']=='provider-unrestricted-us':notices.append({'event_id':event_id,'notice':PG_NOTICE,'rights_event_id':row['evidence']})
     return notices
 
-def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project_id=None,conversation_id=None,project_only=False,semantic=False,semantic_selector=None,investigation_id=None):
+def _focus(text,terms):
+    """Smallest bounded all-term window, preserving original character offsets."""
+    pattern=re.compile(r'(?<!\w)(?:'+'|'.join(re.escape(t) for t in terms)+r')(?!\w)',re.I)
+    required={t.casefold() for t in terms};seen={};best=None
+    for index,match in enumerate(pattern.finditer(text)):
+        if index>=4096:break
+        seen[match[0].casefold()]=(match.start(),match.end())
+        if required<=seen.keys():
+            left=min(p[0] for p in seen.values());right=max(p[1] for p in seen.values())
+            if best is None or right-left<best[1]-best[0]:best=(left,right)
+    if best is None or best[1]-best[0]>380:return None
+    start=max(0,best[0]-100);end=min(len(text),max(start+650,best[1]+100))
+    return start,end,text[start:end]
+
+
+def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project_id=None,conversation_id=None,project_only=False,semantic=False,semantic_selector=None,investigation_id=None,retrieval_query=None,strict_query=False,content_only=False):
     if type(semantic) is not bool:raise ValueError('Semantic retrieval flag must be boolean.')
     if semantic:
         from vector_core.semantic import build_context as connected_context
@@ -32,23 +47,27 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     prior=continuity(memory,conversation_id,question) if conversation_id else []
     if project_only and not project_id:raise ValueError('Project-only context requires a project.')
     if project_id:Projects(memory).get(project_id)
-    retrieval_question=question
+    retrieval_question=retrieval_query if retrieval_query is not None else question
     # Prior questions aid short follow-ups; old generated answers are never evidence.
-    if prior and len(question.split())<=5:retrieval_question+=' '+prior[0]['question']
+    if retrieval_query is None and prior and len(question.split())<=5:retrieval_question+=' '+prior[0]['question']
     terms=list(dict.fromkeys(word for word in re.findall(r'[^\W_]+',retrieval_question,flags=re.UNICODE) if word.lower() not in STOP))[:12]
     candidates={}
     # AND search first; bounded per-term alternatives support multi-document synthesis.
     queries=[' '.join(terms)] if terms else []
-    queries+=terms[:4]
+    if not strict_query:queries+=terms[:4]
     for query in queries:
         for result in search(memory,query[:512],limit=min(20,limit*2),project_id=project_id if project_only else None,omit_literary=True):
+            if strict_query:
+                focused=_focus(memory.original(result['event_id']).decode('utf-8'),terms)
+                if focused is None:continue
+                result.update(start=focused[0],end=focused[1],excerpt=focused[2])
             score=sum(term.casefold() in result['excerpt'].casefold() for term in terms)
             previous=candidates.get(result['event_id'])
             if previous is None:candidates[result['event_id']]={**result,'overlap':score}
     from vector_core.literature import Library
     library=Library(memory);linguistic=[]
     for query in queries:
-        for result in library.search(query[:512],limit=min(12,limit*2)):
+        for result in library.search(query[:512],limit=min(12,limit*2),content_only=content_only):
             if project_only and not memory.db.execute("SELECT 1 FROM persistent_records WHERE contract='project_sources' AND record_key=?",(project_id+':'+result['event_id'],)).fetchone():continue
             score=sum(term.casefold() in result['excerpt'].casefold() for term in terms)
             if result['event_id'] not in candidates:candidates[result['event_id']]={**result,'overlap':score}
@@ -107,7 +126,9 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
             for other in memory.db.execute('SELECT event_id,start_char FROM claims WHERE subject_id=? AND predicate=? AND scope=? AND unit=? AND exclusive=1 AND value_key!=? LIMIT 4',tuple(claim)):add_event(other['event_id'],other['start_char'])
     for row in candidates.values():
         row['project_match']=bool(project_id and memory.db.execute("SELECT 1 FROM persistent_records WHERE contract='project_sources' AND record_key=?",(project_id+':'+row['event_id'],)).fetchone())
-    ordered=sorted(candidates.values(),key=lambda row:(-int(row['project_match']),-row['overlap'],row['rank'],row['event_id']))
+    if strict_query:
+        candidates={key:row for key,row in candidates.items() if all(term.casefold() in row['excerpt'].casefold() for term in terms)}
+    ordered=sorted(candidates.values(),key=lambda row:(-int(row['project_match']),-row['overlap'],-int(strict_query and ' '.join(terms).casefold() in row['excerpt'].casefold()),row['rank'],row['event_id']))
     context={'question':question,'sources':[],'claims':[],'scope':scope,'conflicts':[],
              'truncated':False,'policy':'Untrusted source assertions; overrides are user assumptions.'}
     if len(canonical(context).encode())>budget_bytes:raise ValueError('Question exceeds context budget.')
@@ -171,3 +192,45 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
     notices=display_notices(memory,selected)
     return {'display_notices':notices,'context':context,'bytes':len(canonical(context).encode()),'seconds':time.perf_counter()-started,
             'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'ranking':'explicit project preference, literal overlap, FTS rank, stable ID; exact-entity/one-hop expansion; not semantic ranking'}
+
+
+def document_context(memory,question,title,*,complete=False,budget_bytes=8192):
+    """Resolve archived title metadata, then verified body spans, never licence hits.
+
+    None means no unambiguous complete source package in this operation budget.
+    Originals, indexes, rights records and global retrieval behavior are unchanged.
+    """
+    from vector_core.literature import Library,body_bounds
+    from vector_core.projects import latest
+    library=Library(memory);found=library.editions(title,limit=30)['items']
+    works={row['work_id'] for row in found}
+    if not found or len(found)>=30 or (complete and len(works)!=1):return None
+    edition=found[0];event_id=edition['event_id'];event=memory.event(event_id)
+    sources=[]
+    if complete:
+        try:body=latest(memory,'literary_analyses',event_id)
+        except ValueError:return None
+        if event['byte_count']>memory.config.max_source_bytes or body['sha256']!=event['sha256']:return None
+        actual=body_bounds(memory.original(event_id).decode('utf-8'),edition['metadata']['rights']['status'])
+        if (body['start'],body['end'])!=actual:raise ValueError('Derived complete-body bounds differ from immutable original.')
+        if body['end']-body['start']>budget_bytes:return None
+        spans=[(edition,body['start'],body['end'])]
+    else:
+        spans=[]
+        for candidate in found[:3]:
+            rows=memory.db.execute("SELECT start_char,end_char FROM literary_units WHERE event_id=? AND kind NOT LIKE 'section%' AND end_char-start_char>=100 ORDER BY ordinal LIMIT 20",(candidate['event_id'],)).fetchall()
+            spans.extend((candidate,r['start_char'],r['end_char']) for r in rows)
+    context={'question':question,'sources':[],'claims':[],'scope':None,'conflicts':[],'truncated':not complete,'policy':'Archived source assertions, not independent truth. Body excerpts are not a document summary.','document':{'title':edition['metadata']['title'],'event_id':event_id,'complete_body_supplied':complete,'unambiguous_title':len(works)==1}}
+    for edition,start,end in spans:
+        event_id=edition['event_id'];event=memory.event(event_id)
+        quote=memory.read_text_span(event_id,start,end)
+        if not complete and len(re.findall(r'[^\W_]+',quote))<12:continue
+        source={'event_id':event_id,'source_id':event['source_id'],'sha256':event['sha256'],'start':start,'end':end,'quote':quote,'name':edition['metadata']['title'],'occurred':event['occurred']}
+        context['sources'].append(source)
+        if len(canonical(context).encode())>budget_bytes:
+            context['sources'].pop()
+            if complete:return None
+            break
+        if not complete and len(context['sources'])>=3:break
+    if not context['sources']:return None
+    return {'context':context,'display_notices':display_notices(memory,list(dict.fromkeys(s['event_id'] for s in context['sources']))),'bytes':len(canonical(context).encode()),'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'seconds':0,'ranking':'Unambiguous archived title, original-verified body spans; no semantic-summary certification.'}

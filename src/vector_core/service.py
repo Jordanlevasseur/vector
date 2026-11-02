@@ -138,9 +138,14 @@ class Application:
             if p.get('planning') is True:
                 from vector_core.planner import chat
                 return chat(memory,p['question'],conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],adapter=self.adapter,config=self.generation,request_id=p.get('request_id'),investigation_id=p.get('investigation_id'),revision=p.get('revision'),constraints=p.get('constraints'))
-            self.prepare_inference()
-            return ask(memory,p['question'],adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,
-                       conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'),semantic=p.get('semantic',False),semantic_selector=p.get('selector'),investigation_id=p.get('investigation_id'))
+            if p.get('semantic') is True:
+                self.prepare_inference()
+                return ask(memory,p['question'],adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],scope=p.get('scope'),semantic=True,semantic_selector=p.get('selector'),investigation_id=p.get('investigation_id'))
+            from vector_core.reasoning import request
+            from vector_core.assistant import respond
+            decision=request(p['question'])
+            if decision['kind'] in {'interpret','summarize'}:self.prepare_inference()
+            return respond(memory,p['question'],decision=decision,adapter=self.adapter if self.transport and self.transport.qualified else UnavailableAdapter(),config=self.generation,conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],request_id=p.get('request_id'),scope=p.get('scope'))
         if operation=='search':
             from vector_core.retrieval import search
             return search(memory,p['query'],limit=20)
@@ -225,6 +230,9 @@ class Application:
             items=[];used=0;cursor=p.get('after',0)
             for row in rows:
                 item=json.loads(row['payload']);item.pop('planning',None)
+                if item.get('routing') or 'calculation_ref' in item:
+                    from vector_core.assistant import materialize_response
+                    item=materialize_response(memory,item)
                 if 'planning_ref' in item:
                     from vector_core.planner import materialize_turn
                     item=materialize_turn(memory,item)

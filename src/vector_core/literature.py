@@ -113,6 +113,16 @@ def verify_rights(entry,raw,evidence):
         if not start or re.search(r'copyright(?:ed|\s*(?:\(c\)|[0-9]))|permission of|copyright holder',original[:start.start()],re.I) or 'FULL PROJECT GUTENBERG LICENSE' not in original.upper():raise ValueError('Missing license or special copyright notice requires separate review.')
     elif not evidence.strip():raise ValueError('Rights evidence is empty.')
 
+def body_bounds(original,rights_status):
+    """Canonical source-derived body boundaries, shared with complete handoffs."""
+    start=0;end=len(original)
+    if rights_status=='provider-unrestricted-us':
+        begin=re.search(r'^\*\*\*\s*START OF.*$',original,re.I|re.M);finish=re.search(r'^\*\*\*\s*END OF.*$',original,re.I|re.M)
+        if not begin or not finish:raise ValueError('Missing edition body boundaries.')
+        start=original.find('\n',begin.start())+1;end=finish.start()
+    return start,end
+
+
 class Library:
     def __init__(self,memory):self.memory=memory;self.db=memory.db
     def editions(self,query='',*,language=None,author=None,subject=None,since=None,until=None,after=0,limit=30):
@@ -184,11 +194,7 @@ class Library:
         if prior['status']=='complete' and not rebuild and self.db.execute("SELECT 1 FROM persistent_records WHERE contract='literary_analyses' AND record_key=?",(event_id,)).fetchone():return {**prior,'unchanged_skipped':True}
         if event['byte_count']>self.memory.config.max_source_bytes:return append(self.memory,'literary_runs',event_id,{'event_id':event_id,'method':METHOD,'offset':0,'ordinal':0,'status':'deferred','error':'Original exceeds text extraction budget; retained unchanged.','updated':now()})
         raw=self.memory.original(event_id);original=raw.decode('utf-8');offset=0 if rebuild else prior['offset'];ordinal=0 if rebuild else prior['ordinal'];tick=time.monotonic();count=0
-        body_start=0;body_end=len(original)
-        if json.loads(edition[0])['metadata']['rights']['status']=='provider-unrestricted-us':
-            begin=re.search(r'^\*\*\*\s*START OF.*$',original,re.I|re.M);finish=re.search(r'^\*\*\*\s*END OF.*$',original,re.I|re.M)
-            if not begin or not finish:raise ValueError('Missing edition body boundaries.')
-            body_start=original.find('\n',begin.start())+1;offset=max(offset,body_start);body_end=finish.start()
+        body_start,body_end=body_bounds(original,json.loads(edition[0])['metadata']['rights']['status']);offset=max(offset,body_start)
         if not self.db.execute("SELECT 1 FROM persistence_contracts WHERE name='literary_analyses'").fetchone():
             from vector_core.persistence import register
             register(self.memory,'literary_analyses','Versioned literal source-body observations and attested form candidates')
@@ -239,12 +245,13 @@ class Library:
             m=json.loads(edition['payload'])['metadata'];result.update(edition_id=edition['record_key'],language=m['language'],rights_notice=PG_NOTICE if m['rights']['status']=='provider-unrestricted-us' else m['rights']['basis'],rights_status=m['rights']['status'])
         result.update(start=result['start_char'],end=result['end_char'],quote=quote,excerpt=quote)
         return result
-    def search(self,query,*,language=None,event_id=None,limit=20):
+    def search(self,query,*,language=None,event_id=None,limit=20,content_only=False):
         page(0,limit)
         if not isinstance(query,str) or len(query)>512:raise ValueError('Invalid passage query.')
         terms=re.findall(r'[^\W_]+',query)
         if not terms or len(terms)>16:raise ValueError('Use 1–16 literal terms.')
         conditions=['literary_search MATCH ?'];parameters=[' AND '.join('"'+t+'"' for t in terms)]
+        if content_only:conditions.append("u.kind NOT LIKE 'section%' AND u.end_char-u.start_char>=80")
         if event_id:conditions.append('u.event_id=?');parameters.append(identity(event_id))
         if language:
             # IDs are validated text; remove column affinity to use records_event.

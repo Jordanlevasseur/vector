@@ -154,3 +154,11 @@ open conversation stream, adaptive Canvas identity and progressive evidence/tool
 Appearance uses the existing portable preference contract. See
 [DESKTOP_STAGE1_SPEC.md](DESKTOP_STAGE1_SPEC.md). Backend cognition, original data,
 model defaults, qualified isolation and authority boundaries remain unchanged.
+
+Ordinary Home/Chat now dispatches through the existing reasoning language frontend
+and assistant orchestration before retrieval/model preparation. Fully parsed
+arithmetic reuses tools, durable investigations and independent checked composition;
+conversation history pins immutable answer events and replays them. Explicit source
+requests and summary/generation requests have distinct fulfillment labels and
+bounded evidence rules. Experimental planning/connected evidence remain opt-in.
+See ROUTING_REPAIR_SPEC.md for syntax, persistence, limitations and verification.

@@ -183,8 +183,28 @@ class Desktop:
         self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'request_id':uuid4().hex},self.answer)
     def answer(self,record):
         if record.get('planning') is not None:
+            self.active_response=None
             self.active_planning=record
             self.planned_answer(record['planning']);return
+        if record.get('routing'):
+            self.active_response=record
+            outcome=record['outcome'];self.show_chat('VECTOR: '+outcome.get('message',outcome['status']))
+            if record.get('checked'):self.show_chat(self.shell.document_text(record['checked']))
+            elif outcome.get('answer'):
+                for statement in outcome['answer']['statements']:
+                    self.show_chat(statement['text']+'\n['+statement['kind']+'; model interpretation is unverified]')
+                    for cite in statement['citations']:self.source_link(cite['event_id'])
+                self.show_chat('Uncertainty: '+outcome['answer']['uncertainty'])
+            elif record.get('context'):
+                sources=record['context']['context']['sources']
+                self.show_chat('Retrieved source material — not a completed explanation or summary.' if sources else 'No matching relevant source material was established.')
+                for source in sources:self.show_chat(source['quote']);self.source_link(source['event_id'])
+            for conflict in (record.get('context') or {}).get('context',{}).get('conflicts',[]):self.show_chat('Conflicting sources: '+conflict['subject']+' / '+conflict['predicate']+'; no single conclusion is established.')
+            for claim in (record.get('context') or {}).get('context',{}).get('claims',[]):
+                if claim['override']:self.show_chat('Scoped user assumption: '+claim['subject']+' '+claim['predicate']+' '+claim['operating_conclusion']+' ['+claim['scope']+']; source says '+claim['value'])
+            if outcome['errors']:self.show_chat('Limitations: '+'; '.join(outcome['errors']))
+            if (record.get('context') or {}).get('display_notices'):self.show_chat('Source rights and provenance notices are available under Inspect response / evidence and View original source.')
+            return
         for notice in (record.get('context') or {}).get('display_notices',[]):self.show_chat(notice['notice'])
         outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['status'])
         if record.get('context') is None:

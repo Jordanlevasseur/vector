@@ -31,6 +31,24 @@ def validate_record(db,contract,key,p):
     if contract=='preferences' and key=='appearance':
         if not isinstance(p,dict) or set(p)!={'reduced_motion'} or type(p['reduced_motion']) is not bool:raise ValueError('Invalid appearance preference.')
     if contract=='conversations':
+        if 'routing' in p:
+            from vector_core.reasoning import request
+            if p['routing']!=request(p['question']):raise ValueError('Saved routing differs from the complete original request.')
+        if 'checked' in p:raise ValueError('Checked conversation views must be reconstructed from immutable answer events, not cached values.')
+        if 'calculation_ref' in p:
+            ref=p['calculation_ref']
+            if not isinstance(ref,dict) or set(ref)!={'investigation_id','prior_answer_record','answer_record'}:raise ValueError('Invalid calculation reference.')
+            identity(ref['investigation_id'])
+            for field in ('prior_answer_record','answer_record'):
+                if ref[field] is not None:
+                    identity(ref[field]);row=db.execute("SELECT rowid,payload FROM persistent_records WHERE id=? AND contract='investigation_events'",(ref[field],)).fetchone()
+                    if row is None:raise ValueError('Missing checked answer event.')
+                    event=json.loads(row[1])
+                    if event['status']!='ok' or event['step']!='answer' or event['result'].get('kind')!='cognitive-answer':raise ValueError('Reference is not a checked calculation answer.')
+                    if field=='answer_record' and event['investigation_id']!=ref['investigation_id']:raise ValueError('Answer belongs to another calculation.')
+            if ref['prior_answer_record'] and ref['answer_record']:
+                before=db.execute('SELECT rowid FROM persistent_records WHERE id=?',(ref['prior_answer_record'],)).fetchone()[0];after=db.execute('SELECT rowid FROM persistent_records WHERE id=?',(ref['answer_record'],)).fetchone()[0]
+                if before>=after:raise ValueError('Previous calculation must precede the new answer.')
         if 'planning' in p:raise ValueError('Planning views are derived from checked investigation records, not imported answer caches.')
         if 'planning_ref' in p:
             ref=p['planning_ref']

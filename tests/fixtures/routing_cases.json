@@ -1,0 +1,19 @@
+[
+ ["What is 568 times 564?", "320352"],
+ ["568 multiplied by 564", "320352"],
+ ["Calculate 568 × 564", "320352"],
+ ["What is 568 plus 564?", "1132"],
+ ["Calculate (13 + 7) * 2, then divide the result by 8.", "5"],
+ ["Calculate (13 + 7) times 2, then divide by 8", "5"],
+ ["What is 25% of 200?", "50"],
+ ["What is 25 percent of 200?", "50"],
+ ["Calculate 1,234.5 + 0.5", "1235.0"],
+ ["Compute 1.2e3 divided by 4", "300"],
+ ["Calculate 0.1 + 0.2", "0.3"],
+ ["Calculate 2 + 3 * 4", "14"],
+ ["Calculate (2 + 3) * 4", "20"],
+ ["Calculate -7 minus -3", "-4"],
+ ["What is 2 to the power of 10?", "1024"],
+ ["Subtract 7 from 20", "13"],
+ ["Convert 2 km to m", "2000"]
+]

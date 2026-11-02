@@ -62,7 +62,7 @@ class Interface:
         ttk.Checkbutton(self.options,text='Question planning (experimental)',variable=a.planning_enabled).pack(anchor='w')
         ttk.Checkbutton(self.options,text='Connected evidence (experimental)',variable=a.semantic_enabled).pack(anchor='w')
         row=ttk.Frame(self.options);row.pack(fill='x',pady=4)
-        for label,cmd in [('Clarify',a.clarify_investigation),('Resume',a.resume_investigation),('Explore unverified ideas',a.explore_investigation),('Checked findings',a.checked_results),('Inspect plan / evidence',self.inspect_active_plan)]:ttk.Button(row,text=label,command=cmd).pack(side='left',padx=3)
+        for label,cmd in [('Clarify',a.clarify_investigation),('Resume',a.resume_investigation),('Explore unverified ideas',a.explore_investigation),('Checked findings',a.checked_results),('Inspect response / evidence',self.inspect_active_plan)]:ttk.Button(row,text=label,command=cmd).pack(side='left',padx=3)
         bar=ttk.Frame(home);bar.grid(row=5,column=0,sticky='ew',pady=(6,0))
         ttk.Button(bar,text='Investigation / evidence controls',command=self.toggle_options).pack(side='left')
         ttk.Button(bar,text='New conversation',command=lambda:a.call('new_conversation',{},lambda r:a.reset_history('New conversation.'))).pack(side='right')
@@ -110,7 +110,8 @@ class Interface:
     def set_motion_preference(self):
         self.core.state(motion=not self.reduced.get());self.app.call('appearance_set',{'reduced_motion':self.reduced.get()})
     def inspect_active_plan(self):
-        if self.app.active_planning:self.app.show_result(self.app.active_planning['planning'])
+        if getattr(self.app,'active_response',None):self.app.show_result(self.app.active_response)
+        elif self.app.active_planning:self.app.show_result(self.app.active_planning['planning'])
     def document_text(self,document):
         if document.get('simulated'):return document['text']
         blocks=[]
