@@ -1,5 +1,5 @@
 """Actual shared application operations; this dispatcher is never exposed to models."""
-from dataclasses import asdict
+from dataclasses import asdict,replace
 import json
 from uuid import uuid4
 from vector_core.assistant import ask
@@ -9,20 +9,43 @@ from vector_core.memory import Submission
 from vector_core.persistence import put,records
 
 class Application:
+    @property
+    def generation(self):
+        controller=getattr(self,'model_controller',None)
+        if controller and controller.mode():
+            settings=controller.settings();role=settings['synthesis'] if controller.mode()=='both' else controller.mode()
+            return replace(GenerationConfig(**settings['generation']),model=settings['bindings'].get(role,''))
+        return self._generation
+    @generation.setter
+    def generation(self,value):self._generation=value.validate()
     def __init__(self,memory,transport=None,startup_error=None):
-        self.memory=memory;self.transport=transport;self.adapter=OllamaAdapter(transport) if transport else UnavailableAdapter()
+        self.memory=memory;self.transport=transport;self.raw_adapter=OllamaAdapter(transport) if transport else UnavailableAdapter();self.adapter=self.raw_adapter
         self.startup_error=startup_error
         self.session=self.preference('desktop_session') or {'conversation_id':uuid4().hex,'project_id':None}
         self.generation=GenerationConfig(**(self.preference('generation') or {})).validate()
         if self.preference('desktop_session') is None:put(memory,'preferences','desktop_session',self.session)
+        from vector_core.model_routing import ModelController,ModeAdapter
+        self.model_controller=ModelController(self)
+        if self.model_controller.mode():self.adapter=ModeAdapter(self.model_controller)
+        self.prepared_models=set()
+    def prepare_model(self,model):
+        if model in self.prepared_models:return
+        if not self.transport or not self.transport.qualified:raise ValueError(self.startup_error or 'No qualified local inference worker is available.')
+        known=next((m for m in self.raw_adapter.discover().get('models',[]) if m.get('name')==model),None)
+        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max']:raise ValueError('RESOURCE_BLOCKED: selected model assets exceed the qualified worker memory ceiling. A larger qualified profile and sufficient host RAM are required; loading was not attempted.')
+        if getattr(self.transport,'managed',False):
+            from vector_core.models import materialize,managed_catalog
+            selected=next((m for m in managed_catalog(self.memory) if m['name']==model),None)
+            if selected and selected['size']>=self.transport.report['memory_max']:raise ValueError('RESOURCE_BLOCKED: managed model assets exceed the qualified worker memory ceiling; materialization and loading were not attempted.')
+            materialize(self.memory,model,self.transport.model_directory)
+        else:
+            from vector_core.models import register_external,model_root
+            register_external(self.memory,model_root(self.transport,model),model)
+        self.prepared_models.add(model)
     def prepare_inference(self):
+        if self.model_controller.mode():return  # The controller prepares each role immediately before its stage.
         if self.transport and self.transport.qualified and self.generation.model:
-            if getattr(self.transport,'managed',False):
-                from vector_core.models import materialize
-                materialize(self.memory,self.generation.model,self.transport.model_directory)
-            else:
-                from vector_core.models import register_external
-                register_external(self.memory,self.transport.model_directory,self.generation.model)
+            self.prepare_model(self.generation.model)
     def preference(self,key):
         row=self.memory.db.execute("SELECT payload FROM persistent_records WHERE contract='preferences' AND record_key=? ORDER BY rowid DESC LIMIT 1",(key,)).fetchone()
         return json.loads(row[0]) if row else None
@@ -30,6 +53,27 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        from vector_core.model_routing import ModeAdapter
+        if self.model_controller.mode():
+            if not isinstance(self.adapter,ModeAdapter):self.adapter=ModeAdapter(self.model_controller)
+        elif isinstance(self.adapter,ModeAdapter):self.adapter=self.raw_adapter
+        if operation=='model_modes':return self.model_controller.catalog()
+        if operation=='model_mode_set':
+            from vector_core.model_routing import ModeAdapter
+            result=self.model_controller.select(p['mode'],scope=p.get('scope','conversation'),settings=p.get('settings'))
+            self.adapter=ModeAdapter(self.model_controller);return result
+        if operation=='model_run':return self.model_controller.get(p['id'])
+        if operation in {'model_resume','model_continue'}:
+            if p.get('approved') is not True:raise PermissionError('Explicit continuation approval required.')
+            if self.transport and not self.transport.qualified:raise ValueError('The inference worker is closed. Restart VECTOR to qualify a new worker, reopen this conversation, then explicitly resume or continue. Completed work is preserved.')
+            from vector_core.model_routing import chat
+            run=self.model_controller.get(p['id'])
+            if run['conversation_id']!=self.session['conversation_id'] or run['project_id']!=self.session['project_id']:raise ValueError('Open the original conversation/project before continuing.')
+            question=run['context']['question'] if run.get('context') else None
+            if question is None:raise ValueError('This run belongs to an advanced operation; retry through its original validated workflow.')
+            if operation=='model_resume':return chat(self,question,request_id=run['turn_id'],resume=run['id'])
+            if p.get('mode') not in {'a','b'}:raise ValueError('Explicitly choose one functioning local model.')
+            return chat(self,question,request_id=run['turn_id'],mode=p['mode'],parent=run['id'])
         if operation.startswith('question_'):
             from vector_core.planner import Planner
             from vector_core.investigation import Budget
@@ -62,7 +106,7 @@ class Application:
                 inv=Investigations(memory,self.adapter,self.generation)
                 state=inv.create(p['question'],steps,project_id=self.session['project_id'],approved=p.get('approved',False))
                 if p.get('explain') is True:self.prepare_inference()
-                execution=inv.run(state['id'],budget=Budget(len(steps),1 if p.get('explain') is True else 0,p.get('seconds',30)),approved=p.get('approved',False))
+                execution=inv.run(state['id'],budget=Budget(len(steps),p.get('model_calls',1) if p.get('explain') is True else 0,p.get('seconds',30)),approved=p.get('approved',False))
                 results,_=inv._results(state['id'])
                 return {'investigation_id':state['id'],'execution':execution,'answer':results.get('answer'),'commentary':results.get('commentary'),'experimental':True}
             if operation=='semantic_reason':
@@ -110,7 +154,7 @@ class Application:
         if operation=='health':
             return {'core_policy':getattr(self,'policy',{'status':'Direct library caller owns the OS boundary; use the supported CLI/desktop.'}),'schema':memory.db.execute('PRAGMA user_version').fetchone()[0],'data_directory':str(memory.config.data_dir),
                     'inference':self.transport.report if self.transport and self.transport.qualified else {'available':False,'reason':self.startup_error or 'No isolated worker selected.'},
-                    'session':self.session,'generation':asdict(self.generation),'appearance':self.preference('appearance'),'release_ready':False}
+                    'session':self.session,'generation':asdict(self._generation),'effective_generation':asdict(self.generation),'model_mode':self.model_controller.mode(),'appearance':self.preference('appearance'),'release_ready':False}
         if operation=='models':
             if self.transport and self.transport.qualified:return self.adapter.discover()
             return {'models':[],'available':False,'reason':self.startup_error or 'No active isolated worker; restart with local models.'}
@@ -135,6 +179,9 @@ class Application:
         if operation=='managed_models':
             return [dict(row) for row in memory.db.execute("SELECT record_key AS name,payload FROM persistent_records r WHERE contract='models' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='models' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 100")]
         if operation=='ask':
+            if self.model_controller.mode() and p.get('planning') is not True:
+                from vector_core.model_routing import chat
+                return chat(self,p['question'],request_id=p.get('request_id'),semantic=p.get('semantic',False),scope=p.get('scope'))
             if p.get('planning') is True:
                 from vector_core.planner import chat
                 return chat(memory,p['question'],conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],adapter=self.adapter,config=self.generation,request_id=p.get('request_id'),investigation_id=p.get('investigation_id'),revision=p.get('revision'),constraints=p.get('constraints'))
@@ -221,7 +268,7 @@ class Application:
                 row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='projects' AND record_key=? ORDER BY rowid DESC LIMIT 1",(self.session['project_id'],)).fetchone()
                 if row:
                     project=json.loads(row[0]);project['conversation_id']=self.session['conversation_id'];put(memory,'projects',self.session['project_id'],project)
-            put(memory,'preferences','desktop_session',self.session);return self.session
+            put(memory,'preferences','desktop_session',self.session);return {**self.session,'model_mode':self.model_controller.mode()}
         if operation=='history':
             from vector_core.projects import page
             from vector_core.memory import canonical
@@ -254,7 +301,7 @@ class Application:
             if row is None:raise ValueError('Saved conversation not found.')
             record=json.loads(row[0]);project_id=record.get('project_id')
             if project_id:Projects(memory).get(project_id)
-            self.session={'conversation_id':conversation,'project_id':project_id};put(memory,'preferences','desktop_session',self.session);return self.session
+            self.session={'conversation_id':conversation,'project_id':project_id};put(memory,'preferences','desktop_session',self.session);return {**self.session,'model_mode':self.model_controller.mode()}
         if operation=='project_create':
             from vector_core.projects import Projects
             return Projects(memory).create(p['name'])
@@ -267,9 +314,9 @@ class Application:
             from vector_core.projects import Projects
             project=Projects(memory).get(p['id'])
             self.session.update(project_id=p['id'],conversation_id=project['conversation_id']);put(memory,'preferences','desktop_session',self.session)
-            return {**self.session,'project':project}
+            return {**self.session,'project':project,'model_mode':self.model_controller.mode()}
         if operation=='project_leave':
-            self.session={'project_id':None,'conversation_id':uuid4().hex};put(memory,'preferences','desktop_session',self.session);return self.session
+            self.session={'project_id':None,'conversation_id':uuid4().hex};put(memory,'preferences','desktop_session',self.session);return {**self.session,'model_mode':self.model_controller.mode()}
         if operation in ('project_get','project_sources','project_items','project_history','project_link','project_links','project_item','project_archive'):
             from vector_core.projects import Projects
             projects=Projects(memory);project_id=p.get('project_id') or self.session['project_id']
@@ -336,6 +383,6 @@ class Application:
             result=move_data(memory,p['destination'])
             from vector_core.memory import Memory
             from vector_core.config import Config
-            self.memory.close();self.memory=Memory(Config.load(data_dir=result['directory']))
+            self.memory.close();self.memory=Memory(Config.load(data_dir=result['directory']));self.model_controller.memory=self.memory
             return result
         raise ValueError('Unknown application operation; no arbitrary code/command interface.')

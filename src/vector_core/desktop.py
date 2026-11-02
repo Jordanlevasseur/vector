@@ -15,7 +15,7 @@ from uuid import uuid4
 
 class Client:
     def __init__(self,process):
-        self.process=process;self.pending=None;self.output=b'';self.input=b''
+        self.process=process;self.pending=None;self.output=b'';self.input=b'';self.on_progress=None
         os.set_blocking(process.stdin.fileno(),False);os.set_blocking(process.stdout.fileno(),False)
     def start(self,operation,parameters,callback):
         if self.pending:raise RuntimeError('An operation is already running; wait or cancel it.')
@@ -37,6 +37,9 @@ class Client:
             raw,self.input=self.input.split(b'\n',1);response=json.loads(raw)
             if response.get('initialization_error'):raise RuntimeError('VECTOR startup blocked: '+str(response['result']))
             if not self.pending or response.get('id')!=self.pending[0]:raise RuntimeError('Application response identity mismatch.')
+            if 'progress' in response:
+                if self.on_progress:self.on_progress(response['progress'])
+                return
             callback=self.pending[1];self.pending=None;callback(response)
     def cancel(self):
         if self.pending:
@@ -83,6 +86,7 @@ def bootstrap(args):
     if args.data_dir:command+=['--data-dir',args.data_dir]
     if args.models_directory:command+=['--models-directory',args.models_directory]
     if args.managed:command+=['--managed']
+    if getattr(args,'runtime_profile',None):command+=['--runtime-profile',args.runtime_profile]
     process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,bufsize=0)
     from vector_core.security import activate
     try:activate(pipe_fds=(*new_pipes,process.stdin.fileno(),process.stdout.fileno()),display_fd=display[0])
@@ -100,6 +104,7 @@ class Desktop:
         root.title('VECTOR — Offline Evidence Assistant');root.geometry(str(min(1060,root.winfo_screenwidth()-80))+'x'+str(min(760,root.winfo_screenheight()-100)));root.minsize(820,600)
         from vector_core.desktop_shell import Interface
         self.shell=Interface(self)
+        self.client.on_progress=lambda value:self.status.set(value['label'])
         tab=self.tabs['Knowledge'];bar=ttk.Frame(tab);bar.pack(fill='x')
         self.search=ttk.Entry(bar);self.search.pack(side='left',fill='x',expand=True);self.search.bind('<Return>',lambda event:self.search_sources())
         for label,command in [('Search',self.search_sources),('Browse next sources',self.browse),('Claims',self.claims),('Conflicts',lambda:self.call('conflicts',{},self.show_result)),('Override claim',self.override)]:ttk.Button(bar,text=label,command=command).pack(side='left',padx=2)
@@ -154,6 +159,21 @@ class Desktop:
         self.select_button=ttk.Button(bar,text='Select model',command=self.select_model,state='disabled');self.select_button.pack(side='left',padx=5)
         ttk.Button(tab,text='Import selected local model into portable storage',command=self.import_model).pack(anchor='w')
         ttk.Label(tab,text='To configure inference, launch “VECTOR — Local Models” or “VECTOR — Managed Models” from the application menu.\nModel output is unverified inference; exact citations do not certify its conclusions.',wraplength=950).pack(anchor='w',pady=8)
+        from vector_core.model_routing import MODES
+        modes=ttk.LabelFrame(tab,text='Conversation models',padding=8);modes.pack(fill='x',pady=8)
+        self.default_mode=tk.StringVar(value='Choose model mode');ttk.Combobox(modes,textvariable=self.default_mode,values=tuple(MODES.values()),state='readonly',width=28).grid(row=0,column=0,sticky='w')
+        ttk.Button(modes,text='Save default mode',command=self.save_default_mode).grid(row=0,column=1,padx=8)
+        self.synthesis_role=tk.StringVar(value='b');ttk.Label(modes,text='Synthesis role').grid(row=1,column=0,sticky='w')
+        ttk.Combobox(modes,textvariable=self.synthesis_role,values=('a','b'),state='readonly',width=5).grid(row=1,column=1,sticky='w')
+        self.extra_reviews=tk.IntVar(value=0);ttk.Label(modes,text='Additional review rounds (0–2, only unresolved issues)').grid(row=2,column=0,sticky='w')
+        ttk.Spinbox(modes,from_=0,to=2,textvariable=self.extra_reviews,width=5).grid(row=2,column=1,sticky='w')
+        self.role_names={};self.role_boxes={}
+        for i,role in enumerate(('a','b')):
+            self.role_names[role]=tk.StringVar();ttk.Label(modes,text='Exact local model for role '+role.upper()).grid(row=3+i,column=0,sticky='w')
+            box=ttk.Combobox(modes,textvariable=self.role_names[role],state='readonly',width=36);box.grid(row=3+i,column=1,sticky='w');self.role_boxes[role]=box
+        ttk.Button(modes,text='Save model roles and limits',command=self.save_model_settings).grid(row=5,column=0,sticky='w',pady=6)
+        ttk.Label(modes,text='The context, output and timeout fields above also configure these modes.\nCalls run sequentially and unload between stages. Both requires five complete calls.\nA model review or agreement does not verify factual correctness.',wraplength=700).grid(row=6,column=0,columnspan=2,sticky='w')
+        self.mode_catalog=None;self.model_work_open=False
         actions=ttk.Frame(self.tabs['Tools']);actions.pack(fill='x',pady=4);self.advanced_actions=actions
         for index,(label,command) in enumerate([('Storage usage / available space',lambda:self.call('storage',{},self.show_result)),('Verify originals',lambda:self.call('verify',{},self.show_result)),('Create separate recovery key',self.create_key),('Export VECTOR',self.backup),('Verify backup (actual restore)',self.verify_backup),('Restore to a new folder',self.restore),('Move data location',self.move),('Rebuild search indexes',lambda:self.call('rebuild',{},self.show_result)),('Recover interrupted storage',lambda:self.call('recover_storage',{},self.show_result)),('System / offline diagnostics',lambda:self.call('health',{},self.show_result))]):ttk.Button(actions,text=label,command=command).grid(row=index//2,column=index%2,sticky='ew',padx=4,pady=3)
         self.shell.finish()
@@ -164,6 +184,11 @@ class Desktop:
             def done(response):
                 self.last_response=response;self.shell.pending();self.status.set('Offline • '+('Ready' if response['ok'] else 'Operation failed'))
                 if response['ok']:
+                    if operation in {'new_conversation','conversation_resume','project_load','project_leave'} and 'model_mode' in response['result']:
+                        from vector_core.model_routing import MODES
+                        mode=response['result']['model_mode'];self.model_mode.set(MODES.get(mode,'Choose model mode'))
+                        if self.mode_catalog is not None:self.mode_catalog['mode']=mode
+                        self.shell.model_state.set(MODES.get(mode,'Model not selected'))
                     if callback:callback(response['result'])
                 else:self.dialog.showerror('VECTOR operation blocked',response['result'],parent=self.root)
             self.client.start(operation,parameters,done);self.shell.pending()
@@ -182,6 +207,22 @@ class Desktop:
         self.shell.history_rows=[];self.shell.history_cursor=0
         self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'request_id':uuid4().hex},self.answer)
     def answer(self,record):
+        if record.get('model_run'):
+            self.active_response=record;self.active_planning=None;outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['message'])
+            if outcome.get('model_text'):self.show_chat(outcome['model_text'])
+            if outcome.get('uncertainty'):self.show_chat('Uncertainty: '+outcome['uncertainty'])
+            for issue in outcome.get('issues',[]):self.show_chat('Unresolved: '+issue)
+            for cite in outcome.get('citations',[]):self.source_link(cite['event_id'])
+            for error in outcome['errors']:self.show_chat('Limitations: '+error)
+            context=(record.get('context') or {}).get('context',{})
+            for conflict in context.get('conflicts',[]):self.show_chat('Unresolved source disagreement: '+conflict['subject']+' / '+conflict['predicate'])
+            for claim in context.get('claims',[]):
+                if claim['override']:self.show_chat('Scoped user assumption: '+claim['subject']+' '+claim['predicate']+' '+claim['operating_conclusion']+' ['+claim['scope']+']; source says '+claim['value'])
+            if (record.get('context') or {}).get('display_notices'):self.show_chat('Source rights and provenance remain available under Inspect response / evidence and original-source links.')
+            if record['model_run']['can_continue']:self.show_chat('Completed work is saved. Open Model work to resume this run or explicitly continue with one model.')
+            if (record.get('context') or {}).get('context',{}).get('truncated'):self.show_chat('Limitations: retrieval was bounded; some candidate evidence was omitted. The selected evidence package was identical for both models.')
+            if self.model_work_open:self.load_model_work()
+            return
         if record.get('planning') is not None:
             self.active_response=None
             self.active_planning=record
@@ -257,7 +298,7 @@ class Desktop:
         if not self.active_planning or not self.active_planning['planning'].get('state'):return
         view=self.active_planning['planning'];self.call('question_explore',{'id':view['id'],'revision':view['state']['revision'],'approved':True},self.planned_answer)
     def reset_history(self,message):
-        self.history_cursor=0;self.shell.reset();self.show_chat(message)
+        self.history_cursor=0;self.shell.reset();self.active_response=None;self.show_chat(message)
     def source_link(self,identity):
         tag='source:'+identity;self.shell.append('View original source '+identity,tag)
         self.chat.tag_configure(tag,foreground='#42dfe8',underline=True)
@@ -282,6 +323,61 @@ class Desktop:
         self.select_button.configure(state='normal' if names else 'disabled')
         self.shell.model_state.set('Model unavailable' if not names else 'Model selected' if self.model.get() in names else 'Model not selected')
         if not names:self.model_status.set('No available model. Archive search, evidence-only answers, tools and backups remain usable.')
+        self.call('model_modes',{},self.mode_status)
+    def mode_status(self,result):
+        from vector_core.model_routing import MODES
+        self.mode_catalog=result;self.model_mode.set(MODES.get(result['mode'],'Choose model mode'));self.default_mode.set(MODES.get(result['default_mode'],'Choose model mode'))
+        self.shell.model_state.set(MODES.get(result['mode'],'Model not selected')+(' • offline runtime ready' if result.get('available') else ' • AI unavailable'))
+        current=next((m for m in result['modes'] if m['id']==result['mode']),None)
+        if current and current.get('resource_blocked'):self.shell.model_state.set(MODES[result['mode']]+' • resource blocked')
+        if result.get('resources',{}).get('resource_notice'):self.model_status.set(result['resources']['resource_notice'])
+        settings=result['settings'];self.synthesis_role.set(settings['synthesis']);self.extra_reviews.set(settings['extra_reviews'])
+        names=[row['name'] for row in result['models']]
+        for role,box in self.role_boxes.items():box['values']=names;self.role_names[role].set(settings['bindings'].get(role,''))
+        if result['mode']:
+            for key,field in [('context','context_tokens'),('output','output_tokens'),('timeout','timeout_seconds')]:self.model_limits[key].delete(0,'end');self.model_limits[key].insert(0,str(settings['generation'][field]))
+    def selected_mode_id(self,value):
+        from vector_core.model_routing import MODES
+        return next((key for key,label in MODES.items() if label==value),None)
+    def change_mode(self,event=None):
+        mode=self.selected_mode_id(self.model_mode.get())
+        if mode:self.call('model_mode_set',{'mode':mode},lambda result:self.call('model_modes',{},self.mode_status))
+    def save_default_mode(self):
+        mode=self.selected_mode_id(self.default_mode.get())
+        if mode:self.call('model_mode_set',{'mode':mode,'scope':'default'},lambda result:self.call('model_modes',{},self.mode_status))
+    def save_model_settings(self):
+        mode=self.selected_mode_id(self.model_mode.get()) or self.selected_mode_id(self.default_mode.get())
+        if not mode:self.dialog.showinfo('Choose a model mode','Choose a conversation model mode first.');return
+        try:
+            settings={'bindings':{k:v.get() for k,v in self.role_names.items() if v.get()},'synthesis':self.synthesis_role.get(),'extra_reviews':self.extra_reviews.get(),'generation':{'model':'','context_tokens':int(self.model_limits['context'].get()),'output_tokens':int(self.model_limits['output'].get()),'timeout_seconds':float(self.model_limits['timeout'].get()),'temperature':0,'seed':0}}
+        except ValueError:self.dialog.showerror('Invalid model settings','Enter numeric context, output, timeout and review limits.');return
+        self.call('model_mode_set',{'mode':mode,'settings':settings},lambda result:self.call('model_modes',{},self.mode_status))
+    def toggle_model_work(self):
+        self.model_work_open=not self.model_work_open
+        if self.model_work_open:self.shell.model_work.grid();self.shell.model_work_button.configure(text='Model work ▾');self.load_model_work()
+        else:self.shell.model_work.grid_remove();self.shell.model_work_button.configure(text='Model work ▸')
+    def load_model_work(self):
+        record=getattr(self,'active_response',None)
+        if not record or not record.get('model_run_ref'):return
+        def loaded(run):
+            lines=[run['status']+' — '+run['mode'],'All generated material below is unverified. Agreement is not factual verification.']
+            for stage in run['steps']:
+                lines.append('\n'+stage['phase']+' — '+stage['model']+' — '+stage['status'])
+                if stage.get('generation'):
+                    try:
+                        p=json.loads(stage['generation']['text']);lines.append(p.get('text',stage['generation']['text']));lines.extend(p.get('issues',[]));lines.append(p.get('uncertainty',''))
+                    except ValueError:lines.append(stage['generation']['text'])
+                if stage.get('error'):lines.append(stage['error'])
+            text=self.shell.model_work_text;text.configure(state='normal');text.delete('1.0','end');text.insert('end','\n'.join(lines));text.configure(state='disabled')
+        self.call('model_run',{'id':record['model_run_ref']},loaded)
+    def resume_model_run(self):
+        record=getattr(self,'active_response',None)
+        if record and record.get('model_run_ref'):self.call('model_resume',{'id':record['model_run_ref'],'approved':True},self.answer)
+    def continue_model_run(self):
+        record=getattr(self,'active_response',None)
+        if not record or not record.get('model_run_ref'):return
+        role=self.simple.askstring('Continue with one model','Enter A or B. This starts an explicitly single-model answer using the saved task and evidence. The failed Both run remains recorded.',parent=self.root)
+        if role and role.lower() in {'a','b'}:self.call('model_continue',{'id':record['model_run_ref'],'mode':role.lower(),'approved':True},self.answer)
     def select_model(self):
         try:config={'model':self.model.get(),'context_tokens':int(self.model_limits['context'].get()),'output_tokens':int(self.model_limits['output'].get()),'timeout_seconds':float(self.model_limits['timeout'].get()),'temperature':0,'seed':0}
         except ValueError:self.dialog.showerror('Invalid limits','Enter numeric generation limits.');return
@@ -561,7 +657,7 @@ class Desktop:
 
 
 def main(argv=None):
-    parser=argparse.ArgumentParser(description='VECTOR offline desktop');parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--choose-models',action='store_true');parser.add_argument('--choose-data',action='store_true');parser.add_argument('--managed',action='store_true')
+    parser=argparse.ArgumentParser(description='VECTOR offline desktop');parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--choose-models',action='store_true');parser.add_argument('--choose-data',action='store_true');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile')
     args=parser.parse_args(argv)
     try:
         root,client=bootstrap(args)

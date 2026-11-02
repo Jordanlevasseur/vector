@@ -27,10 +27,19 @@ def latest(memory,contract,key):
     return {**json.loads(row['payload']),'revision':row['id']}
 
 def validate_record(db,contract,key,p):
+    if contract=='model_runs':
+        from vector_core.model_routing import validate_record as validate_model_run
+        return validate_model_run(db,key,p)
     """Also used on portable imports, before activation of externally supplied state."""
     if contract=='preferences' and key=='appearance':
         if not isinstance(p,dict) or set(p)!={'reduced_motion'} or type(p['reduced_motion']) is not bool:raise ValueError('Invalid appearance preference.')
     if contract=='conversations':
+        if p.get('model_run_ref'):
+            identity(p['model_run_ref'])
+            run=db.execute("SELECT payload FROM persistent_records WHERE contract='model_runs' AND record_key=? ORDER BY rowid DESC LIMIT 1",(p['model_run_ref'],)).fetchone()
+            if run is None:raise ValueError('Missing model execution evidence.')
+            saved=json.loads(run[0])
+            if (saved['conversation_id'],saved['turn_id'],saved['project_id'])!=(p['conversation_id'],p['id'],p['project_id']):raise ValueError('Model execution reference belongs to another turn.')
         if 'routing' in p:
             from vector_core.reasoning import request
             if p['routing']!=request(p['question']):raise ValueError('Saved routing differs from the complete original request.')

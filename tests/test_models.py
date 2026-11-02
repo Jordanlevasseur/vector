@@ -29,6 +29,7 @@ class ModelPortabilityTests(unittest.TestCase):
             runtime=base/'runtime';runtime.mkdir()
             with Memory(target) as restored:
                 materialize(restored,'test:tiny',runtime)
+                self.assertEqual((runtime/'blobs'/('sha256-'+hashlib.sha256(raw).hexdigest())).read_bytes(),raw)
                 self.assertEqual((runtime/'manifests/registry.ollama.ai/library/test/tiny').read_bytes(),raw)
                 self.assertEqual((runtime/'manifests-v2/ollama.com/library/test/tiny').read_bytes(),raw)
                 self.assertFalse((runtime/'manifests-v2/ollama.com/library/test/tiny').is_symlink())

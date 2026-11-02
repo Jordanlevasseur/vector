@@ -283,10 +283,13 @@ class Investigations:
             if not todo:
                 p.update(status='complete',reason='All current plan steps finished; hypotheses remain unverified.');p=self._save(p,expected=p['revision']);break
             step=todo[0]
-            if step['strategy'] in MODEL and calls>=budget.model_calls:reason='model-call budget exhausted';break
+            cost=getattr(self.adapter,'call_cost',1)
+            if type(cost) is not int or not 1<=cost<=128:raise ValueError('Invalid adapter model-call reservation.')
+            if step['strategy'] in MODEL and calls+cost>budget.model_calls:reason='model-call budget exhausted';break
             p,_=self._checkpoint(p,step,'started');token=p['active']
+            physical_before=getattr(self.adapter,'physical_calls',None)
             try:
-                if step['strategy'] in MODEL:calls+=1
+                if step['strategy'] in MODEL and physical_before is None:calls+=1
                 result=self._execute(p,step,results,feedback,cancellation,end)
                 result['simulated']=bool(result.get('simulated',False) or any(results[d].get('simulated',False) for d in step['depends']))
                 if cancellation and cancellation.cancelled:raise InterruptedError('Cancelled; no partial result accepted.')
@@ -302,6 +305,8 @@ class Investigations:
                     repeated=self.db.execute("SELECT 1 FROM persistent_records WHERE contract='investigation_events' AND json_extract(payload,'$.investigation_id')=? AND json_extract(payload,'$.status')='failed' AND json_extract(payload,'$.result.raw_sha256')=? LIMIT 1",(key,digest)).fetchone() is not None
                     evidence={'raw_prefix':partial[:8192],'raw_sha256':digest,'raw_truncated':len(partial)>8192,'repeated_rejection':repeated}
                 p,_=self._checkpoint(p,step,'failed',evidence,str(error),token=token);reason='step failed; correct plan or resume with retained feedback';break
+            finally:
+                if step['strategy'] in MODEL and physical_before is not None:calls+=self.adapter.physical_calls-physical_before
         if p['status']=='ready':
             p.update(status='complete' if all(s['id'] in results for s in p['plan']) else 'paused',reason=reason);p=self._save(p,expected=p['revision'])
         return {'state':p,'slice':{'completed_steps':done,'model_calls':calls,'seconds':time.monotonic()-started,'reason':reason}}

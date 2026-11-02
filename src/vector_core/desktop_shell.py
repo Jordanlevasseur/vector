@@ -56,6 +56,11 @@ class Interface:
         a.question.bind('<Return>',self.enter);a.question.bind('<Shift-Return>',self.newline)
         self.send=ttk.Button(inside,text='Send ↗',style='Accent.TButton',command=a.send_chat);self.send.grid(row=0,column=1,padx=(10,0))
         ttk.Label(inside,text='Enter sends · Shift+Enter adds a line · Entirely local',style='Muted.TLabel').grid(row=1,column=0,sticky='w',pady=(7,0))
+        from vector_core.model_routing import MODES
+        a.model_mode=tk.StringVar(value='Choose model mode')
+        a.mode_box=ttk.Combobox(inside,textvariable=a.model_mode,values=tuple(MODES.values()),state='readonly',width=29)
+        a.mode_box.grid(row=2,column=0,sticky='w',pady=(6,0));a.mode_box.bind('<<ComboboxSelected>>',a.change_mode)
+        self.model_work_button=ttk.Button(inside,text='Model work ▸',command=a.toggle_model_work);self.model_work_button.grid(row=2,column=1,pady=(6,0))
         self.options=ttk.Frame(home,padding=(10,8));self.options.grid(row=4,column=0,sticky='ew');self.options.grid_remove()
         self.more_history=ttk.Button(self.options,text='Load next saved turns',command=a.load_history);self.more_history.pack(anchor='w',pady=4)
         a.planning_enabled=tk.BooleanVar(value=False);a.semantic_enabled=tk.BooleanVar(value=False);a.active_planning=None
@@ -66,6 +71,11 @@ class Interface:
         bar=ttk.Frame(home);bar.grid(row=5,column=0,sticky='ew',pady=(6,0))
         ttk.Button(bar,text='Investigation / evidence controls',command=self.toggle_options).pack(side='left')
         ttk.Button(bar,text='New conversation',command=lambda:a.call('new_conversation',{},lambda r:a.reset_history('New conversation.'))).pack(side='right')
+        self.model_work=ttk.Frame(home,padding=8);self.model_work.grid(row=6,column=0,sticky='ew');self.model_work.grid_remove()
+        self.model_work_text=tk.Text(self.model_work,height=7,wrap='word',state='disabled',font=FONT['small']);self.model_work_text.pack(fill='x')
+        controls=ttk.Frame(self.model_work);controls.pack(fill='x')
+        ttk.Button(controls,text='Resume saved run',command=a.resume_model_run).pack(side='left')
+        ttk.Button(controls,text='Continue with one model…',command=a.continue_model_run).pack(side='left',padx=6)
     def create_history(self):
         frame=ttk.Frame(self.stack,padding=18);frame.grid(row=0,column=0,sticky='nsew');self.views['History']=frame
         ttk.Label(frame,text='History',style='Brand.TLabel').pack(anchor='w');ttk.Label(frame,text='Saved turns retain their conversation, project and original record identity.',style='Muted.TLabel').pack(anchor='w',pady=8)
@@ -155,6 +165,7 @@ class Interface:
         self.hide_menu();self.current=name;self.destination.set(name.upper());self.legacy[name].tkraise();self.core.state(visible=False)
     def pending(self):
         busy=bool(self.app.client.pending);self.core.state(busy=busy);self.send.configure(state='disabled' if busy else 'normal');self.cancel.configure(state='normal' if busy else 'disabled')
+        self.app.mode_box.configure(state='disabled' if busy else 'readonly')
     def scroll_changed(self,first,last):
         self.follow=float(last)>=.995
         if self.follow:self.latest.grid_remove()

@@ -1,4 +1,9 @@
 # Architecture
+
+Local model selection and sequential collaboration now reuse these layers via
+`model_routing`, with registered stage evidence and conversation preferences.
+See [DUAL_MODEL_SPEC.md](DUAL_MODEL_SPEC.md) for modes, recovery, context limits,
+resource admission and the separation of model proposals from checked findings.
 Python 3.12+, standard library, SQLite/FTS5, Linux libseccomp. No mandatory runtime Python
 dependencies, external services or HELIX imports. `cli` installs mandatory kernel
 policy before config/data operations. `config` owns an independent private data

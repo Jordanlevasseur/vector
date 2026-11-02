@@ -79,6 +79,16 @@ def validate_database(db,data_root=None,deadline=None):
             if contract=='models':validate_model(db,decoded)
             from vector_core.projects import validate_record
             validate_record(db,contract,record_key,decoded)
+            if contract=='model_runs':
+                if data_root is None:raise ValueError('Original root needed for local model evidence verification.')
+                from types import SimpleNamespace
+                from vector_core.memory import Memory
+                from vector_core.model_routing import ModelController
+                reader=Memory.__new__(Memory);reader.db=db;reader.config=SimpleNamespace(data_dir=data_root)
+                controller=ModelController.__new__(ModelController);controller.memory=reader
+                previous_factory=db.row_factory;db.row_factory=sqlite3.Row
+                try:controller._replay(decoded)
+                finally:db.row_factory=previous_factory
             if contract=='conversations' and 'calculation_ref' in decoded:
                 if data_root is None:raise ValueError('Original root needed for checked conversation replay.')
                 from types import SimpleNamespace

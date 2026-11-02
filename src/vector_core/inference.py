@@ -31,6 +31,15 @@ FINDING_NOTES_SCHEMA={'type':'object','properties':{
         'required':['kind','text','evidence'],'additionalProperties':False}}},
     'required':['order','notes'],'additionalProperties':False}
 
+# Generated ideas and reviews are explicitly unverified. Optional citations still
+# use exactly the existing immutable-original attestation contract.
+COLLABORATION_SCHEMA={'type':'object','properties':{
+    'text':{'type':'string','minLength':1,'maxLength':4000},
+    'uncertainty':{'type':'string','maxLength':2000},
+    'issues':{'type':'array','maxItems':6,'items':{'type':'string','maxLength':500}},
+    'citations':{'type':'array','maxItems':8,'items':CITATION_SCHEMA}},
+    'required':['text','uncertainty','issues','citations'],'additionalProperties':False}
+
 class InferenceError(RuntimeError):pass
 
 @dataclass(frozen=True)
@@ -98,7 +107,9 @@ class OllamaAdapter:
             raise error
         if type(response.get('prompt_eval_count')) is not int or response['prompt_eval_count']+config.output_tokens>config.context_tokens:
             raise InferenceError('Actual prompt token count exceeds the accepted context budget.')
+        if response.get('model') is not None and response['model']!=config.model:raise InferenceError('Runtime returned a different model identity.')
         result=checked_result(response.get('response'),config,runtime=self.transport.runtime_version,
                               model_version=response.get('model_digest','unknown'),metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration')})
         result['response_format']=response_kind or 'json'
+        if response.get('resources') is not None:result['resources']=response['resources']
         return result

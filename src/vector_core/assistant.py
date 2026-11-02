@@ -266,6 +266,13 @@ def _summary_view(record):
 
 
 def materialize_response(memory,record):
+    if record.get('model_run_ref'):
+        from vector_core.model_routing import ModelController,conversation_view,validate_record
+        row=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='model_runs' AND record_key=? ORDER BY rowid DESC LIMIT 1",(record['model_run_ref'],)).fetchone()
+        if row is None:raise ValueError('Missing model execution evidence; cached answer is not trusted.')
+        run=json.loads(row[0]);validate_record(memory.db,run['id'],run)
+        if (run['conversation_id'],run['turn_id'],run['project_id'])!=(record['conversation_id'],record['id'],record['project_id']):raise ValueError('Model execution belongs to another conversation.')
+        return conversation_view(memory,record,run)
     if 'calculation_ref' in record:return materialize_calculation(memory,record)
     if record.get('routing') and record.get('context'):
         context=record['context']['context']

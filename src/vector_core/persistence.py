@@ -36,6 +36,15 @@ def validate_model(db,payload):
 
 
 def validate_preference(key,payload):
+    if key=='model_collaboration':
+        from vector_core.model_routing import validate_settings
+        validate_settings(payload)
+    if key=='default_model_mode' or key.startswith('model_mode:'):
+        from vector_core.model_routing import MODES
+        if payload not in MODES:raise ValueError('Invalid persistent model mode.')
+        if key.startswith('model_mode:'):
+            from vector_core.projects import identity
+            identity(key[11:])
     if key=='generation':
         from vector_core.inference import GenerationConfig
         if not isinstance(payload,dict):raise ValueError('Generation settings must be an object.')

@@ -9,6 +9,55 @@ from vector_core.persistence import declare_external,import_asset,model_manifest
 from vector_core.portable import unique
 
 
+def model_root(transport,name):
+    """Resolve an authorized exact identifier to an already mounted local store."""
+    roots=getattr(transport,'model_directories',(transport.model_directory,))
+    matches=[]
+    for root in roots:
+        try:files=selected_files(root,name)
+        except FileNotFoundError:continue
+        matches.append((root,files[0]['sha256']))
+    if not matches:raise ValueError('Selected local model is not in an authorized model store.')
+    if len({item[1] for item in matches})>1:raise ValueError('Conflicting model manifests across authorized stores.')
+    return matches[0][0]
+
+
+def runtime_files(roots):
+    """Verified namespace overlay, including manifest blobs needed by Ollama v2."""
+    mounts={}
+    def add(relative,item):
+        previous=mounts.get(relative)
+        if previous and previous['sha256']!=item['sha256']:raise ValueError('Conflicting authorized model store content.')
+        mounts[relative]=item
+    for root in roots:
+        root=validate_layout(root)
+        for manifest in sorted((root/'manifests').rglob('*')):
+            if not manifest.is_file():continue
+            relative=manifest.relative_to(root/'manifests').parts
+            if len(relative)!=4 or relative[:2]!=('registry.ollama.ai','library'):raise ValueError('Unsupported local model manifest layout.')
+            files=selected_files(root,relative[2]+':'+relative[3])
+            for item in files:add(item['relative'],item)
+            # The top-level manifest is itself addressed as a blob by v2. Its
+            # verified bytes already exist; bind that file under its digest too.
+            add('blobs/sha256-'+files[0]['sha256'],files[0])
+    return mounts
+
+
+def managed_catalog(memory):
+    """Existing imported assets, not simulated runtime discovery or capability proof."""
+    from vector_core.persistence import validate_model
+    rows=memory.db.execute("SELECT record_key,payload FROM persistent_records r WHERE contract='models' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='models' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 100").fetchall()
+    result=[]
+    for row in rows:
+        name=row['record_key'];p=json.loads(row['payload']);validate_model(memory.db,p)
+        if not re.fullmatch(r'[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+',name):continue
+        size=0
+        for asset in p['assets']:
+            descriptor=memory.db.execute('SELECT o.raw_bytes FROM managed_refs r JOIN managed_objects o ON o.digest=r.digest WHERE r.id=?',(asset['asset_id'],)).fetchone();size+=descriptor[0]
+        result.append({'name':name,'digest':p['model_version'],'size':size,'managed':True,'runtime_inspected':False,'details':{'family':'not yet inspected'}})
+    return result
+
+
 def validate_layout(root):
     root=safe_path(root)
     if not all((root/name).is_dir() for name in ('blobs','manifests')):raise ValueError('Model directory needs blobs and manifests.')
@@ -110,4 +159,16 @@ def materialize(memory,name,directory):
                 while chunk:=source.read(BLOCK):digest.update(chunk)
             if digest.hexdigest()!=reference[1]:raise ValueError('Runtime materialization differs from managed asset.')
         total+=descriptor[1]
+    # Ollama v2 may address the original manifest by its digest. This is bounded
+    # metadata copied only into the already private ephemeral runtime, never into
+    # the authoritative asset store or a host model installation.
+    if re.fullmatch('[0-9a-f]{64}',payload['model_version']):
+        model,tag=name.split(':');manifest=root/'manifests/registry.ollama.ai/library'/model/tag
+        with input_file(manifest) as source:raw=source.read(65537)
+        if len(raw)>65536 or hashlib.sha256(raw).hexdigest()!=payload['model_version']:raise ValueError('Managed runtime manifest differs from the recorded version.')
+        target=root/'blobs'/('sha256-'+payload['model_version'])
+        if not target.exists():write_new_chunks(target,[raw])
+        else:
+            with input_file(target) as source:existing=source.read(65537)
+            if existing!=raw:raise ValueError('Managed manifest alias differs from verified bytes.')
     return {'model':name,'materialized_bytes':total,'ephemeral':True}

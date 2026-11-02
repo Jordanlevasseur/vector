@@ -16,7 +16,7 @@ def cancel(signum,frame):
 
 def main():
     global busy
-    parser=argparse.ArgumentParser();parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--managed',action='store_true')
+    parser=argparse.ArgumentParser();parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile')
     args=parser.parse_args();transport=None;startup_error=None
     signal.signal(signal.SIGUSR1,cancel)
     if args.models_directory or args.managed:
@@ -24,6 +24,13 @@ def main():
         try:
             from vector_core.worker_launcher import launch,launch_managed
             transport=launch_managed() if args.managed else launch(args.models_directory)
+        except (RuntimeError,ValueError,OSError) as error:startup_error=str(error)
+        finally:busy=False
+    elif args.runtime_profile or args.data_dir is None:
+        busy=True
+        try:
+            from vector_core.worker_launcher import desktop_runtime
+            transport=desktop_runtime(args.runtime_profile)
         except (RuntimeError,ValueError,OSError) as error:startup_error=str(error)
         finally:busy=False
     from vector_core.security import activate
@@ -44,6 +51,9 @@ def main():
                 request=json.loads(raw,object_pairs_hook=unique)
                 if not isinstance(request,dict) or set(request)!={'id','operation','parameters'}:raise ValueError('Invalid desktop request.')
                 request_id=request['id'];busy=True
+                def progress(value):
+                    sys.stdout.buffer.write(json.dumps({'id':request_id,'progress':value},allow_nan=False).encode()+b'\n');sys.stdout.buffer.flush()
+                application.model_controller.progress=progress
                 result=application.handle(request['operation'],request['parameters'])
                 response={'id':request_id,'ok':True,'result':result}
             except (ValueError,KeyError,TypeError,RuntimeError,OSError,sqlite3.Error) as error:
