@@ -28,6 +28,8 @@ def latest(memory,contract,key):
 
 def validate_record(db,contract,key,p):
     """Also used on portable imports, before activation of externally supplied state."""
+    if contract=='preferences' and key=='appearance':
+        if not isinstance(p,dict) or set(p)!={'reduced_motion'} or type(p['reduced_motion']) is not bool:raise ValueError('Invalid appearance preference.')
     if contract=='conversations':
         if 'planning' in p:raise ValueError('Planning views are derived from checked investigation records, not imported answer caches.')
         if 'planning_ref' in p:

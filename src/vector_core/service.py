@@ -104,10 +104,13 @@ class Application:
         if operation.startswith('library_'):
             from vector_core.library_service import dispatch
             return dispatch(self,operation,p)
+        if operation=='appearance_set':
+            if set(p)!={'reduced_motion'} or type(p['reduced_motion']) is not bool:raise ValueError('Appearance accepts only a reduced-motion boolean.')
+            put(memory,'preferences','appearance',p);return p
         if operation=='health':
             return {'core_policy':getattr(self,'policy',{'status':'Direct library caller owns the OS boundary; use the supported CLI/desktop.'}),'schema':memory.db.execute('PRAGMA user_version').fetchone()[0],'data_directory':str(memory.config.data_dir),
                     'inference':self.transport.report if self.transport and self.transport.qualified else {'available':False,'reason':self.startup_error or 'No isolated worker selected.'},
-                    'session':self.session,'generation':asdict(self.generation),'release_ready':False}
+                    'session':self.session,'generation':asdict(self.generation),'appearance':self.preference('appearance'),'release_ready':False}
         if operation=='models':
             if self.transport and self.transport.qualified:return self.adapter.discover()
             return {'models':[],'available':False,'reason':self.startup_error or 'No active isolated worker; restart with local models.'}
@@ -234,7 +237,7 @@ class Application:
         if operation=='conversation_browse':
             from vector_core.projects import page
             page(p.get('after',0),50)
-            rows=memory.db.execute("SELECT rowid AS cursor,json_extract(payload,'$.conversation_id') AS conversation_id,json_extract(payload,'$.project_id') AS project_id,substr(json_extract(payload,'$.question'),1,200) AS question FROM persistent_records r WHERE contract='conversations' AND rowid>? AND json_type(payload,'$.question')='text' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 50",(p.get('after',0),)).fetchall()
+            rows=memory.db.execute("SELECT rowid AS cursor,json_extract(payload,'$.created') AS created,json_extract(payload,'$.id') AS id,json_extract(payload,'$.conversation_id') AS conversation_id,json_extract(payload,'$.project_id') AS project_id,substr(json_extract(payload,'$.question'),1,200) AS question FROM persistent_records r WHERE contract='conversations' AND rowid>? AND json_type(payload,'$.question')='text' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid LIMIT 50",(p.get('after',0),)).fetchall()
             return {'items':[dict(r) for r in rows],'next_cursor':rows[-1]['cursor'] if rows else p.get('after',0)}
         if operation=='conversation_resume':
             from vector_core.projects import identity,Projects

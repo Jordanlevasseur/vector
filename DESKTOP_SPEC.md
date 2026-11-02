@@ -87,3 +87,12 @@ count actual rowids through the existing grouped passage index rather than trust
 processing summaries; partial/reset/rebuild counts remain exact. Real-library GUI
 acceptance kept its 60-second wait and asserted all 1,288,804 passages. Cold-cache
 and human usability remain separate gates.
+
+## Futuristic presentation update
+
+The six original workspaces are retained as internal components behind the
+hamburger shell, rather than top-level navigation tabs. Home / Chat, Projects and
+History are the three primary destinations. Other controls use secondary entries
+and detailed scrollable workspaces. See [DESKTOP_STAGE1_SPEC.md](DESKTOP_STAGE1_SPEC.md)
+for multiline entry, scroll retention, reduced motion, evidence inspection and
+actual runtime qualification requirements.

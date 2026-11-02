@@ -98,31 +98,8 @@ class Desktop:
         self.root=root;self.client=client;self.managed=managed;self.last_response=None;self.selected_event=None;self.selected_claim=None;self.selected_source_id=None;self.claim_cursor=''
         self.rows={};self.event_cursor='';self.project_cursor=0;self.project_rows={};self.history_cursor=0;self.active_project=None;self.item_rows={};self.editing_item=None
         root.title('VECTOR — Offline Evidence Assistant');root.geometry(str(min(1060,root.winfo_screenwidth()-80))+'x'+str(min(760,root.winfo_screenheight()-100)));root.minsize(820,600)
-        style=ttk.Style();style.theme_use('clam');style.configure('TButton',padding=6);style.configure('TNotebook.Tab',padding=(16,8))
-        top=ttk.Frame(root,padding=10);top.pack(fill='x')
-        ttk.Label(top,text='VECTOR',font=('Sans',20,'bold')).pack(side='left')
-        self.status=tk.StringVar(value='Starting protected application…');ttk.Label(top,textvariable=self.status).pack(side='left',padx=20)
-        ttk.Button(top,text='Cancel operation',command=self.client.cancel).pack(side='right')
-        notebook=ttk.Notebook(root);notebook.pack(fill='both',expand=True,padx=10,pady=(0,10))
-        self.tabs={}
-        for name in ('Assistant','Knowledge','Learning','Projects','Tools','Settings'):
-            tab=ttk.Frame(notebook,padding=12);notebook.add(tab,text=name);self.tabs[name]=tab
-        self.chat=ScrolledText(self.tabs['Assistant'],wrap='word',font=('Sans',11),state='disabled');self.chat.pack(fill='both',expand=True)
-        line=ttk.Frame(self.tabs['Assistant']);line.pack(fill='x',pady=8)
-        self.question=ttk.Entry(line);self.question.pack(side='left',fill='x',expand=True);self.question.bind('<Return>',lambda event:self.send_chat())
-        ttk.Button(line,text='Ask VECTOR',command=self.send_chat).pack(side='left',padx=6)
-        ttk.Button(line,text='New conversation',command=lambda:self.call('new_conversation',{},lambda r:self.reset_history('New conversation.'))).pack(side='left')
-        ttk.Button(self.tabs['Assistant'],text='Load saved conversation',command=self.load_history).pack(anchor='w')
-        ttk.Button(self.tabs['Assistant'],text='Checked investigation results (no model required)',command=self.checked_results).pack(anchor='w')
-        self.planning_enabled=tk.BooleanVar(value=False);self.active_planning=None
-        ttk.Checkbutton(self.tabs['Assistant'],text='Plan and investigate question (experimental, model optional)',variable=self.planning_enabled).pack(anchor='w')
-        actions=ttk.Frame(self.tabs['Assistant']);actions.pack(anchor='w')
-        ttk.Button(actions,text='Clarify investigation',command=self.clarify_investigation).pack(side='left')
-        ttk.Button(actions,text='Resume investigation',command=self.resume_investigation).pack(side='left')
-        ttk.Button(actions,text='Explore ideas (unverified)',command=self.explore_investigation).pack(side='left')
-        self.semantic_enabled=tk.BooleanVar(value=False)
-        ttk.Checkbutton(self.tabs['Assistant'],text='Connected evidence (experimental)',variable=self.semantic_enabled).pack(anchor='w')
-        ttk.Button(self.tabs['Assistant'],text='Find / resume older conversations',command=self.conversations).pack(anchor='w')
+        from vector_core.desktop_shell import Interface
+        self.shell=Interface(self)
         tab=self.tabs['Knowledge'];bar=ttk.Frame(tab);bar.pack(fill='x')
         self.search=ttk.Entry(bar);self.search.pack(side='left',fill='x',expand=True);self.search.bind('<Return>',lambda event:self.search_sources())
         for label,command in [('Search',self.search_sources),('Browse next sources',self.browse),('Claims',self.claims),('Conflicts',lambda:self.call('conflicts',{},self.show_result)),('Override claim',self.override)]:ttk.Button(bar,text=label,command=command).pack(side='left',padx=2)
@@ -177,29 +154,32 @@ class Desktop:
         self.select_button=ttk.Button(bar,text='Select model',command=self.select_model,state='disabled');self.select_button.pack(side='left',padx=5)
         ttk.Button(tab,text='Import selected local model into portable storage',command=self.import_model).pack(anchor='w')
         ttk.Label(tab,text='To configure inference, launch “VECTOR — Local Models” or “VECTOR — Managed Models” from the application menu.\nModel output is unverified inference; exact citations do not certify its conclusions.',wraplength=950).pack(anchor='w',pady=8)
-        actions=ttk.Frame(tab);actions.pack(fill='x',pady=4)
+        actions=ttk.Frame(self.tabs['Tools']);actions.pack(fill='x',pady=4);self.advanced_actions=actions
         for index,(label,command) in enumerate([('Storage usage / available space',lambda:self.call('storage',{},self.show_result)),('Verify originals',lambda:self.call('verify',{},self.show_result)),('Create separate recovery key',self.create_key),('Export VECTOR',self.backup),('Verify backup (actual restore)',self.verify_backup),('Restore to a new folder',self.restore),('Move data location',self.move),('Rebuild search indexes',lambda:self.call('rebuild',{},self.show_result)),('Recover interrupted storage',lambda:self.call('recover_storage',{},self.show_result)),('System / offline diagnostics',lambda:self.call('health',{},self.show_result))]):ttk.Button(actions,text=label,command=command).grid(row=index//2,column=index%2,sticky='ew',padx=4,pady=3)
+        self.shell.finish()
         self.root.protocol('WM_DELETE_WINDOW',self.close);root.deiconify();root.after(30,self.poll);self.call('health',{},self.health)
     def call(self,operation,parameters,callback=None):
         try:
-            self.status.set('Working: '+operation)
+            self.status.set('Working locally…')
             def done(response):
-                self.last_response=response;self.status.set('Offline • '+('Ready' if response['ok'] else 'Operation failed'))
+                self.last_response=response;self.shell.pending();self.status.set('Offline • '+('Ready' if response['ok'] else 'Operation failed'))
                 if response['ok']:
                     if callback:callback(response['result'])
                 else:self.dialog.showerror('VECTOR operation blocked',response['result'],parent=self.root)
-            self.client.start(operation,parameters,done)
+            self.client.start(operation,parameters,done);self.shell.pending()
         except (ValueError,RuntimeError,OSError) as error:self.dialog.showerror('VECTOR',str(error),parent=self.root)
     def poll(self):
         try:self.client.poll()
-        except (RuntimeError,OSError,ValueError) as error:self.status.set(str(error));return
-        self.root.after(30,self.poll)
-    def show_chat(self,text):self.chat.configure(state='normal');self.chat.insert('end',text+'\n\n');self.chat.see('end');self.chat.configure(state='disabled')
+        except (RuntimeError,OSError,ValueError) as error:
+            self.status.set('Backend unavailable — restart VECTOR');self.shell.model_state.set('Backend unavailable');self.shell.core.state(busy=False,motion=False);self.shell.send.configure(state='disabled');self.shell.cancel.configure(state='disabled');return
+        self.root.after(30 if self.client.pending else 100,self.poll)
+    def show_chat(self,text):self.shell.append(text,'user' if text.startswith('You:') else 'system' if text.startswith(('Saved question:','Uncertainty:','Limitations:')) else None)
     def send_chat(self):
         question=self.question.get()
         if not question.strip():return
         if self.client.pending:
             self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
+        self.shell.history_rows=[];self.shell.history_cursor=0
         self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'request_id':uuid4().hex},self.answer)
     def answer(self,record):
         if record.get('planning') is not None:
@@ -227,14 +207,15 @@ class Desktop:
             for conflict in connected['conflicts']:self.show_chat('Disputed evidence: '+conflict['subject']+' / '+conflict['predicate'])
             for note in connected['qualifications']:self.show_chat('Evidence qualification: '+note)
     def planned_answer(self,view):
-        self.show_chat('VECTOR — investigation\n'+view['message'])
+        message=view['message']
+        if view.get('answer'):message=message.replace(view['answer']['text'],self.shell.document_text(view['answer']),1)
+        self.show_chat('VECTOR — investigation\n'+message)
         if self.active_planning:self.active_planning['planning']=view
         if view.get('answer') or view.get('intermediate_answer'):
             for source in (view.get('answer') or view['intermediate_answer'])['sources']:self.source_link(source['event_id'])
         for source in view.get('evidence_sources',[]):
             self.show_chat('Retrieved passage (relevance unverified): '+source['quote']);self.source_link(source['event_id'])
         if view.get('analysis'):
-            for task in view['analysis']['tasks']:self.show_chat('Planned method: '+task['objective']+' — '+task['method'])
             for gap in view['analysis']['unresolved']:
                 for option in gap['choices']:
                     if 'request' in option:
@@ -256,16 +237,18 @@ class Desktop:
         if not self.active_planning or not self.active_planning['planning'].get('state'):return
         view=self.active_planning['planning'];self.call('question_explore',{'id':view['id'],'revision':view['state']['revision'],'approved':True},self.planned_answer)
     def reset_history(self,message):
-        self.history_cursor=0;self.show_chat(message)
+        self.history_cursor=0;self.shell.reset();self.show_chat(message)
     def source_link(self,identity):
-        tag='source:'+identity;self.chat.configure(state='normal');self.chat.insert('end','View original source '+identity+'\n\n',tag)
-        self.chat.tag_configure(tag,foreground='#1e4f8f',underline=True)
+        tag='source:'+identity;self.shell.append('View original source '+identity,tag)
+        self.chat.tag_configure(tag,foreground='#42dfe8',underline=True)
         self.chat.tag_bind(tag,'<Button-1>',lambda event:self.call('show',{'event_id':identity},self.show_result));self.chat.configure(state='disabled')
     def load_history(self):self.call('history',{'after':self.history_cursor},lambda r:self.history(r))
     def history(self,result):
         self.history_cursor=result['next_cursor']
         for record in result['items']:self.show_chat('Saved question: '+record['question']);self.answer(record)
     def health(self,result):
+        appearance=result.get('appearance') or {}
+        self.shell.reduced.set(appearance.get('reduced_motion',False) or os.environ.get('VECTOR_REDUCED_MOTION')=='1');self.shell.core.state(motion=not self.shell.reduced.get())
         inference=result['inference']
         self.model_status.set('Isolated local runtime qualified. Select a model; generated answers remain unverified.' if inference.get('runtime_version') else 'Local AI unavailable: '+str(inference.get('reason','No worker selected.'))[:350])
         self.active_project=result['session']['project_id']
@@ -277,12 +260,13 @@ class Desktop:
         names=[row['name'] for row in result] if isinstance(result,list) else [row['name'] for row in result.get('models',[])]
         self.model_box['values']=names
         self.select_button.configure(state='normal' if names else 'disabled')
+        self.shell.model_state.set('Model unavailable' if not names else 'Model selected' if self.model.get() in names else 'Model not selected')
         if not names:self.model_status.set('No available model. Archive search, evidence-only answers, tools and backups remain usable.')
     def select_model(self):
         try:config={'model':self.model.get(),'context_tokens':int(self.model_limits['context'].get()),'output_tokens':int(self.model_limits['output'].get()),'timeout_seconds':float(self.model_limits['timeout'].get()),'temperature':0,'seed':0}
         except ValueError:self.dialog.showerror('Invalid limits','Enter numeric generation limits.');return
         if not self.managed and not self.dialog.askyesno('External model dependency','Use these external local weights? Complete exports will fail until the required weights are imported into managed storage.'):return
-        self.call('select_model',{'configuration':config,'authorize_external':True},self.show_result)
+        self.call('select_model',{'configuration':config,'authorize_external':True},lambda result:(self.shell.model_state.set('Model selected'),self.show_result(result)))
     def import_model(self):
         directory=self.files.askdirectory(title='Select the source Ollama models directory')
         name=self.model.get() or self.simple.askstring('Model','Exact local model:tag name')
@@ -452,7 +436,7 @@ class Desktop:
     def checked_results(self):
         self.paged_records('Checked investigation results','investigation_list',lambda r:r['status']+' — '+r['goal'],lambda r:self.call('investigation_answer',{'id':r['id']},self.checked_answer))
     def checked_answer(self,result):
-        self.show_chat('VECTOR — checked findings\n'+result['answer']['text'])
+        self.show_chat('VECTOR — checked findings\n'+self.shell.document_text(result['answer']))
         for notice in result.get('notices',[]):self.show_chat(notice)
         if result.get('commentary'):
             self.show_chat('Optional model commentary — unverified; checked findings above remain authoritative.')
@@ -553,7 +537,7 @@ class Desktop:
     def close(self):
         if self.client.pending and not self.dialog.askyesno('Operation running','Cancel the current operation and close?'):return
         if self.client.pending:self.client.cancel()
-        self.client.close();self.root.destroy()
+        self.shell.close();self.client.close();self.root.destroy()
 
 
 def main(argv=None):

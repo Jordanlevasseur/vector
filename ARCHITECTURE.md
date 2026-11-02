@@ -145,3 +145,12 @@ unverified neural exploration. Conversation records store durable references;
 views are reconstructed from investigation evidence. No schema, default model,
 OS security policy or privileged authority changes. See [PLANNING_SPEC.md](PLANNING_SPEC.md)
 for trust boundaries, recovery and the tested language scope.
+
+## Desktop presentation, Stage 1
+
+`desktop_shell` and `desktop_theme` provide an offline native Tk presentation over
+existing Desktop handlers: collapsible navigation, three primary workspaces,
+open conversation stream, adaptive Canvas identity and progressive evidence/tools.
+Appearance uses the existing portable preference contract. See
+[DESKTOP_STAGE1_SPEC.md](DESKTOP_STAGE1_SPEC.md). Backend cognition, original data,
+model defaults, qualified isolation and authority boundaries remain unchanged.
