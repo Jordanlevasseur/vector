@@ -190,3 +190,6 @@ It uses existing source verification and calculation tools without needing a
 model. Clarify/resume controls preserve the investigation; optional exploration
 retains model ideas as unverified proposals. Ordinary Ask remains the default.
 See [PLANNING_SPEC.md](PLANNING_SPEC.md) for scope, recovery and limitations.
+
+Measured planning results, actual model limitations and preservation evidence:
+[QUESTION_PLANNING_REPORT.md](QUESTION_PLANNING_REPORT.md).
