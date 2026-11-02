@@ -249,7 +249,9 @@ def summarize_ask(memory,question,decision,*,adapter,config,conversation_id,proj
         record=capability_message(memory,question,decision,conversation_id=conversation_id,project_id=project_id,request_id=request_id)
         record['context']=document_context(memory,question,decision['query'])
         if available:record['outcome']['message']='I cannot provide a complete summary: the target document is ambiguous, its body is not qualified, or its complete evidence does not fit this model context. No essential text was silently truncated.'
-        if record['context']:record['outcome']['message']+=' Relevant original body passages are available below as source material, not as a summary.'
+        if record['context']:
+            anchored=record['context']['context']['document']['excerpt_title_anchors']
+            record['outcome']['message']+=(' Original passages after a literal document-title heading are offered below; this is not a summary or semantic relevance certification.' if anchored else ' Archived opening passages are offered below; relevance is unverified and this is not a summary.')
     put(memory,'conversations',conversation_id+':'+record['id'],record);return record
 
 

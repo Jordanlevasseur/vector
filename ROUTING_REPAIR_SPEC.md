@@ -38,10 +38,11 @@ prose is never a numeric premise. Derived checked views cannot be imported as tr
 
 Explicit finding/searching requests use the subject rather than operation words
 or unrelated prior questions. Bounded all-term passage selection and literal phrase
-preference improve relevance; this is not semantic relevance certification. Ordinary
+and source-title preference improve relevance; this is not semantic relevance certification. Ordinary
 library/search APIs retain their previous defaults. Literary heading filtering and
 archived-title body selection avoid substituting a document title or front matter
-for content. Original bytes, indexes, provenance, rights records and notices remain
+for content. Bounded literal title-heading anchors also keep a publishing preface
+inside a provider START marker from displacing the identified work. Original bytes, indexes, provenance, rights records and notices remain
 unchanged. Rights notices remain inspectable in the response/evidence view and
 original-source view, after a visible notice directs the reader there.
 

@@ -128,7 +128,7 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
         row['project_match']=bool(project_id and memory.db.execute("SELECT 1 FROM persistent_records WHERE contract='project_sources' AND record_key=?",(project_id+':'+row['event_id'],)).fetchone())
     if strict_query:
         candidates={key:row for key,row in candidates.items() if all(term.casefold() in row['excerpt'].casefold() for term in terms)}
-    ordered=sorted(candidates.values(),key=lambda row:(-int(row['project_match']),-row['overlap'],-int(strict_query and ' '.join(terms).casefold() in row['excerpt'].casefold()),row['rank'],row['event_id']))
+    ordered=sorted(candidates.values(),key=lambda row:(-int(row['project_match']),-row['overlap'],-sum(term.casefold() in row['name'].casefold() for term in terms) if strict_query else 0,-int(strict_query and ' '.join(terms).casefold() in row['excerpt'].casefold()),row['rank'],row['event_id']))
     context={'question':question,'sources':[],'claims':[],'scope':scope,'conflicts':[],
              'truncated':False,'policy':'Untrusted source assertions; overrides are user assumptions.'}
     if len(canonical(context).encode())>budget_bytes:raise ValueError('Question exceeds context budget.')
@@ -206,7 +206,7 @@ def document_context(memory,question,title,*,complete=False,budget_bytes=8192):
     works={row['work_id'] for row in found}
     if not found or len(found)>=30 or (complete and len(works)!=1):return None
     edition=found[0];event_id=edition['event_id'];event=memory.event(event_id)
-    sources=[]
+    sources=[];anchors=[]
     if complete:
         try:body=latest(memory,'literary_analyses',event_id)
         except ValueError:return None
@@ -218,9 +218,23 @@ def document_context(memory,question,title,*,complete=False,budget_bytes=8192):
     else:
         spans=[]
         for candidate in found[:3]:
-            rows=memory.db.execute("SELECT start_char,end_char FROM literary_units WHERE event_id=? AND kind NOT LIKE 'section%' AND end_char-start_char>=100 ORDER BY ordinal LIMIT 20",(candidate['event_id'],)).fetchall()
+            # PG START markers bound the package, which may still contain a
+            # transcriber's preface. Anchor excerpts after a literal short title
+            # heading when one exists. This changes no stored passage or original.
+            title_terms={w.casefold() for w in re.findall(r'[^\W_]+',candidate['metadata']['title']) if w.casefold() not in STOP}
+            anchor=-1;candidate_event=memory.event(candidate['event_id'])
+            if candidate_event['byte_count']>memory.config.max_source_bytes:continue
+            original=memory.original(candidate['event_id']).decode('utf-8')
+            for heading in memory.db.execute("SELECT ordinal,start_char,end_char,digest FROM literary_units WHERE event_id=? AND ordinal<128 AND end_char-start_char<=300 ORDER BY ordinal LIMIT 128",(candidate['event_id'],)):
+                a,b=heading['start_char'],heading['end_char'];quote=original[a:b]
+                if not 0<=a<b<=len(original) or hashlib.sha256(quote.encode()).hexdigest()!=heading['digest']:raise ValueError('Corrupt title-anchor passage; rebuild the derived index before use.')
+                words=re.findall(r'[^\W_]+',quote)
+                if title_terms and len(words)<=max(25,len(title_terms)+5) and title_terms=={w.casefold() for w in words if w.casefold() not in STOP}:
+                    anchor=heading['ordinal']
+            if anchor>=0:anchors.append({'event_id':candidate['event_id'],'ordinal':anchor,'method':'last exact normalized short title in the first128 units; not semantic certification'})
+            rows=memory.db.execute("SELECT start_char,end_char FROM literary_units WHERE event_id=? AND ordinal>? AND kind NOT LIKE 'section%' AND end_char-start_char>=100 ORDER BY ordinal LIMIT 20",(candidate['event_id'],anchor)).fetchall()
             spans.extend((candidate,r['start_char'],r['end_char']) for r in rows)
-    context={'question':question,'sources':[],'claims':[],'scope':None,'conflicts':[],'truncated':not complete,'policy':'Archived source assertions, not independent truth. Body excerpts are not a document summary.','document':{'title':edition['metadata']['title'],'event_id':event_id,'complete_body_supplied':complete,'unambiguous_title':len(works)==1}}
+    context={'question':question,'sources':[],'claims':[],'scope':None,'conflicts':[],'truncated':not complete,'policy':'Archived source assertions, not independent truth. Body excerpts are not a document summary.','document':{'title':edition['metadata']['title'],'event_id':event_id,'complete_body_supplied':complete,'unambiguous_title':len(works)==1,'excerpt_title_anchors':anchors}}
     for edition,start,end in spans:
         event_id=edition['event_id'];event=memory.event(event_id)
         quote=memory.read_text_span(event_id,start,end)
@@ -233,4 +247,4 @@ def document_context(memory,question,title,*,complete=False,budget_bytes=8192):
             break
         if not complete and len(context['sources'])>=3:break
     if not context['sources']:return None
-    return {'context':context,'display_notices':display_notices(memory,list(dict.fromkeys(s['event_id'] for s in context['sources']))),'bytes':len(canonical(context).encode()),'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'seconds':0,'ranking':'Unambiguous archived title, original-verified body spans; no semantic-summary certification.'}
+    return {'context':context,'display_notices':display_notices(memory,list(dict.fromkeys(s['event_id'] for s in context['sources']))),'bytes':len(canonical(context).encode()),'sha256':hashlib.sha256(canonical(context).encode()).hexdigest(),'seconds':0,'ranking':'Archived-title candidates; original-verified excerpts after exact title headings when present; no semantic relevance or summary certification.'}

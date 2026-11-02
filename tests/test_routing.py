@@ -103,7 +103,7 @@ class RoutingTests(unittest.TestCase):
   from vector_core.assistant import respond
   from vector_core.inference import GenerationConfig,SimulatedAdapter
   self.document('Independent fictional body about shared responsibility and duties. '*100);q='Summarize Explicit test fixture 1'
-  r=respond(self.m,q,decision=request(q),adapter=SimulatedAdapter([]),config=GenerationConfig(model='explicit-test-only'),conversation_id=self.app.session['conversation_id']);self.assertEqual(r['outcome']['status'],'capability-unavailable');self.assertIsNone(r['outcome']['generation']);self.assertIn('No essential text',r['outcome']['message'])
+  r=respond(self.m,q,decision=request(q),adapter=SimulatedAdapter([]),config=GenerationConfig(model='explicit-test-only'),conversation_id=self.app.session['conversation_id']);self.assertEqual(r['outcome']['status'],'capability-unavailable');self.assertIsNone(r['outcome']['generation']);self.assertIn('No essential text',r['outcome']['message']);self.assertFalse(r['context']['context']['document']['excerpt_title_anchors'])
  def test_default_retrieval_retains_contradictory_evidence(self):
   from vector_core.knowledge import Knowledge,ClaimDraft
   for value in ('7','11'):
@@ -144,3 +144,16 @@ class RoutingTests(unittest.TestCase):
   with patch('vector_core.assistant.put',interrupted):
    with self.assertRaises(RuntimeError):respond(self.m,q,decision=d,adapter=SimulatedAdapter([raw]),config=cfg,conversation_id=self.app.session['conversation_id'],request_id=token)
   r=respond(self.m,q,decision=d,adapter=SimulatedAdapter([]),config=cfg,conversation_id=self.app.session['conversation_id'],request_id=token);self.assertEqual(r['outcome']['status'],'summary-unfulfilled');self.assertIsNone(r['outcome']['answer']);self.assertEqual(r['outcome']['generation']['text'],raw)
+
+ def test_document_excerpt_starts_after_literal_title_not_publishing_preface(self):
+  from vector_core.context import document_context
+  preface='Publishing history for Explicit test fixture 1, a controlled fictional edition, not the work itself. This introductory paragraph describes how a digital copy was distributed and maintained.'
+  body='The fictional assembly assigns shared maintenance and requires recorded decisions. This is the substantive controlled body and must be offered before editorial history.'
+  self.document('Explicit test fixture 1\n\n'+preface+'\n\nExplicit test fixture 1\n\n'+body)
+  result=document_context(self.m,'Summarize Explicit test fixture 1','Explicit test fixture 1');quotes=[s['quote'] for s in result['context']['sources']];self.assertTrue(quotes);self.assertIn(body,quotes[0]);self.assertFalse(any('Publishing history' in q for q in quotes));self.assertTrue(result['context']['document']['excerpt_title_anchors'])
+  anchor=result['context']['document']['excerpt_title_anchors'][0];self.m.db.execute('UPDATE literary_units SET digest=? WHERE event_id=? AND ordinal=?',('0'*64,anchor['event_id'],anchor['ordinal']))
+  with self.assertRaisesRegex(ValueError,'Corrupt title-anchor'):document_context(self.m,'Summarize Explicit test fixture 1','Explicit test fixture 1')
+ def test_explicit_subject_title_preference_before_cross_domain_analogy(self):
+  self.m.ingest(Submission(b'Electrical resistance is an analogy for this thermal network. This is controlled cross-domain fixture material.','Thermal handbook'))
+  direct=self.m.ingest(Submission(b'Electrical circuits contain resistance. Applied voltage equals circuit current times circuit resistance in this controlled fixture.','Electrical science handbook'))
+  r=self.ask('Find information about electrical resistance');self.assertEqual(r['context']['context']['sources'][0]['event_id'],direct['event_id']);self.assertIsNone(r['outcome']['answer'])
