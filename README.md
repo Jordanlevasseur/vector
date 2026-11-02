@@ -197,3 +197,5 @@ Measured planning results, actual model limitations and preservation evidence:
 The native futuristic desktop uses a collapsed hamburger with Home / Chat,
 Projects and History. See [DESKTOP_STAGE1_REPORT.md](DESKTOP_STAGE1_REPORT.md)
 for real screenshots, measured tests/performance, preservation and limitations.
+
+Measured ordinary-chat routing repair: [ROUTING_REPAIR_REPORT.md](ROUTING_REPAIR_REPORT.md).
