@@ -92,33 +92,33 @@ Measured on the Lenovo at 1060×700 and 820×600:
 
 | Measure | Actual result |
 |---|---:|
-| Frontend peak RSS | 31.34MiB |
-| Backend sampled RSS | 27.30MiB |
-| Animated idle CPU,15s | 1.16% of one CPU core |
-| Reduced-motion idle CPU,15s | 0.77% of one CPU core |
+| Frontend peak RSS | 31.34 MiB |
+| Backend sampled RSS | 27.30 MiB |
+| Animated idle CPU, 15 s | 1.16% of one CPU core |
+| Reduced-motion idle CPU, 15 s | 0.77% of one CPU core |
 | Idle core redraws, animated/reduced | 14 / 0 |
-| Cached presentation navigation median/max | 6.76 / 17.00ms |
+| Cached presentation navigation median/max | 6.76 / 17.00 ms |
 | Neural calls | 0 |
 
 Navigation timings cover native view/layout changes, not database/model latency.
 RSS values are separate process measurements, not a simultaneous summed peak.
-The 15s idle samples are limited measurements, not a long-duration thermal/battery
+The 15 s idle samples are limited measurements, not a long-duration thermal/battery
 qualification. Animations use one frame/second idle and four for actual work;
 hidden views stop their timer and minimized windows skip redraws. Reduced motion
 persists in portable preferences and VECTOR_REDUCED_MOTION=1 is honored at startup.
 
 ## Tests and integrity
 
-Unchanged production-checkout desktop baseline:5/5 passed in 23.560 s. Previous
-clean3bbb37f full source evidence was226/226. An early226-test development run
-and an expanded230-test run also passed; those ran against an evolving checkout
+Unchanged production-checkout desktop baseline: 5/5 passed in 23.560 s. Previous
+clean 3bbb37f full source evidence was 226/226. An early 226-test development run
+and an expanded 230-test run also passed; those ran against an evolving checkout
 and are not represented as the final frozen regression result. Test harness
 newline quoting errors were fixed without changing assertions. A concurrent-GUI
 Escape check lost focus to another test window; explicit test-window focus and
 serial final acceptance retain the original Escape assertion. Failed logs remain.
 
-Final frozen source: **230 passed, zero skipped**, 784.339s.
-Installed isolated runtime: **229 passed, one skipped**, 613.459s.
+Final frozen source: **230 passed, zero skipped**, 784.339 s.
+Installed isolated runtime: **229 passed, one skipped**, 613.459 s.
 The skip is the positive encrypted roundtrip because optional cryptography is
 absent from the isolated interpreter. Its positive source-host test passed;
 installed encryption remains unverified and does not fall back to plaintext.
@@ -139,7 +139,7 @@ verification performance remains a separate engineering issue.
 A fresh consistent production database snapshot was certified before installation.
 Previously independently verified original-object copies were retained, not
 relabelled as newly copied. Final preservation passed in 1001.853 s,
-including full portable database/source/provenance validation. All1,000 literary
+including full portable database/source/provenance validation. All 1,000 literary
 editions, 1,288,804 passages, 22 scientific editions and 2,631 segments retain exact
 fingerprints. All 4,587 original objects and their independent copies match;
 all 18 prior history prefixes are unchanged. Preferences, both model inventories,
