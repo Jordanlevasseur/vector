@@ -57,3 +57,7 @@ finally:
   report['scope_cleanup_verified']=not group.exists() or (group/'pids.current').read_text().strip()=='0'
  report['finished']=time.time();report['final_meminfo']=Path('/proc/meminfo').read_text();report['final_pressure']=Path('/proc/pressure/memory').read_text();(out/'result.json').write_text(json.dumps(report,indent=2))
  print(json.dumps({'output':str(out),'blocker':report.get('blocker'),'real_modes_complete':[c['mode'] for c in report['cases'] if c.get('pipeline_complete')]}),flush=True)
+
+# A successful diagnostic run is not automatically successful model acceptance.
+complete=len(report['cases'])==len(args.modes) and all(c.get('pipeline_complete') and c.get('lexical_correctness_screen') for c in report['cases'])
+raise SystemExit(2 if report.get('blocker') else 0 if complete else 1)

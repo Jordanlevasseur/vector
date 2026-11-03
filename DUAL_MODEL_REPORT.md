@@ -12,8 +12,8 @@ release-ready.** The current hardware stopped a 2B trial under its resource
 protection. The real 0.5B model restated the logic question rather than solving it.
 Neither valid JSON nor two-model agreement certifies an answer.
 
-Final source/installed suite counts, installation checkpoint and final desktop
-measurements are recorded below after closing verification.
+Final source/installed suite counts, the installation checkpoint and final
+desktop measurements are recorded below.
 
 ## Actual local models
 
@@ -193,3 +193,131 @@ pass and existing authorization checks remain intact.
 The final wheel contains 50 Python modules and exactly matches the frozen source
 and test snapshot. The previous installed 49-module package was independently
 compared with the untouched baseline and backed up before replacement.
+
+## Installed desktop and closing qualification
+
+Implementation checkpoint: `8a7eb8186a0cd4dff8c236e1963486a105ce89a9`.
+The source checkpoint was fast-forwarded into the clean production repository.
+Its local wheel was installed with kernel network denial, no index/dependencies/
+compilation/downloads, and exact verification of all 50 installed module hashes.
+The prior 49-module package and distribution metadata remain independently copied
+under the evidence directory's `before-installed-package` for rollback. The
+new private startup declaration is `/home/mint/.config/vector/local-inference.json`;
+it identifies the existing stores, a requested 1536 MiB ceiling and 64 tasks, without
+selecting any default model mode or changing legacy generation preferences.
+
+The final installed suite executed **297 tests: 296 passed, one skipped, zero
+failures**, in 704.692 seconds. The skipped authenticated encryption round-trip
+requires optional `cryptography`, absent from this isolated interpreter. It
+passed in the host source suite; missing-dependency fail-closed checks pass in
+the installed environment. The skipped installed positive case is not counted
+as passing, and no dependency was downloaded to change that outcome.
+
+The final native desktop test used the actual installed package, private test
+data, real Qwen 0.5B and a 768 MiB worker. It exercised the Chat selector, backend
+execution, progress/history records and cleanup, with no simulated adapter.
+Frontend IPv4, IPv6 and Unix socket creation were independently denied.
+
+| Actual desktop task | Observed outcome | Whole UI seconds | Load seconds | Generated tokens/s |
+| --- | --- | ---: | ---: | ---: |
+| Conditional implication about K floating | Returned the retrieval diagnostic and claimed insufficient information; FAILED reasoning criterion. |40.48|2.75|3.37|
+| Short greeting for a new project | Generated a generic greeting but contradicted it with a refusal in uncertainty; not a clean instruction/coherence success. |30.74|3.20|3.70|
+
+The logic response was: “No matching source evidence found in the selected
+bounded search.” Its uncertainty said there was not enough information to decide
+whether K floats. That does not resolve the supplied conditional premises.
+The greeting text was “Hello! How can I assist you today?”, while its uncertainty
+claimed it could not provide the requested greeting. Actual outputs are retained
+without replacing them with a successful fixture or hiding the contradiction.
+
+These two calls completed protocol/format validation and were visibly labeled
+unverified. **They are not reported as successful reasoning acceptance.** Both
+used the exact real A identifier/digest. Prompt counts were 235 and 203 tokens,
+with 51 and 56 output tokens against a 192-token budget at 2048 context. Neither
+response exhausted its output/context budget. Peak sampled scope memory was
+603,504,640 and 606,044,160 bytes; worker swap and measured host swap-out during
+both calls were zero. Maximum sampled full-memory PSI was 0.62% and 1.38%.
+Scope cleanup passed. A's failures therefore remain model/prompt quality issues;
+this experiment does not uniquely isolate model capacity from prompt sensitivity.
+The final source strengthens full/partial question-copy rejection and puts the
+complete authorized task outside evidence, with an explicit final request cue.
+
+No larger-model workload was retried after the earlier 2B resource stop. Therefore:
+
+- **A:** actual selection, inference, records and UI verified; dependable task
+  correctness not established.
+- **B:** actual local assets and runtime discovery verified; the attempted real
+  request was resource-stopped without an accepted answer.
+- **Both:** backend phase order, actual-peer handoffs, synthesis, budgets and
+  recovery verified with explicit simulations; full real two-model operation
+  and any quality improvement remain unverified.
+
+`preservation-final.json` passed: active data metadata (excluding SQLite's
+transient WAL/shared-memory sidecars), active preference rows, schema 8, both
+model-store inventories and 12,829 independent-backup entries remain unchanged.
+Both model dependency graphs passed fresh full streamed SHA-256 verification
+(A 8 files; B 5 files). All 50 installed modules match the qualified source.
+Foundational laws retain SHA-256
+`059fd4e4193c92dbb6860d48a3050bdb66b8b3abaaa6fb4a37854950d808748d`.
+No production model-run records were created; evaluations used separate private
+databases. The host OOM-kill counter remained zero. This comparison is not a new
+full corpus-content rehash, full SQL integrity scan or production restore.
+
+The standalone evaluation command now exits nonzero for a blocked/incomplete
+run or failed preliminary correctness screen. Its missing-profile path was
+separately tested: exit 2, zero model calls. This final tool-only diagnostic
+change does not alter the qualified runtime package or tests. A zero exit still
+requires reviewing actual output: its lexical screen is not general semantic
+verification.
+
+## Files changed
+
+- Runtime/orchestration: `model_routing.py` (new), `service.py`, `inference.py`,
+  `worker_launcher.py`, `inference_worker.py`, `models.py`, `investigation.py`.
+- Existing persistence/evidence handoff: `assistant.py`, `projects.py`,
+  `persistence.py`, `portable.py`.
+- Existing UI/RPC: `desktop.py`, `desktop_shell.py`, `desktop_worker.py`.
+- Tests: new `test_model_collaboration.py` and `test_dual_runtime.py`; the existing
+  `test_models.py` gains an assertion for the verified ephemeral manifest alias.
+  Existing failing tests were retained, and no security or acceptance check was
+  weakened.
+- Repeatable host evaluation: `tools/evaluate_dual_models.py`.
+- Documentation: this report, `DUAL_MODEL_SPEC.md`, `ARCHITECTURE.md`, `README.md`.
+
+## Later host acceptance, after adequate RAM and stable pressure
+
+Do not repeat the stopped workload merely to obtain a pass. The following is a
+future owner-run trial after sufficient hardware/memory headroom, not a default
+configuration change. It creates a separate private test profile with the
+existing installed model roots, a 2 GiB ceiling, and a fresh private evaluation
+database. All original checks and correctness criteria remain active. Choose new
+paths if these already exist; the command refuses overwriting them.
+
+```bash
+/home/mint/VECTOR/vector/.venv/bin/python - <<'PYPROFILE'
+import json
+from pathlib import Path
+p=Path('/home/mint/.config/vector/local-inference.json')
+settings=json.loads(p.read_text())
+settings['memory_bytes']=2*1024**3
+out=Path('/home/mint/Documents/Codex/vector-dual-after-upgrade-profile.json')
+with out.open('x') as f:json.dump(settings,f,indent=2)
+out.chmod(0o600)
+PYPROFILE
+/home/mint/VECTOR/vector/.venv/bin/python /home/mint/VECTOR/vector/tools/evaluate_dual_models.py \
+  --runtime-profile /home/mint/Documents/Codex/vector-dual-after-upgrade-profile.json \
+  --source /home/mint/VECTOR/vector/.venv/lib/python3.12/site-packages \
+  --output /home/mint/Documents/Codex/vector-dual-after-upgrade-acceptance \
+  --context 8192 --modes a b both
+```
+
+The larger context is explicit to accommodate complete peer outputs; it has NOT
+been qualified on the current T420. It is never substituted silently. Failed
+isolation, memory admission, actual model capacity, timeouts, truncated responses
+or correctness checks remain failures. Follow with independently held-out source,
+mathematical, instruction-following and engineering evaluations. More RAM alone
+will not correct A's observed reasoning failures. Keep the existing default until
+separately authorized and supported by new evidence.
+
+**Release readiness: NOT SATISFIED. No complete real Both-mode acceptance or
+measurable collaboration benefit has been demonstrated.**
