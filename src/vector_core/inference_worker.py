@@ -16,6 +16,34 @@ from vector_core.portable import unique
 MAX_FRAME=1024*1024
 
 
+def configure_cpu_memory():
+    """Avoid synchronous huge-page compaction in this worker and its children.
+
+    PR_SET_THP_DISABLE is inherited across fork/exec. This is a process-local
+    allocation policy, not a change to the host's transparent-hugepage settings.
+    """
+    libc=ctypes.CDLL('libc.so.6',use_errno=True)
+    if libc.prctl(41,1,0,0,0) or libc.prctl(42,0,0,0,0)!=1:
+        raise RuntimeError('Per-worker transparent huge-page disable failed.')
+
+
+def generation_payload(config,prompt,response_kind):
+    """Bound CPU prefill workspace as well as context; never shorten the prompt.
+
+    Ollama otherwise chooses its own prefill batch and may copy all weights into
+    anonymous RAM. A small batch and read-only mapping trade speed for memory
+    headroom. Kernel limits and host-pressure monitoring remain mandatory.
+    """
+    return {'model':config.model,'prompt':prompt,'stream':False,
+            'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,
+                      'finding-notes-v1':FINDING_NOTES_SCHEMA,
+                      'collaboration-v1':COLLABORATION_SCHEMA,
+                      'proposal-text-v1':None}.get(response_kind,'json'),
+            'keep_alive':0,'options':{'num_ctx':config.context_tokens,
+                'num_predict':config.output_tokens,'temperature':config.temperature,
+                'seed':config.seed,'num_thread':2,'num_batch':32,'use_mmap':True}}
+
+
 def restrict():
     libc=ctypes.CDLL('libc.so.6',use_errno=True);lib=ctypes.CDLL('libseccomp.so.2',use_errno=True)
     lib.seccomp_init.argtypes=[ctypes.c_uint32];lib.seccomp_init.restype=ctypes.c_void_p
@@ -56,7 +84,7 @@ class GenerationFailure(ValueError):
 
 def stream_generation(payload,timeout):
     connection=http.client.HTTPConnection('127.0.0.1',11434,timeout=timeout)
-    end=time.monotonic()+timeout;parts=[];size=0
+    end=time.monotonic()+timeout;parts=[];size=0;thinking_bytes=0
     try:
         payload=dict(payload,stream=True)
         if payload.get('format') is None:payload.pop('format',None)
@@ -72,11 +100,15 @@ def stream_generation(payload,timeout):
             if len(raw)>65536:raise GenerationFailure('Excessive runtime chunk.',''.join(parts))
             chunk=json.loads(raw,object_pairs_hook=unique)
             if not isinstance(chunk,dict) or not isinstance(chunk.get('response',''),str):raise GenerationFailure('Malformed generation chunk.',''.join(parts))
+            if not isinstance(chunk.get('thinking',''),str):raise GenerationFailure('Malformed thinking metadata.',''.join(parts))
+            thinking_bytes+=len(chunk.get('thinking','').encode())
             fragment=chunk.get('response','');size+=len(fragment.encode())
             if size>min(MAX_FRAME,payload['options']['num_predict']*64):raise GenerationFailure('Generation output budget exceeded.',''.join(parts))
             parts.append(fragment)
             if chunk.get('error'):raise GenerationFailure(str(chunk['error'])[:500],''.join(parts))
             if chunk.get('done') is True:
+                chunk.pop('thinking',None)  # Keep measurements, never hidden reasoning text.
+                chunk['thinking_bytes']=thinking_bytes
                 chunk['response']=''.join(parts);return chunk
     except (OSError,ValueError) as error:
         if isinstance(error,GenerationFailure):raise
@@ -87,6 +119,7 @@ def stream_generation(payload,timeout):
 def main():
     if {line.split(':')[0].strip() for line in Path('/proc/net/dev').read_text().splitlines()[2:]}!={'lo'}:
         raise RuntimeError('Private network namespace is not loopback-only.')
+    configure_cpu_memory()
     restrict()
     import resource
     resource.setrlimit(resource.RLIMIT_FSIZE,(16*1024*1024,16*1024*1024))
@@ -124,6 +157,7 @@ def main():
                             'host_home_absent':not Path('/home/mint').exists(),
                             'shared_model_home_hidden':not Path('/usr/share/ollama/.ollama').exists(),
                             'cpu_only':os.environ.get('OLLAMA_LLM_LIBRARY')=='cpu' and os.environ.get('CUDA_VISIBLE_DEVICES')=='-1',
+                            'transparent_hugepages_disabled':libc.prctl(42,0,0,0,0)==1,
                             'model_blobs_readonly':bool(os.statvfs('/models/blobs').f_flag & os.ST_RDONLY)}
                 elif operation=='resource_probe':
                     children=[];exhausted=False
@@ -158,9 +192,9 @@ def main():
                     response_kind=request.get('response_kind')
                     if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1','proposal-text-v1','collaboration-v1'):raise ValueError('Unknown structured response format.')
                     if local_api('/api/ps').get('models'):raise ValueError('A prior runner remains loaded; sequential inference refused.')
-                    result=stream_generation({'model':config.model,'prompt':prompt,'stream':False,'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,'finding-notes-v1':FINDING_NOTES_SCHEMA,'collaboration-v1':COLLABORATION_SCHEMA,'proposal-text-v1':None}.get(response_kind,'json'),'keep_alive':0,
-                        'options':{'num_ctx':config.context_tokens,'num_predict':config.output_tokens,'temperature':config.temperature,
-                                   'seed':config.seed,'num_thread':2}},max(.05,config.timeout_seconds-1))
+                    payload=generation_payload(config,prompt,response_kind)
+                    result=stream_generation(payload,max(.05,config.timeout_seconds-1))
+                    result['execution_options']=payload['options']
                     result['model_digest']=selected.get('digest','unknown')
                     unload_deadline=time.monotonic()+5
                     while local_api('/api/ps').get('models'):

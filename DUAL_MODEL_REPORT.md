@@ -1,5 +1,9 @@
 # Dual local model integration — measured qualification
 
+Follow-up from `b0e7527`: see [the current runtime investigation](DUAL_MODEL_RUNTIME_REPORT.md)
+for exact pressure stops, measured loading corrections and current qualification.
+The measurements below remain the historical integration baseline.
+
 Baseline: `12a03c5`. This report distinguishes implemented control flow,
 explicit simulated tests, real local generation, and unqualified reasoning.
 

@@ -3,6 +3,8 @@
 Local model modes and sequential collaboration are documented in
 [DUAL_MODEL_SPEC.md](DUAL_MODEL_SPEC.md) and [the measured report](DUAL_MODEL_REPORT.md). Model outputs remain unverified;
 operational qualification and real model accuracy are separate measurements.
+The [runtime follow-up](DUAL_MODEL_RUNTIME_REPORT.md) records current Lenovo
+resource blockers and direct-versus-integrated model measurements.
 Independent offline permanent-memory and evidence-system foundation. Development
 build, not J.A.R.V.I.S., not a qualified reasoning system and not dependent on HELIX.
 

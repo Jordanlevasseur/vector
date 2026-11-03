@@ -55,6 +55,23 @@ class OverlayTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Conflicting'):runtime_files([a,c])
 
 class RuntimeGuardTests(unittest.TestCase):
+    @staticmethod
+    def monitor_read(changed=''):
+        def read(path,*args,**kwargs):
+            path=str(path)
+            if changed=='monitor':raise OSError('Explicit failed monitor fixture')
+            if path=='/proc/meminfo':return 'MemAvailable: '+('10' if changed=='reserve' else '2097152')+' kB\n'
+            if path=='/proc/vmstat':return 'pswpout '+('40000' if changed=='swapout' else '0')+'\noom_kill '+('1' if changed=='oom' else '0')+'\n'
+            if path=='/proc/pressure/memory':return 'full avg10='+('31.00' if changed=='pressure' else '0.00')+' avg60=0 avg300=0 total=0\n'
+            if path=='/fixture/memory.current':return '1000000'
+            if path=='/fixture/memory.swap.current':return '4096' if changed=='swap' else '0'
+            if path=='/fixture/memory.events':return 'max 7\noom 0\noom_kill 0\n'
+            if path=='/fixture/memory.stat':return 'anon 600000\nfile 300000\npgmajfault 3\nworkingset_refault_file 11\n'
+            raise AssertionError(path)
+        return read
+    @staticmethod
+    def monitor_watch():
+        return {'next':0,'pressure_since':None,'swap_out_initial':0,'oom_initial':0,'samples':0,'peak_memory_bytes':0,'peak_swap_bytes':0,'max_full_pressure':0,'minimum_host_available':2**63}
     def test_low_ram_uses_stricter_ceiling_with_explicit_notice(self):
         from types import SimpleNamespace
         with tempfile.TemporaryDirectory() as directory:
@@ -82,20 +99,49 @@ class RuntimeGuardTests(unittest.TestCase):
             def poll(self):return None
         for changed in ('reserve','swap','oom','swapout','monitor'):
             transport=WorkerTransport(Process(),{'runtime_version':'EXPLICIT TEST FIXTURE','cgroup':'/fixture'})
-            transport.resource_watch={'next':0,'pressure_since':None,'swap_out_initial':0,'oom_initial':0,'samples':0,'peak_memory_bytes':0,'peak_swap_bytes':0,'max_full_pressure':0,'minimum_host_available':2**63}
-            def read(path,*args,**kwargs):
-                path=str(path)
-                if changed=='monitor':raise OSError('Explicit failed monitor fixture')
-                if path=='/proc/meminfo':return 'MemAvailable: '+('10' if changed=='reserve' else '2097152')+' kB\n'
-                if path=='/proc/vmstat':return 'pswpout '+('40000' if changed=='swapout' else '0')+'\noom_kill '+('1' if changed=='oom' else '0')+'\n'
-                if path=='/proc/pressure/memory':return 'full avg10=0.00 avg60=0 avg300=0 total=0\n'
-                if path=='/fixture/memory.current':return '1000000'
-                if path=='/fixture/memory.swap.current':return '4096' if changed=='swap' else '0'
-                raise AssertionError(path)
-            with self.subTest(changed=changed),patch.object(Path,'read_text',read),self.assertRaisesRegex(InferenceError,'RESOURCE_BLOCKED') as failure:transport._check(time.monotonic()+10,None)
+            transport.resource_watch=self.monitor_watch()
+            with self.subTest(changed=changed),patch.object(Path,'read_text',self.monitor_read(changed)),self.assertRaisesRegex(InferenceError,'RESOURCE_BLOCKED') as failure:transport._check(time.monotonic()+10,None)
             if changed!='monitor':self.assertGreater(failure.exception.resources['samples'],0)
             if changed=='swapout':self.assertIn('host swap-out exceeded',str(failure.exception))
             if changed=='reserve':self.assertIn('host available RAM below',str(failure.exception))
+    def test_pressure_is_sustained_and_memory_diagnostics_are_bounded(self):
+        class Process:
+            def poll(self):return None
+        transport=WorkerTransport(Process(),{'runtime_version':'EXPLICIT TEST FIXTURE','cgroup':'/fixture'})
+        transport.resource_watch=self.monitor_watch()
+        with patch.object(Path,'read_text',self.monitor_read('pressure')),patch('vector_core.worker_launcher.time.monotonic',return_value=100):
+            transport._check(1000,None)
+        self.assertEqual(transport.resource_watch['pressure_since'],100)
+        with patch.object(Path,'read_text',self.monitor_read('pressure')),patch('vector_core.worker_launcher.time.monotonic',return_value=116),self.assertRaisesRegex(InferenceError,'PSI above30percent for15seconds') as failure:
+            transport._check(1000,None)
+        resources=failure.exception.resources
+        self.assertEqual(resources['current_full_pressure'],31)
+        self.assertEqual(resources['current_host_available_bytes'],2147483648)
+        self.assertEqual(resources['cgroup_memory_stat'],{'anon':600000,'file':300000,'pgmajfault':3,'workingset_refault_file':11})
+        self.assertEqual(resources['cgroup_memory_events'],{'max':7,'oom':0,'oom_kill':0})
+        transport.resource_watch['next']=0
+        with patch.object(Path,'read_text',self.monitor_read()),patch('vector_core.worker_launcher.time.monotonic',return_value=120):transport._check(1000,None)
+        self.assertIsNone(transport.resource_watch['pressure_since'])
+    def test_runtime_error_and_timeout_keep_monitor_snapshot_and_close(self):
+        import subprocess,sys
+        for script,timeout,expected in [('import time;time.sleep(.05);print(\'{"ok":false,"result":{"error":"EXPLICIT runtime error fixture"}}\',flush=True)',2,'runtime error fixture'),('import time;time.sleep(5)',.1,'timeout')]:
+            process=subprocess.Popen([sys.executable,'-c',script],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,bufsize=0)
+            transport=WorkerTransport(process,{'runtime_version':'EXPLICIT TEST FIXTURE','cgroup':'/fixture'})
+            try:
+                with self.subTest(expected=expected),patch.object(Path,'read_text',self.monitor_read()),self.assertRaisesRegex(InferenceError,expected) as failure:transport.request({'operation':'generate'},timeout)
+                self.assertGreater(failure.exception.resources['samples'],0)
+                self.assertEqual(failure.exception.resources['cgroup_memory_events']['max'],7)
+                self.assertEqual(failure.exception.resources['cgroup_memory_stat']['anon'],600000)
+                self.assertFalse(transport.qualified);self.assertIsNotNone(process.poll())
+            finally:
+                if transport.qualified:transport.close()
+    def test_incomplete_cgroup_monitor_fails_closed(self):
+        class Process:
+            def poll(self):return None
+        transport=WorkerTransport(Process(),{'runtime_version':'EXPLICIT TEST FIXTURE','cgroup':'/fixture'})
+        transport.resource_watch=self.monitor_watch();read=self.monitor_read()
+        def missing(path,*args,**kwargs):return 'anon 600000\n' if str(path)=='/fixture/memory.stat' else read(path,*args,**kwargs)
+        with patch.object(Path,'read_text',missing),self.assertRaisesRegex(InferenceError,'memory monitor failed closed'):transport._check(time.monotonic()+10,None)
 
 class ModeDesktopTests(unittest.TestCase):
     def test_actual_gui_mode_controls_backend_preferences_and_history(self):

@@ -113,6 +113,36 @@ one loaded model/one parallel request remain enforced. Timeout/cancellation
 terminates the private worker. No cloud, network fallback or downloaded component
 is introduced. These measures do not establish model answer correctness.
 
+CPU generation explicitly requests `num_batch=32`, two threads and read-only
+weight mapping (`use_mmap=true`). Full prompts, context limits and output limits
+are unchanged. Requested execution options are saved separately from the frozen
+generation configuration; actual runner arguments are required to qualify their
+effect. The private worker disables transparent huge pages for itself and its
+children with `PR_SET_THP_DISABLE`, verifies the result, and fails qualification
+if this process-local policy cannot be established. Global kernel settings are
+never changed. These choices reduce avoidable anonymous allocation/compaction;
+they do not authorize proceeding through resource-pressure failures.
+
+Every result/failure retains bounded current/peak RAM, swap, host pressure,
+`memory.events` and selected `memory.stat` counters. Ordinary runtime errors,
+timeouts and monitoring initialization failures also close the worker. Historical
+failures lacking these counters cannot be retroactively assigned a precise cause.
+
+New chat framing distinguishes archive-search notices from task answerability,
+allows genuinely empty uncertainty/issues, and includes no product/version name
+for the model to mistake for the task. Complete evidence/history remain supplied.
+The parser versions framing and reconstructs old v1/v2 handoffs unchanged so
+saved runs retain their original replay/resumption contracts.
+
+`tools/evaluate_runtime_models.py` runs only real installed models in fresh
+private data, checks complete model dependency hashes, requires a quiet baseline,
+and records loading, runner arguments/RSS/THP policy and host/cgroup counters.
+Its sampler is created before the core filter and opens files only after the
+descriptor sweep and synchronized filter activation. Exit zero denotes protocol
+completion, never independently verified answer correctness. Both mode requires
+`--service`; no simulated fallback is present. See the follow-up measured report
+in `DUAL_MODEL_RUNTIME_REPORT.md` for current hardware blockers.
+
 The configurable synthesis default is role B, based on the already recorded
 Lenovo matched trial (2B 3/4, 0.5B 1/4). That small result is not evidence of
 general superiority or a change to VECTOR's active/default model.

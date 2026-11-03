@@ -37,10 +37,13 @@ class WorkerTransport:
         if len(frame)>MAX_FRAME:raise InferenceError('Inference request too large.')
         end=time.monotonic()+timeout
         self.resource_watch=None
-        if payload.get('operation')=='generate' and self.report.get('cgroup'):
-            vm=dict(line.split() for line in Path('/proc/vmstat').read_text().splitlines())
-            self.resource_watch={'next':0,'pressure_since':None,'swap_out_initial':int(vm['pswpout']),'oom_initial':int(vm['oom_kill']),'samples':0,'peak_memory_bytes':0,'peak_swap_bytes':0,'max_full_pressure':0,'minimum_host_available':2**63}
         try:
+            if payload.get('operation')=='generate' and self.report.get('cgroup'):
+                try:
+                    vm=dict(line.split() for line in Path('/proc/vmstat').read_text().splitlines())
+                    self.resource_watch={'next':0,'pressure_since':None,'swap_out_initial':int(vm['pswpout']),'oom_initial':int(vm['oom_kill']),'samples':0,'peak_memory_bytes':0,'peak_swap_bytes':0,'max_full_pressure':0,'minimum_host_available':2**63}
+                except (OSError,ValueError,KeyError) as error:
+                    raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error)) from error
             # Bounded requests are small; nonblocking pipe writes avoid a wedged worker.
             fd=self.process.stdin.fileno();os.set_blocking(fd,False);sent=0
             while sent<len(frame):
@@ -68,9 +71,14 @@ class WorkerTransport:
                 result['resources']={k:v for k,v in self.resource_watch.items() if k not in {'next','pressure_since'}}
             return result
         except (OSError,ValueError,InferenceError) as error:
+            # Retain the last bounded observation for runtime errors, timeouts
+            # and crashes too: a missing answer alone cannot diagnose pressure.
+            failure=error if isinstance(error,InferenceError) else InferenceError('Worker communication failed: '+str(error))
+            if self.resource_watch:
+                failure.resources={k:v for k,v in self.resource_watch.items() if k not in {'next','pressure_since'}}
             self.close()
-            if isinstance(error,InferenceError):raise
-            raise InferenceError('Worker communication failed: '+str(error)) from error
+            if failure is error:raise
+            raise failure from error
     def _check(self,end,cancellation):
         if cancellation and cancellation.cancelled:raise InferenceError('Cancelled; isolated worker terminated.')
         if time.monotonic()>end:raise InferenceError('Inference timeout; isolated worker terminated.')
@@ -83,7 +91,13 @@ class WorkerTransport:
                 vm=dict(line.split() for line in Path('/proc/vmstat').read_text().splitlines())
                 pressure=float(next(l for l in Path('/proc/pressure/memory').read_text().splitlines() if l.startswith('full ')).split()[1].split('=')[1])
                 cg=Path(self.report['cgroup']);used=int((cg/'memory.current').read_text());swap=int((cg/'memory.swap.current').read_text())
-                watch.update(samples=watch['samples']+1,peak_memory_bytes=max(used,watch['peak_memory_bytes']),peak_swap_bytes=max(swap,watch['peak_swap_bytes']),max_full_pressure=max(pressure,watch['max_full_pressure']),minimum_host_available=min(available,watch['minimum_host_available']),host_swap_out_bytes=(int(vm['pswpout'])-watch['swap_out_initial'])*os.sysconf('SC_PAGE_SIZE'))
+                events=dict(line.split() for line in (cg/'memory.events').read_text().splitlines())
+                statistics=dict(line.split() for line in (cg/'memory.stat').read_text().splitlines())
+                # Fixed keys bound persistent evidence and distinguish anonymous
+                # allocation from file-cache reclaim/refaults at the kernel cap.
+                events={key:int(events[key]) for key in ('max','oom','oom_kill')}
+                statistics={key:int(statistics[key]) for key in ('anon','file','pgmajfault','workingset_refault_file')}
+                watch.update(samples=watch['samples']+1,peak_memory_bytes=max(used,watch['peak_memory_bytes']),peak_swap_bytes=max(swap,watch['peak_swap_bytes']),max_full_pressure=max(pressure,watch['max_full_pressure']),minimum_host_available=min(available,watch['minimum_host_available']),host_swap_out_bytes=(int(vm['pswpout'])-watch['swap_out_initial'])*os.sysconf('SC_PAGE_SIZE'),current_host_available_bytes=available,current_full_pressure=pressure,current_memory_bytes=used,current_swap_bytes=swap,cgroup_memory_events=events,cgroup_memory_stat=statistics)
                 watch['pressure_since']=(watch['pressure_since'] or time.monotonic()) if pressure>30 else None
                 violations=[]
                 if available<384*1024*1024:violations.append('host available RAM below384MiB ('+str(available)+' bytes)')
@@ -93,7 +107,7 @@ class WorkerTransport:
                 if watch['pressure_since'] and time.monotonic()-watch['pressure_since']>15:violations.append('full-memory PSI above30percent for15seconds (avg10='+str(pressure)+')')
                 if violations:
                     error=InferenceError('RESOURCE_BLOCKED: '+'; '.join(violations));error.resources={k:v for k,v in watch.items() if k not in {'next','pressure_since'}};raise error
-            except (OSError,ValueError,StopIteration) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error)) from error
+            except (OSError,ValueError,StopIteration,KeyError) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error)) from error
 
 
 def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=()):
@@ -165,7 +179,8 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
         if (not isinstance(report,dict) or report.get('network_namespace')==host_net or report.get('routes') is not False
             or report.get('external_denied') is not True or report.get('nested_userns_denied') is not True
             or report.get('host_home_absent') is not True or report.get('model_blobs_readonly') is not True
-            or report.get('shared_model_home_hidden') is not True or report.get('cpu_only') is not True):
+            or report.get('shared_model_home_hidden') is not True or report.get('cpu_only') is not True
+            or report.get('transparent_hugepages_disabled') is not True):
             raise InferenceError('Worker namespace/egress qualification failed.')
         details=subprocess.run([executables['systemctl'],'--user','show',unit+'.scope','--property=ControlGroup','--property=MemoryMax','--property=TasksMax'],
                                capture_output=True,text=True,timeout=5,check=True,env=local_environment)
