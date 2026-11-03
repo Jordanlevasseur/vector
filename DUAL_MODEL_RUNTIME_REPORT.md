@@ -162,7 +162,7 @@ as a full pass. The complete source suite passed **309/309, zero skips**, in
 825.577 seconds. All 50 runtime module hashes match the final real-model trials.
 The local wheel was built under kernel network denial and its 50 modules exactly
 match the tested source. Simulation tests exercise orchestration only, never
-real Qwen acceptance. Installation qualification is recorded below when complete.
+real Qwen acceptance.
 
 The pre-install check matched both model-store inventories, all 12,829 independent
 backup entries and archived source-file metadata. It detected a difference from
@@ -175,9 +175,25 @@ initial historical-comparison failure remains retained in `preservation-before.j
 Foundational laws retain SHA-256
 `059fd4e4193c92dbb6860d48a3050bdb66b8b3abaaa6fb4a37854950d808748d`.
 
-Pending closing verification: installed package qualification and comparison with
-the current pre-installation snapshot. No fresh full corpus-content rehash, SQL
-integrity scan, production restore or broad reasoning qualification is claimed.
+Implementation checkpoint: `c2910c4`. The clean production checkout was
+fast-forwarded locally and its wheel installed with kernel network denial,
+`--isolated --no-index --no-deps --no-compile`. All 50 installed module hashes
+match the tested source; the previous installed package and distribution metadata
+were separately preserved for rollback. The full installed suite executed
+**309 tests: 308 passed, one skipped, zero failures**, in 712.369 seconds. The
+skipped authenticated-encryption round-trip requires optional `cryptography`,
+absent from this interpreter. It passed in the host source suite; missing-support
+fail-closed tests passed. No dependency was downloaded and the skip is not a pass.
+
+`preservation-after.json` passed: active data metadata and all 12 preference
+records match the current pre-installation snapshot, schema remains 8, and no
+production model-run records were created. Both model-store inventories and all
+12,829 independent-backup entries match the older baseline. Model graph hashes
+were fully verified before trials (A 8 files; B 5), with unchanged closing metadata;
+no additional final weight rehash is claimed. Startup declaration bytes, defaults,
+laws and all 50 installed module hashes passed their comparisons. The host
+OOM-kill counter remained zero. This is not a fresh full corpus-content rehash,
+SQL integrity scan, production restore or broad reasoning qualification.
 
 ## Safe next host acceptance
 
