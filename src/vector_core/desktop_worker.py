@@ -66,7 +66,8 @@ def main():
                         if memory.db.execute("SELECT 1 FROM persistence_contracts WHERE name='application_events'").fetchone() is None:register(memory,'application_events','Desktop operational errors/cancellation')
                         put(memory,'application_events',uuid4().hex,{'time':now(),'request_id':request_id,'error':str(error)[:2000],
                             'operation':request.get('operation') if isinstance(request,dict) else None,
-                            'parameters':request.get('parameters') if isinstance(request,dict) else None})
+                            'parameter_keys':sorted(request.get('parameters',{})) if isinstance(request,dict) and isinstance(request.get('parameters'),dict) else [],
+                            'code':getattr(error,'code','REQUEST_FAILED'),'stage':getattr(error,'stage','application')})
                     except (RuntimeError,OSError,ValueError,sqlite3.Error):pass
             finally:busy=False
             encoded=json.dumps(response,ensure_ascii=False,allow_nan=False).encode()

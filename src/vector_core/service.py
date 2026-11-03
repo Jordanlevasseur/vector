@@ -31,8 +31,10 @@ class Application:
     def prepare_model(self,model):
         if model in self.prepared_models:return
         if not self.transport or not self.transport.qualified:raise ValueError(self.startup_error or 'No qualified local inference worker is available.')
-        known=next((m for m in self.raw_adapter.discover().get('models',[]) if m.get('name')==model),None)
-        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max']:raise ValueError('RESOURCE_BLOCKED: selected model assets exceed the qualified worker memory ceiling. A larger qualified profile and sufficient host RAM are required; loading was not attempted.')
+        catalog=getattr(self.model_controller,'_request_catalog',None)
+        known=next((m for m in (catalog or self.raw_adapter.discover()).get('models',[]) if m.get('name')==model),None)
+        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max']:
+            error=ValueError('RESOURCE_BLOCKED: selected model assets exceed the qualified worker memory ceiling. A larger qualified profile and sufficient host RAM are required; loading was not attempted.');error.code='RESOURCE_LIMIT';error.stage='resource-protection';raise error
         if getattr(self.transport,'managed',False):
             from vector_core.models import materialize,managed_catalog
             selected=next((m for m in managed_catalog(self.memory) if m['name']==model),None)
@@ -168,9 +170,16 @@ class Application:
                 models=self.adapter.discover().get('models',[])
                 if config.model not in [m.get('name') for m in models]:raise ValueError('Selected model unavailable.')
                 if p.get('authorize_external') is not True:raise PermissionError('Acknowledge external model dependency before use.')
-                from vector_core.models import register_external
-                register_external(memory,self.transport.model_directory,config.model)
+                from vector_core.models import register_external,model_root
+                register_external(memory,model_root(self.transport,config.model),config.model)
             put(memory,'preferences','generation',asdict(config));self.generation=config
+            # The legacy model selector and the conversation modes share one
+            # effective selection. An explicit selection must not leave a stale
+            # Both/B mode silently overriding the chosen model. Defaults stay put.
+            settings=self.model_controller.settings(models=models if not getattr(self.transport,'managed',False) else [])
+            role='b' if settings['bindings'].get('b')==config.model else 'a'
+            settings['bindings'][role]=config.model;settings['generation']=asdict(replace(config,model=''))
+            self.model_controller.select(role,settings=settings)
             return {'selected':config.model,'configuration':asdict(config)}
         if operation=='import_model':
             if p.get('approved') is not True:raise PermissionError('Explicit model import approval required.')
@@ -179,7 +188,7 @@ class Application:
         if operation=='managed_models':
             return [dict(row) for row in memory.db.execute("SELECT record_key AS name,payload FROM persistent_records r WHERE contract='models' AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='models' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 100")]
         if operation=='ask':
-            if self.model_controller.mode() and p.get('planning') is not True:
+            if (self.model_controller.mode() or self.generation.model) and p.get('planning') is not True:
                 from vector_core.model_routing import chat
                 return chat(self,p['question'],request_id=p.get('request_id'),semantic=p.get('semantic',False),scope=p.get('scope'))
             if p.get('planning') is True:

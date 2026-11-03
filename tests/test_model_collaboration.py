@@ -123,13 +123,16 @@ class CollaborationTests(unittest.TestCase):
         self.assertEqual(len(restarted.handle('history',{})['items']),1)
         restarted.handle('new_conversation',{});self.assertEqual(restarted.model_controller.mode(),'b')
         restarted.handle('conversation_resume',{'conversation_id':conversation});self.assertEqual(restarted.model_controller.mode(),'a')
-    def test_all_modes_keep_deterministic_arithmetic_and_same_retrieval(self):
+    def test_selected_modes_generate_arithmetic_with_independent_check_and_same_retrieval(self):
         self.app.handle('ingest',{'text':'Electrical resistance relates voltage and current.','name':'Electrical resistance'})
         contexts=[]
         for mode in ('a','b','both'):
-            self.select(mode);result=self.app.handle('ask',{'question':'568 times 564'});self.assertEqual(result['outcome']['status'],'checked-calculation')
+            self.select(mode,context=8192);self.fixture.responses=iter([output('320352')]*(5 if mode=='both' else 1))
+            result=self.app.handle('ask',{'question':'568 times 564'})
+            self.assertEqual(result['outcome']['model_text'],'320352');self.assertTrue(result['outcome']['verification']['matches'])
+            self.assertEqual(result['checked']['findings'][-1]['values'][0]['value'],'320352')
             result=self.app.handle('ask',{'question':'Find information about electrical resistance.'});contexts.append(result['context']['context']['sources'])
-        self.assertEqual(contexts[0],contexts[1]);self.assertEqual(contexts[1],contexts[2]);self.assertFalse(self.fixture.calls)
+        self.assertEqual(contexts[0],contexts[1]);self.assertEqual(contexts[1],contexts[2]);self.assertEqual(len(self.fixture.calls),7)
     def test_actual_application_chat_and_idempotent_retry(self):
         self.select('both');self.fixture.responses=iter([output('Independent A'),output('Independent B'),output('Critique A'),output('Critique B'),output('Final response')]);turn=uuid4().hex
         response=self.app.handle('ask',{'question':'Explain an uncertainty and propose a test.','request_id':turn})
@@ -137,11 +140,14 @@ class CollaborationTests(unittest.TestCase):
         again=self.app.handle('ask',{'question':'Explain an uncertainty and propose a test.','request_id':turn});self.assertEqual(again['model_run_ref'],response['model_run_ref']);self.assertEqual(len(self.fixture.calls),5)
         history=self.app.handle('history',{})['items'];self.assertEqual(history[0]['outcome']['model_text'],'Final response')
     def test_complete_prior_calculation_and_investigation_are_replayed_in_context(self):
-        self.app.handle('ask',{'question':'2+2'});self.select('a',context=16384);self.fixture.responses=iter([output('The earlier result is conditional on the stated arithmetic.')])
+        prior=self.app.handle('ask',{'question':'2+2'});self.select('a',context=16384);self.fixture.responses=iter([output('The earlier result is conditional on the stated arithmetic.')])
         response=self.app.handle('ask',{'question':'Explain the earlier calculation and its limitations.'})
         self.assertEqual(response['model_run']['status'],'complete')
-        package=chat_packet(self.fixture.calls[0]['prompt']);self.assertEqual(package['conversation'][0]['question'],'2+2')
-        self.assertEqual(package['investigations'][0]['answer']['findings'][0]['values'][0]['value'],'4')
+        package=chat_packet(self.fixture.calls[0]['prompt']);self.assertEqual(package['messages'][1]['content'],'2+2')
+        self.assertEqual(package['messages'][2]['content'],prior['checked']['text'])
+        run=self.app.model_controller.get(response['model_run_ref']);ref=run['context']['chat_history'][0]
+        saved=json.loads(self.memory.db.execute('SELECT payload FROM persistent_records WHERE id=?',(ref['record'],)).fetchone()[0])
+        self.assertEqual(saved['calculation_ref']['investigation_id'],prior['checked']['origin']['investigation_id'])
         self.app.model_controller.get(response['model_run_ref'])
     def test_effective_mode_limits_do_not_modify_legacy_generation_preference(self):
         legacy=self.app.generation;self.select('a',context=8192)
@@ -162,7 +168,8 @@ class CollaborationTests(unittest.TestCase):
         self.select('a');question='Explain whether the stated premises imply the conclusion.';self.fixture.responses=iter([output(question)])
         response=self.app.handle('ask',{'question':question});self.assertEqual(response['model_run']['status'],'failed')
         self.assertIn('copied the request',response['outcome']['errors'][0]);self.assertNotIn('model_text',response['outcome'])
-        package=chat_packet(self.fixture.calls[0]['prompt']);self.assertEqual(package['task'],question);self.assertNotIn('question',package['evidence'])
+        package=chat_packet(self.fixture.calls[0]['prompt']);self.assertEqual(package['task'],question)
+        self.assertEqual([m['role'] for m in package['messages']],['system','user']);self.assertEqual(package['messages'][-1]['content'],question)
     def test_partial_question_copy_is_not_a_completed_answer(self):
         self.select('a');self.fixture.responses=iter([output('Object K is red. Does K float?')])
         response=self.app.handle('ask',{'question':'Every red object is metal. Object K is red. Does K float? Explain briefly.'})

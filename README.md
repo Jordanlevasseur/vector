@@ -205,3 +205,8 @@ Projects and History. See [DESKTOP_STAGE1_REPORT.md](DESKTOP_STAGE1_REPORT.md)
 for real screenshots, measured tests/performance, preservation and limitations.
 
 Measured ordinary-chat routing repair: [ROUTING_REPAIR_REPORT.md](ROUTING_REPAIR_REPORT.md).
+
+Native conversation and durable critique/refinement repair:
+[specification](RESPONSE_PIPELINE_SPEC.md), [measured failures and qualification](RESPONSE_REPAIR_REPORT.md).
+Ordinary selected-model chat no longer requires archive evidence or JSON prose.
+Model output remains unverified; real2B and Both operation remain resource-blocked.

@@ -55,6 +55,15 @@ class OverlayTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Conflicting'):runtime_files([a,c])
 
 class RuntimeGuardTests(unittest.TestCase):
+    def test_fallback_never_consumes_host_reserve_or_crosses_configured_ceiling(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory:
+            profile=Path(directory)/'profile.json';profile.write_text(json.dumps({'model_directories':['/local/a'],'memory_bytes':1610612736,'tasks':64}));profile.chmod(0o600)
+            original=Path.read_text
+            def low(path,*a,**k):return 'MemAvailable: 524288 kB\n' if str(path)=='/proc/meminfo' else original(path,*a,**k)
+            with patch.object(Path,'read_text',low),patch('vector_core.worker_launcher.launch',side_effect=InferenceError('RESOURCE_BLOCKED: low RAM')) as start:
+                with self.assertRaises(InferenceError):desktop_runtime(profile)
+                self.assertEqual(start.call_count,1)
     @staticmethod
     def monitor_read(changed=''):
         def read(path,*args,**kwargs):
@@ -77,9 +86,13 @@ class RuntimeGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             profile=Path(directory)/'profile.json';profile.write_text(json.dumps({'model_directories':['/local/a','/local/b'],'memory_bytes':1610612736,'tasks':64}));profile.chmod(0o600)
             transport=SimpleNamespace(report={})
-            with patch('vector_core.worker_launcher.launch',side_effect=[InferenceError('RESOURCE_BLOCKED: explicit low RAM fixture'),transport]) as launch:
+            original=Path.read_text
+            def memory(path,*args,**kwargs):return 'MemAvailable: 1703936 kB\n' if str(path)=='/proc/meminfo' else original(path,*args,**kwargs)
+            with patch.object(Path,'read_text',memory),patch('vector_core.worker_launcher.launch',side_effect=[InferenceError('RESOURCE_BLOCKED: explicit low RAM fixture'),transport]) as launch:
                 actual=desktop_runtime(profile)
-                self.assertEqual(launch.call_args.kwargs['memory_bytes'],768*1024*1024);self.assertIn('oversized',actual.report['resource_notice']);self.assertEqual(actual.report['requested_memory_max'],1610612736)
+                ceiling=launch.call_args.kwargs['memory_bytes'];self.assertEqual(ceiling,1264*1024*1024)
+                self.assertLess(ceiling,1610612736);self.assertLessEqual(ceiling+384*1024*1024,1703936*1024)
+                self.assertIn('oversized',actual.report['resource_notice']);self.assertEqual(actual.report['requested_memory_max'],1610612736)
     def test_private_startup_profile_accepts_only_fixed_paths_and_limits(self):
         with tempfile.TemporaryDirectory() as directory:
             profile=Path(directory)/'profile.json'

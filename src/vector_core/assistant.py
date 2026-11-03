@@ -161,7 +161,7 @@ def materialize_calculation(memory,record):
     return {**record,'checked':document}
 
 
-def calculate_ask(memory,question,decision,*,conversation_id,project_id=None,request_id=None):
+def calculate_ask(memory,question,decision,*,conversation_id,project_id=None,request_id=None,response_protocol=None):
     from vector_core.projects import identity
     from vector_core.investigation import Investigations,Budget
     turn=identity(request_id) if request_id else uuid4().hex;key=conversation_id+':'+turn;started=time.perf_counter()
@@ -178,6 +178,7 @@ def calculate_ask(memory,question,decision,*,conversation_id,project_id=None,req
             if old:
                 saved=json.loads(old[0]);previous=(saved.get('calculation_ref') or {}).get('answer_record') if saved.get('project_id')==project_id else None
         record={'id':turn,'conversation_id':conversation_id,'project_id':project_id,'question':question,'created':now(),'context':None,'outcome':{'status':'pending','answer':None,'generation':None,'errors':[]},'routing':decision,'trace':[],'calculation_ref':{'investigation_id':uuid4().hex,'prior_answer_record':previous,'answer_record':None}}
+        if response_protocol is not None:record['response_protocol']=response_protocol
         put(memory,'conversations',key,record)
     ref=record['calculation_ref'];inv=Investigations(memory)
     try:

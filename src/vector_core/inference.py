@@ -40,7 +40,49 @@ COLLABORATION_SCHEMA={'type':'object','properties':{
     'citations':{'type':'array','maxItems':8,'items':CITATION_SCHEMA}},
     'required':['text','uncertainty','issues','citations'],'additionalProperties':False}
 
-class InferenceError(RuntimeError):pass
+class InferenceError(RuntimeError):
+    def __init__(self,message,*,code='INFERENCE_FAILED',stage='inference'):
+        super().__init__(message)
+        self.code=code;self.stage=stage
+
+
+CHAT_FORMAT='chat-text-v1'
+CHAT_PREFIX='VECTOR_LOCAL_CHAT_V1\n'
+
+
+def chat_messages(prompt):
+    """Decode trusted role framing; this JSON is never sent as model prose."""
+    from vector_core.portable import unique
+    if not isinstance(prompt,str) or not prompt.startswith(CHAT_PREFIX):
+        raise ValueError('Unknown local chat framing.')
+    packet=json.loads(prompt[len(CHAT_PREFIX):],object_pairs_hook=unique,
+                      parse_constant=lambda v:(_ for _ in ()).throw(ValueError(v)))
+    if not isinstance(packet,dict) or set(packet)!={'messages'}:
+        raise ValueError('Invalid local chat packet.')
+    messages=packet['messages']
+    if not isinstance(messages,list) or not 2<=len(messages)<=256:
+        raise ValueError('Local chat requires bounded complete messages.')
+    for index,item in enumerate(messages):
+        if not isinstance(item,dict) or set(item)!={'role','content'} or not isinstance(item['content'],str) or not item['content'].strip():
+            raise ValueError('Invalid or empty local chat message.')
+        allowed={'system'} if index==0 else {'user','assistant'}
+        if item['role'] not in allowed or index==1 and item['role']!='user':raise ValueError('Context cannot introduce system instructions or an invented initial assistant reply.')
+    if messages[-1]['role']!='user':raise ValueError('The complete current request must be last.')
+    return messages
+
+
+def chat_prompt(messages):
+    prompt=CHAT_PREFIX+json.dumps({'messages':messages},ensure_ascii=False,separators=(',',':'))
+    chat_messages(prompt)
+    return prompt
+
+
+def generation_prompt_bytes(prompt,response_kind=None):
+    if not isinstance(prompt,str):raise ValueError('Prompt must be text.')
+    # Native chat serializes roles separately. Count every supplied content byte,
+    # with the same conservative tokenizer/template reserve as legacy generation.
+    if response_kind==CHAT_FORMAT:return sum(len(m['content'].encode())+16 for m in chat_messages(prompt))
+    return len(prompt.encode())
 
 @dataclass(frozen=True)
 class GenerationConfig:
@@ -70,7 +112,7 @@ class UnavailableAdapter:
     def discover(self):return {'available':False,'models':[],'reason':'No separately qualified inference worker selected.'}
     def generate(self,prompt,config,cancellation=None,*,response_kind=None):
         config.validate()
-        raise InferenceError(self.discover()['reason'])
+        raise InferenceError(self.discover()['reason'],code='MODEL_UNAVAILABLE',stage='availability')
 
 class SimulatedAdapter:
     """Deterministic framework tests only; never selected by production routing."""
@@ -85,6 +127,8 @@ class SimulatedAdapter:
 
 
 def checked_result(text,config,*,simulated=False,runtime='',model_version='',metrics=None):
+    if not isinstance(text,str) or not text.strip():
+        raise InferenceError('The model returned an empty response.',code='EMPTY_OUTPUT',stage='response-validation')
     if not isinstance(text,str) or len(json.dumps(text,ensure_ascii=False).encode())>min(1024*1024,config.output_tokens*64):
         raise InferenceError('Malformed or excessive generation output.')
     return {'text':text,'simulated':simulated,'model':config.model,'runtime_version':runtime,
@@ -95,18 +139,22 @@ class OllamaAdapter:
     def __init__(self,transport):
         if not transport.qualified:raise InferenceError('Inference isolation is not qualified.')
         self.transport=transport
-    def discover(self):return self.transport.request({'operation':'discover'},10)
+    def discover(self):return self.transport.request({'operation':'discover'},60)
     def generate(self,prompt,config,cancellation=None,*,response_kind=None):
         config.validate()
-        if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise InferenceError('Prompt exceeds conservative byte budget.')
+        if generation_prompt_bytes(prompt,response_kind)>config.prompt_bytes:raise InferenceError('Prompt exceeds conservative byte budget.',code='CONTEXT_BUDGET',stage='prompt-preparation')
         if cancellation and cancellation.cancelled:raise InferenceError('Cancelled.')
         response=self.transport.request({'operation':'generate','prompt':prompt,'config':asdict(config),'response_kind':response_kind},config.timeout_seconds,cancellation)
         if not isinstance(response,dict) or response.get('done') is not True or response.get('done_reason')=='length':
-            error=InferenceError('Incomplete/truncated model generation.')
+            error=InferenceError('Incomplete/truncated model generation.',code='OUTPUT_TRUNCATED',stage='response-validation')
             error.raw_generation=response.get('response') if isinstance(response,dict) else None
+            if isinstance(response,dict):
+                error.metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes')}
+                error.resources=response.get('resources')
+                error.completion={'done':response.get('done'),'done_reason':response.get('done_reason')}
             raise error
         if type(response.get('prompt_eval_count')) is not int or response['prompt_eval_count']+config.output_tokens>config.context_tokens:
-            raise InferenceError('Actual prompt token count exceeds the accepted context budget.')
+            raise InferenceError('Actual prompt token count exceeds the accepted context budget.',code='CONTEXT_BUDGET',stage='response-validation')
         if response.get('model') is not None and response['model']!=config.model:raise InferenceError('Runtime returned a different model identity.')
         result=checked_result(response.get('response'),config,runtime=self.transport.runtime_version,
                               model_version=response.get('model_digest','unknown'),metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes')})

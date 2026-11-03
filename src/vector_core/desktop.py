@@ -210,6 +210,11 @@ class Desktop:
         if record.get('model_run'):
             self.active_response=record;self.active_planning=None;outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['message'])
             if outcome.get('model_text'):self.show_chat(outcome['model_text'])
+            if record.get('checked'):self.show_chat('Independent calculation check:\n'+self.shell.document_text(record['checked']))
+            failure=outcome.get('failure') or {}
+            if failure.get('restart_required'):self.show_chat('The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
+            selection=(record.get('context') or {}).get('context',{}).get('history_selection',{})
+            if selection.get('omitted_for_context'):self.show_chat('This reply used a bounded selection of earlier messages; the full conversation remains saved.')
             if outcome.get('uncertainty'):self.show_chat('Uncertainty: '+outcome['uncertainty'])
             for issue in outcome.get('issues',[]):self.show_chat('Unresolved: '+issue)
             for cite in outcome.get('citations',[]):self.source_link(cite['event_id'])

@@ -35,9 +35,10 @@ class PromptFramingTests(unittest.TestCase):
         settings['generation']=asdict(GenerationConfig('',8192,192,300))
         self.app.handle('model_mode_set',{'mode':'both','settings':settings})
 
-    def test_new_chat_keeps_complete_task_evidence_and_equal_independent_prompts(self):
+    def test_grounded_v3_chat_keeps_complete_task_evidence_and_equal_independent_prompts(self):
         question='Every red object is metal. No metal object floats. Object K is red. Does K float?'
-        response=self.app.handle('ask',{'question':question})
+        from vector_core.model_routing import evidence_chat
+        response=evidence_chat(self.app,question)
         run=self.app.model_controller.get(response['model_run_ref'])
         self.assertEqual(run['status'],'complete');self.assertEqual(len(self.adapter.calls),5)
         self.assertEqual(self.adapter.calls[0],self.adapter.calls[1]);self.assertEqual(chat_version(run['prompt']),3)

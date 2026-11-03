@@ -10,7 +10,8 @@ import socket
 import subprocess
 import sys
 import time
-from vector_core.inference import GenerationConfig,ANSWER_SCHEMA,CLAIM_SCHEMA,FINDING_NOTES_SCHEMA,COLLABORATION_SCHEMA
+from vector_core.inference import (GenerationConfig,ANSWER_SCHEMA,CLAIM_SCHEMA,FINDING_NOTES_SCHEMA,
+    COLLABORATION_SCHEMA,CHAT_FORMAT,chat_messages,generation_prompt_bytes)
 from vector_core.portable import unique
 
 MAX_FRAME=1024*1024
@@ -34,7 +35,7 @@ def generation_payload(config,prompt,response_kind):
     anonymous RAM. A small batch and read-only mapping trade speed for memory
     headroom. Kernel limits and host-pressure monitoring remain mandatory.
     """
-    return {'model':config.model,'prompt':prompt,'stream':False,
+    payload={'model':config.model,'prompt':prompt,'stream':False,
             'format':{'answer-v1':ANSWER_SCHEMA,'claims-v1':CLAIM_SCHEMA,
                       'finding-notes-v1':FINDING_NOTES_SCHEMA,
                       'collaboration-v1':COLLABORATION_SCHEMA,
@@ -42,6 +43,13 @@ def generation_payload(config,prompt,response_kind):
             'keep_alive':0,'options':{'num_ctx':config.context_tokens,
                 'num_predict':config.output_tokens,'temperature':config.temperature,
                 'seed':config.seed,'num_thread':2,'num_batch':32,'use_mmap':True}}
+    if response_kind==CHAT_FORMAT:
+        payload.pop('prompt');payload.pop('format')
+        payload['messages']=chat_messages(prompt)
+        # Conversation should produce its visible answer within the requested
+        # budget. This per-request option does not alter the installed model.
+        payload['think']=False
+    return payload
 
 
 def restrict():
@@ -82,13 +90,29 @@ class GenerationFailure(ValueError):
     def __init__(self,message,partial):super().__init__(message);self.partial=partial
 
 
-def stream_generation(payload,timeout):
+def wait_for_runtime(daemon,timeout=60):
+    """Bounded readiness, independent of whether the daemon logged 'Listening'."""
+    deadline=time.monotonic()+timeout;last='No successful version response.'
+    while time.monotonic()<deadline:
+        if daemon.poll() is not None:raise RuntimeError('Private Ollama exited during startup: '+str(daemon.returncode))
+        try:
+            result=local_api('/api/version',timeout=min(2,max(.01,deadline-time.monotonic())))
+            version=result.get('version')
+            if isinstance(version,str) and version:return version
+            last='Invalid version response.'
+        except (OSError,ValueError) as error:last=type(error).__name__+': '+str(error)[:200]
+        time.sleep(min(.05,max(0,deadline-time.monotonic())))
+    raise RuntimeError('Private Ollama readiness deadline reached; last probe: '+last)
+
+
+def stream_generation(payload,timeout,*,path='/api/generate'):
+    if path not in ('/api/generate','/api/chat'):raise ValueError('Unauthorized generation endpoint.')
     connection=http.client.HTTPConnection('127.0.0.1',11434,timeout=timeout)
     end=time.monotonic()+timeout;parts=[];size=0;thinking_bytes=0
     try:
         payload=dict(payload,stream=True)
         if payload.get('format') is None:payload.pop('format',None)
-        connection.request('POST','/api/generate',json.dumps(payload),{'Content-Type':'application/json'})
+        connection.request('POST',path,json.dumps(payload),{'Content-Type':'application/json'})
         response=connection.getresponse()
         if response.status!=200:raise GenerationFailure('Local generation HTTP '+str(response.status)+': '+response.read(1000).decode('utf-8','replace'),'')
         while True:
@@ -99,6 +123,11 @@ def stream_generation(payload,timeout):
             if not raw:raise GenerationFailure('Runtime ended before completion.',''.join(parts))
             if len(raw)>65536:raise GenerationFailure('Excessive runtime chunk.',''.join(parts))
             chunk=json.loads(raw,object_pairs_hook=unique)
+            if path=='/api/chat' and isinstance(chunk,dict):
+                message=chunk.get('message',{})
+                if not isinstance(message,dict) or message.get('role','assistant')!='assistant':raise GenerationFailure('Malformed chat response role.',''.join(parts))
+                chunk=dict(chunk,response=message.get('content',''),thinking=message.get('thinking',''))
+                chunk.pop('message',None)
             if not isinstance(chunk,dict) or not isinstance(chunk.get('response',''),str):raise GenerationFailure('Malformed generation chunk.',''.join(parts))
             if not isinstance(chunk.get('thinking',''),str):raise GenerationFailure('Malformed thinking metadata.',''.join(parts))
             thinking_bytes+=len(chunk.get('thinking','').encode())
@@ -128,17 +157,14 @@ def main():
     daemon=subprocess.Popen([os.environ['VECTOR_OLLAMA_BINARY'],'serve'],stdin=subprocess.DEVNULL,stdout=runtime_log,stderr=runtime_log)
     version=None
     try:
-        startup_deadline=time.monotonic()+8
-        while time.monotonic()<startup_deadline:
-            if daemon.poll() is not None:break
-            try:version=local_api('/api/version',timeout=.25)['version'];break
-            except (OSError,ValueError):time.sleep(.05)
-        if not isinstance(version,str):
+        try:version=wait_for_runtime(daemon)
+        except RuntimeError as error:
             runtime_log.seek(0,2);length=runtime_log.tell();runtime_log.seek(max(0,length-2000))
-            raise RuntimeError('Private Ollama startup failed/deadline reached: '+runtime_log.read(2000).decode('utf-8','replace'))
+            raise RuntimeError(str(error)+'; private runtime log tail: '+runtime_log.read(2000).decode('utf-8','replace')) from error
         for raw in iter(lambda:sys.stdin.buffer.readline(MAX_FRAME+1),b''):
             if len(raw)>MAX_FRAME or not raw.endswith(b'\n'):raise RuntimeError('Invalid request frame.')
             try:
+                phase='request-validation'
                 request=json.loads(raw,object_pairs_hook=unique)
                 operation=request.get('operation')
                 if operation=='qualify':
@@ -177,26 +203,29 @@ def main():
                         for pid in children:os.waitpid(pid,0)
                     result={'pids_exhaustion_denied':exhausted,'children_cleaned':len(children)}
                 elif operation=='discover':
-                    result=local_api('/api/tags');result['available']=True;result['runtime_version']=version
+                    phase='model-discovery'
+                    result=local_api('/api/tags',timeout=55);result['available']=True;result['runtime_version']=version
                 elif operation=='generate':
                     config=GenerationConfig(**request['config']).validate()
                     if not re.fullmatch(r'[A-Za-z0-9_.:/-]{1,200}',config.model) or '..' in config.model:raise ValueError('Invalid selected model.')
-                    models=local_api('/api/tags').get('models',[])
+                    phase='model-discovery';models=local_api('/api/tags',timeout=min(55,config.timeout_seconds)).get('models',[])
                     selected=next((model for model in models if model.get('name')==config.model),None)
                     if selected is None:raise ValueError('Selected local model unavailable; no pull/download is allowed.')
-                    metadata=local_api('/api/show',{'model':config.model})
+                    phase='model-metadata';metadata=local_api('/api/show',{'model':config.model},timeout=min(55,config.timeout_seconds))
                     limits=[value for key,value in metadata.get('model_info',{}).items() if key.endswith('.context_length') and type(value) is int]
                     if not limits or config.context_tokens>min(limits):raise ValueError('Actual model context capacity is unknown or insufficient.')
                     prompt=request['prompt']
-                    if not isinstance(prompt,str) or len(prompt.encode())>config.prompt_bytes:raise ValueError('Prompt byte budget exceeded.')
                     response_kind=request.get('response_kind')
-                    if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1','proposal-text-v1','collaboration-v1'):raise ValueError('Unknown structured response format.')
+                    if response_kind not in (None,'answer-v1','claims-v1','finding-notes-v1','proposal-text-v1','collaboration-v1',CHAT_FORMAT):raise ValueError('Unknown structured response format.')
+                    phase='prompt-preparation'
+                    if generation_prompt_bytes(prompt,response_kind)>config.prompt_bytes:raise ValueError('Prompt byte budget exceeded.')
                     if local_api('/api/ps').get('models'):raise ValueError('A prior runner remains loaded; sequential inference refused.')
                     payload=generation_payload(config,prompt,response_kind)
-                    result=stream_generation(payload,max(.05,config.timeout_seconds-1))
+                    phase='model-generation'
+                    result=stream_generation(payload,max(.05,config.timeout_seconds-1),path='/api/chat' if response_kind==CHAT_FORMAT else '/api/generate')
                     result['execution_options']=payload['options']
                     result['model_digest']=selected.get('digest','unknown')
-                    unload_deadline=time.monotonic()+5
+                    phase='runner-cleanup';unload_deadline=time.monotonic()+5
                     while local_api('/api/ps').get('models'):
                         if time.monotonic()>unload_deadline:raise ValueError('Runner did not unload after generation; sequential continuation refused.')
                         time.sleep(.05)
@@ -207,7 +236,7 @@ def main():
                 runtime_log.seek(0,2);length=runtime_log.tell();runtime_log.seek(max(0,length-700))
                 diagnostic=runtime_log.read(700).decode('utf-8','replace')
                 response={'ok':False,'result':{'error':str(error)[:250]+'; private runtime log tail: '+diagnostic,
-                          'partial':getattr(error,'partial',None),'simulated':False}}
+                          'partial':getattr(error,'partial',None),'simulated':False,'stage':phase}}
             encoded=json.dumps(response,allow_nan=False).encode()
             if len(encoded)>MAX_FRAME:encoded=b'{"ok":false,"result":"Excessive output"}'
             sys.stdout.buffer.write(encoded+b'\n');sys.stdout.buffer.flush()

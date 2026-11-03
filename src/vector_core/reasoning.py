@@ -17,6 +17,31 @@ ROUTING='vector-capability-route-v1'
 OPERATORS=[(r'\bmultiplied\s+by\b','*'),(r'\bdivided\s+by\b','/'),(r'\bto\s+the\s+power\s+of\b','**'),(r'\b(?:times)\b','*'),(r'\bplus\b','+'),(r'\bminus\b','-'),(r'\bpercent(?:age)?\s+of\b','/100*'),(r'%\s*of\b','/100*')]
 
 
+def processing(question,version=2):
+    """Open-ended scheduling hints, not answers or a catalog of allowed topics.
+
+    The legacy capability grammar stays immutable for saved calculation/evidence
+    replay. Unknown requests remain eligible for ordinary selected-model inference.
+    """
+    if not isinstance(question,str) or not question.strip():raise ValueError('Enter a complete request.')
+    if type(version) is not int or version not in (1,2):raise ValueError('Unknown processing-hint version.')
+    q=question.strip();kind='general';workflow='direct'
+    if re.fullmatch(r'(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening)|how\s+are\s+you)[.!?\s]*',q,re.I):kind='conversation'
+    elif re.search(r'\b(?:investigat\w*|research|hypothes\w*|experiment|study)\b',q,re.I):kind='research';workflow='reflect'
+    elif re.search(r'\b(?:brainstorm|invent|creative|ideas|alternatives|ways\s+to)\b',q,re.I):kind='creative';workflow='reflect'
+    elif re.search(r'\b(?:compare|analyse|analyze|tradeoffs?|trade-offs?|design|plan)\b',q,re.I):kind='analysis';workflow='reflect'
+    elif re.search(r'\b(?:deduc\w*|contradict\w*|logic\w*|prove|reason\w*)\b|\bif\b.+\bthen\b|\bevery\b.+\b(?:no|does)\b',q,re.I):kind='reasoning';workflow='reflect'
+    elif re.match(r'^(?:explain|describe|how)\b',q,re.I):kind='explanation'
+    elif re.match(r'^(?:what|where|who|when|which)\b',q,re.I):kind='factual'
+    # A short request usually needs a direct answer or a model-generated
+    # clarification, rather than three automatic deliberation calls.
+    words=len(re.findall(r'[^\W_]+',q))
+    linked=version==2 and words>=8 and bool(re.search(r'\b(?:then|afterwards|subsequently)\b',q,re.I))
+    if linked and kind!='conversation':kind='reasoning';workflow='reflect'
+    if workflow=='reflect' and words<12 and not linked:workflow='direct'
+    return {'version':version,'task_type':kind,'workflow':workflow,'basis':'Conservative language scheduling hint; not semantic entailment, verification or an action authorization.'}
+
+
 def literal_math(clause,previous=False):
     """Fully consumed numeric grammar, not a search for numbers in prose."""
     import ast

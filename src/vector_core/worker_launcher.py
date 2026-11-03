@@ -32,7 +32,7 @@ class WorkerTransport:
         for stream in (self.process.stdin,self.process.stdout):stream.close()
         if getattr(self,'temporary',None):self.temporary.cleanup();self.temporary=None
     def request(self,payload,timeout,cancellation=None):
-        if not self.qualified:raise InferenceError('Worker is closed/unqualified.')
+        if not self.qualified:raise InferenceError('Worker is closed/unqualified. Restart VECTOR to qualify a new isolated worker; saved conversation work remains available.',code='WORKER_CLOSED',stage='availability')
         frame=json.dumps(payload,allow_nan=False).encode()+b'\n'
         if len(frame)>MAX_FRAME:raise InferenceError('Inference request too large.')
         end=time.monotonic()+timeout
@@ -64,6 +64,9 @@ class WorkerTransport:
             if not isinstance(response,dict) or set(response)!={'ok','result'}:raise InferenceError('Malformed worker response.')
             if response['ok'] is not True:
                 result=response['result'];error=InferenceError(str(result.get('error'))[:1000] if isinstance(result,dict) else str(result)[:1000])
+                if isinstance(result,dict):
+                    error.stage=result.get('stage','inference')
+                    error.code={'model-discovery':'MODEL_DISCOVERY_FAILED','model-metadata':'MODEL_METADATA_FAILED','model-generation':'MODEL_GENERATION_FAILED','runner-cleanup':'RUNNER_CLEANUP_FAILED','prompt-preparation':'CONTEXT_BUDGET'}.get(error.stage,'INFERENCE_FAILED')
                 error.raw_generation=result.get('partial') if isinstance(result,dict) else None
                 raise error
             result=response['result']
@@ -74,6 +77,8 @@ class WorkerTransport:
             # Retain the last bounded observation for runtime errors, timeouts
             # and crashes too: a missing answer alone cannot diagnose pressure.
             failure=error if isinstance(error,InferenceError) else InferenceError('Worker communication failed: '+str(error))
+            failure.operation=payload.get('operation')
+            if failure.code=='INFERENCE_TIMEOUT':failure.stage='model-discovery' if payload.get('operation')=='discover' else 'model-execution'
             if self.resource_watch:
                 failure.resources={k:v for k,v in self.resource_watch.items() if k not in {'next','pressure_since'}}
             self.close()
@@ -81,7 +86,7 @@ class WorkerTransport:
             raise failure from error
     def _check(self,end,cancellation):
         if cancellation and cancellation.cancelled:raise InferenceError('Cancelled; isolated worker terminated.')
-        if time.monotonic()>end:raise InferenceError('Inference timeout; isolated worker terminated.')
+        if time.monotonic()>end:raise InferenceError('Inference timeout; isolated worker terminated.',code='INFERENCE_TIMEOUT',stage='transport')
         if self.process.poll() is not None:raise InferenceError('Inference worker crashed.')
         watch=getattr(self,'resource_watch',None)
         if watch and time.monotonic()>=watch['next']:
@@ -106,8 +111,8 @@ class WorkerTransport:
                 if watch['host_swap_out_bytes']>128*1024*1024:violations.append('host swap-out exceeded128MiB ('+str(watch['host_swap_out_bytes'])+' bytes)')
                 if watch['pressure_since'] and time.monotonic()-watch['pressure_since']>15:violations.append('full-memory PSI above30percent for15seconds (avg10='+str(pressure)+')')
                 if violations:
-                    error=InferenceError('RESOURCE_BLOCKED: '+'; '.join(violations));error.resources={k:v for k,v in watch.items() if k not in {'next','pressure_since'}};raise error
-            except (OSError,ValueError,StopIteration,KeyError) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error)) from error
+                    error=InferenceError('RESOURCE_BLOCKED: '+'; '.join(violations),code='RESOURCE_LIMIT',stage='resource-protection');error.resources={k:v for k,v in watch.items() if k not in {'next','pressure_since'}};raise error
+            except (OSError,ValueError,StopIteration,KeyError) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error),code='RESOURCE_MONITOR_FAILED',stage='resource-protection') from error
 
 
 def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=()):
@@ -174,7 +179,7 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     transport=WorkerTransport(process,{'runtime_version':'unqualified'})
     transport.qualified=True  # Private object; not returned until independent parent checks finish.
     try:
-        report=transport.request({'operation':'qualify'},15)
+        report=transport.request({'operation':'qualify'},75)
         host_net=str(Path('/proc/self/ns/net').readlink())
         if (not isinstance(report,dict) or report.get('network_namespace')==host_net or report.get('routes') is not False
             or report.get('external_denied') is not True or report.get('nested_userns_denied') is not True
@@ -230,8 +235,13 @@ def desktop_runtime(path=None):
     try:return launch(roots[0],additional_model_directories=roots[1:],memory_bytes=settings['memory_bytes'],tasks=settings['tasks'])
     except InferenceError as error:
         if 'RESOURCE_BLOCKED' not in str(error) or type(settings['memory_bytes']) is not int or settings['memory_bytes']<=768*1024*1024:raise
-        # A smaller kernel ceiling strengthens resource containment. Do not claim
-        # that a model too large for it is runnable; prepare_model refuses it.
-        transport=launch(roots[0],additional_model_directories=roots[1:],memory_bytes=768*1024*1024,tasks=settings['tasks'])
-        transport.report['requested_memory_max']=settings['memory_bytes'];transport.report['resource_notice']='Larger startup profile blocked: '+str(error)+'. A smaller 768MiB ceiling is active; oversized models are unavailable.'
+        # Preserve the exact startup reserve and every kernel/live monitor rule.
+        # A fixed768MiB fallback needlessly discarded safe available capacity.
+        # Select only a SMALLER ceiling, with16MiB extra race/reclaim headroom.
+        available=int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:')))*1024
+        ceiling=min(settings['memory_bytes']-1024*1024,available-(384+16)*1024*1024)
+        ceiling=ceiling//(1024*1024)*(1024*1024)
+        if ceiling<256*1024*1024:raise
+        transport=launch(roots[0],additional_model_directories=roots[1:],memory_bytes=ceiling,tasks=settings['tasks'])
+        transport.report['requested_memory_max']=settings['memory_bytes'];transport.report['resource_notice']='Larger startup profile blocked: '+str(error)+'. A smaller '+str(ceiling//(1024*1024))+'MiB ceiling is active with the host reserve preserved; oversized models remain unavailable.'
         return transport
