@@ -96,3 +96,10 @@ class AdaptiveTests(unittest.TestCase):
         result=self.app.handle('ask',{'question':'Hi','manual':True})
         self.assertEqual(result['outcome']['status'],'simulated-test-response')
         self.assertIn(LARGE,result['outcome']['message']);self.assertNotIn('Qwen',result['outcome']['message'])
+
+    def test_saved_manual_ceiling_is_enforced_but_auto_remains_hardware_adaptive(self):
+        self.proxy.boot.update(manual_limit=700*MIB,tasks_limit=32)
+        self.wire(['Hi from AUTO fixture']);self.assertEqual(self.run_fixture()['status'],'complete')
+        self.assertGreater(self.proxy.starts[-1]['memory_bytes'],700*MIB);self.assertEqual(self.proxy.starts[-1]['selection'],'auto');self.assertEqual(self.proxy.starts[-1]['tasks'],32)
+        self.app.handle('runtime_selection_set',{'mode':'model','model':SMALL});self.wire(['Hi from manual fixture']);self.assertEqual(self.run_fixture()['status'],'complete')
+        self.assertLessEqual(self.proxy.starts[-1]['memory_bytes'],700*MIB);self.assertEqual(self.proxy.starts[-1]['selection'],'manual');self.assertEqual(self.proxy.starts[-1]['tasks'],32)

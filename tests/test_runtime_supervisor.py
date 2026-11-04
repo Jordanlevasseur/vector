@@ -38,3 +38,13 @@ class SupervisorProtocolTests(unittest.TestCase):
             available,errors=approved_stores([root,Path(folder)/'missing',link])
             self.assertEqual(available,[str(root)]);self.assertEqual(len(errors),2)
             self.assertTrue(all(e['compatible'] is False for e in errors))
+
+    def test_experimental_consent_is_manual_only_and_never_inferred_for_auto(self):
+        from vector_core.runtime_supervisor import profile_limit
+        grant={'experimental_authorized':True,'manual_limit':512*1024*1024}
+        self.assertIsNone(profile_limit(grant,{'selection':'auto','experimental':False}))
+        self.assertEqual(profile_limit(grant,{'selection':'manual','experimental':False}),512*1024*1024)
+        self.assertEqual(profile_limit(grant,{'selection':'manual','experimental':True}),512*1024*1024)
+        with self.assertRaises(PermissionError):profile_limit(grant,{'selection':'auto','experimental':True})
+        with self.assertRaises(PermissionError):profile_limit({'experimental_authorized':False},{'selection':'manual','experimental':True})
+        with self.assertRaises(ValueError):profile_limit(grant,{'selection':'automatic','experimental':False})

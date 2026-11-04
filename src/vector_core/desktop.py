@@ -161,7 +161,7 @@ class Desktop:
         tab=self.tabs['Settings'];ttk.Label(tab,text='Development Mode — manual operation does not depend on accuracy or release readiness.').pack(anchor='w')
         runtime=ttk.LabelFrame(tab,text='Local AI startup / memory',padding=6);runtime.pack(fill='x')
         self.experimental_memory=tk.BooleanVar(value=False);ttk.Checkbutton(runtime,text='Experimental memory estimates (user controlled)',variable=self.experimental_memory).pack(anchor='w')
-        line=ttk.Frame(runtime);line.pack(fill='x');ttk.Label(line,text='Kernel memory cap (MiB,256–2048)').pack(side='left');self.runtime_memory=ttk.Entry(line,width=8);self.runtime_memory.insert(0,'1536');self.runtime_memory.pack(side='left',padx=5)
+        line=ttk.Frame(runtime);line.pack(fill='x');ttk.Label(line,text='Manual memory cap (MiB,256–2048)').pack(side='left');self.runtime_memory=ttk.Entry(line,width=8);self.runtime_memory.insert(0,'1536');self.runtime_memory.pack(side='left',padx=5)
         self.runtime_apply=ttk.Button(line,text='Save startup options',command=self.save_runtime_options);self.runtime_apply.pack(side='left')
         ttk.Label(runtime,text='Experimental estimates can cause crashes or resource exhaustion. Kernel limits and offline isolation remain enforced. Close and reopen VECTOR after saving.',wraplength=900).pack(anchor='w')
         self.runtime_notice=tk.StringVar();ttk.Label(runtime,textvariable=self.runtime_notice,wraplength=900).pack(anchor='w')
@@ -394,7 +394,7 @@ class Desktop:
             settings=result.get('settings')
             if settings:
                 self.experimental_memory.set(settings.get('experimental_memory',False));self.runtime_memory.delete(0,'end');self.runtime_memory.insert(0,str(settings['memory_bytes']//1048576))
-            self.runtime_notice.set(result.get('startup_error') or 'Startup options are applied only after close/reopen and fresh isolation qualification.')
+            self.runtime_notice.set(result.get('startup_error') or 'Manual memory ceiling and scoped consent apply after reopen. AUTO adapts memory to hardware; the process ceiling and all mandatory protections remain enforced.')
         self.call('runtime_options_get',{},shown)
     def save_runtime_options(self):
         try:memory=int(self.runtime_memory.get())

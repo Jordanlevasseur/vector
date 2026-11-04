@@ -99,6 +99,13 @@ class SupervisorProxy:
             self.process.stdout.close()
 
 
+def profile_limit(boot,proposed):
+    selection=proposed.get('selection');experimental=proposed.get('experimental')
+    if selection not in {'auto','manual'} or type(experimental) is not bool:raise ValueError('Explicit runtime selection/resource scope required.')
+    if experimental and (selection!='manual' or boot.get('experimental_authorized') is not True):raise PermissionError('Experimental resource consent is scoped to explicit manual attempts only.')
+    return boot.get('manual_limit') if selection=='manual' else None
+
+
 def approved_stores(roots):
     """Quarantine an unavailable approved store; never broaden its grant."""
     from vector_core.models import validate_layout
@@ -129,7 +136,7 @@ def create(*,profile=None,roots=None):
         with p.open('rb') as f:
             while chunk:=f.read(1024*1024):digest.update(chunk)
         executables[name]={'path':str(p),'sha256':digest.hexdigest()}
-    host=hardware();boot={'unavailable_stores':unavailable,'executables':executables,'roots':roots,'unit':unit+'.service','package':package,'host_network_namespace':str(Path('/proc/self/ns/net').readlink()),'experimental_authorized':bool(settings and settings.get('experimental_memory')),'manual_limit':settings['memory_bytes'] if settings else None,'hardware':host}
+    host=hardware();boot={'unavailable_stores':unavailable,'executables':executables,'roots':roots,'unit':unit+'.service','package':package,'host_network_namespace':str(Path('/proc/self/ns/net').readlink()),'experimental_authorized':bool(settings and settings.get('experimental_memory')),'manual_limit':settings['memory_bytes'] if settings else None,'tasks_limit':settings['tasks'] if settings else 64,'hardware':host}
     command=['/usr/bin/systemd-run','--user','--pipe','--wait','--collect','--quiet','--unit='+unit,'--property=MemoryMax=268435456','--property=MemorySwapMax=0','--property=TasksMax=32','--property=CPUQuota=100%','--property=KillMode=control-group','--property=TimeoutStopSec=5',
         '/usr/bin/bwrap','--unshare-user','--unshare-net','--unshare-ipc','--unshare-uts','--disable-userns','--assert-userns-disabled','--die-with-parent','--new-session','--cap-drop','ALL','--clearenv',
         '--ro-bind','/usr','/usr','--ro-bind','/lib','/lib','--ro-bind','/lib64','/lib64','--dev','/dev','--size','67108864','--tmpfs','/tmp','--dir','/tmp/home','--dir','/proc','--ro-bind','/sys/fs/cgroup','/sys/fs/cgroup','--ro-bind',bus,bus,'--ro-bind','/etc/machine-id','/etc/machine-id','--dir','/run/systemd/system',
@@ -196,11 +203,13 @@ def main(boot):
                 elif operation=='start':
                     stop();proposed=p['plan']
                     if not isinstance(proposed,dict) or not proposed.get('models') or any(n not in known for n in proposed['models']):raise InferenceError('Only exact models in approved local stores can be started.')
-                    if proposed.get('experimental') and not boot['experimental_authorized']:raise PermissionError('Experimental resource profile has no scoped owner consent.')
+                    manual_limit=profile_limit(boot,proposed)
                     host=hardware('/usr');host['fingerprint']=boot['hardware']['fingerprint']
                     # The captured /proc/self/cgroup is the original desktop's
                     # hierarchy, not the controller's deliberately small cgroup.
-                    checked=make_plan(inventory,host,context_required=proposed['context_tokens'],output_tokens=proposed['output_tokens'],manual_names=proposed['models'],experimental=proposed.get('experimental',False),manual_limit=boot['manual_limit'] if proposed.get('experimental') else None)
+                    checked=make_plan(inventory,host,context_required=proposed['context_tokens'],output_tokens=proposed['output_tokens'],manual_names=proposed['models'],experimental=proposed.get('experimental',False),manual_limit=manual_limit)
+                    checked['tasks']=min(checked['tasks'],boot['tasks_limit'])
+                    if proposed.get('selection') not in {'auto','manual'}:raise InferenceError('Explicit runtime selection scope required.')
                     for field in ('memory_bytes','tasks','cpu_threads','cpu_quota_percent'):
                         if type(proposed[field]) is not int or proposed[field]>checked[field]:raise InferenceError('Requested runtime limit exceeds freshly checked host/profile allowance: '+field)
                     check_control()

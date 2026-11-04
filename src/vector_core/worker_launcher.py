@@ -296,7 +296,7 @@ def save_runtime_options(path=None,*,memory_mib,experimental,acknowledged=False)
         sync(path)
     finally:
         if temporary.exists():temporary.unlink()
-    return {'saved':True,'restart_required':True,'settings':settings,'message':'Saved. Close and reopen VECTOR to qualify a new isolated runtime with these limits. Models, model selection and knowledge were not changed.'}
+    return {'saved':True,'restart_required':True,'settings':settings,'message':'Saved. Reopen VECTOR to load this scoped profile. The memory ceiling applies to manual inference; AUTO chooses a hardware-adaptive ceiling. The process ceiling applies to both. Experimental consent applies only to manual attempts. Models and knowledge were not changed.'}
 
 
 def desktop_runtime(path=None):

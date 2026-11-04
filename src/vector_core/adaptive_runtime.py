@@ -65,7 +65,9 @@ class AdaptiveRuntime:
     def prepare(self,names,config,progress=None):
         if progress:progress({'phase':'discovering','label':'Discovering approved local models and checking current hardware'})
         self.host=hardware(self.app.memory.config.data_dir)
-        p=plan(self.models,self.host,context_required=config.context_tokens,output_tokens=config.output_tokens,observations=self.observations,manual_names=names,experimental=bool(not self.automatic() and self.proxy.boot.get('experimental_authorized')),manual_limit=self.proxy.boot.get('manual_limit') if not self.automatic() and self.proxy.boot.get('experimental_authorized') else None)
+        p=plan(self.models,self.host,context_required=config.context_tokens,output_tokens=config.output_tokens,observations=self.observations,manual_names=names,experimental=bool(not self.automatic() and self.proxy.boot.get('experimental_authorized')),manual_limit=self.proxy.boot.get('manual_limit') if not self.automatic() else None)
+        p['selection']='auto' if self.automatic() else 'manual'
+        p['tasks']=min(p['tasks'],self.proxy.boot.get('tasks_limit',p['tasks']))
         if self.automatic():
             # Execution receives an exact frozen role; recommendations still
             # constrain AUTO, even though manual attempts may exceed estimates.

@@ -46,7 +46,7 @@ needs one explicit local grant. Existing root declarations persist. External mod
 portability obligations remain recorded automatically when used; those notices
 are not internet permissions. Existing experimental consent remains scoped to
 manual attempts and must be explicitly acknowledged in private runtime settings.
-AUTO never turns it on. Applying a new grant/profile still requires a new protected
+AUTO never turns it on. The existing profile's memory ceiling remains a hard cap for manual inference; AUTO derives its own finite hardware ceiling. The configured process ceiling applies to both. No saved manual limit is silently ignored. Applying a new grant/profile still requires a new protected
 startup; ordinary model changes and worker recovery do not require reopening.
 
 Plans allow arbitrary named sequential participants. The current executor retains
