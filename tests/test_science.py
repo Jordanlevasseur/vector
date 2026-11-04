@@ -53,6 +53,44 @@ class ScientificLibraryTests(unittest.TestCase):
                 from vector_core.memory import Submission
                 fake=m.ingest(Submission(b'forged page','Forged',metadata=m.event(hit['event_id'])['metadata'],parent_id=e['original_event_id']))
                 with self.assertRaises(ValueError):provenance(m,fake['event_id'])
+    def test_mathematics_uses_existing_originals_catalogue_and_source_links(self):
+        from vector_core.resources import Resources
+        from vector_core.retrieval import search
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);entry=fixture(root/'pack')
+            entry['subjects']=['collection:Mathematics','Mathematical analysis','Graduate','Sobolev spaces']
+            entry['rights']['license']='US-PUBLIC-DOMAIN'
+            with Memory(Config.load(data_dir=str(root/'data'))) as m:
+                lib=ScientificLibrary(m);item=lib.import_entry(root/'pack',entry,approved=True)
+                lib.index(root/'pack',item['id'],approved=True)
+                resources=Resources(m)
+                try:
+                    rows=resources.list('Sobolev',category='Mathematics')['items']
+                    self.assertEqual([r['id'] for r in rows],[item['original_event_id']])
+                    self.assertEqual(resources.detail(rows[0]['id'])['sha256'],entry['original']['sha256'])
+                    group=resources.collection('Mathematics',approved=True)
+                    resources.membership(group['id'],rows[0]['id'],approved=True)
+                    self.assertEqual(resources.list(collection=group['id'])['total'],1)
+                    hit=search(m,'Specific heat')[0]
+                    self.assertEqual(hit['scientific_provenance']['original_event_id'],rows[0]['id'])
+                    self.assertEqual(hit['scientific_provenance']['locator'],'PDF page 1')
+                    self.assertIn('equations',hit['scientific_provenance']['extraction_limits'])
+                finally:resources.close()
+
+    def test_new_rights_identifiers_preserve_explicit_review_and_authorization(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);entry=fixture(root/'pack')
+            for license in ('US-PUBLIC-DOMAIN','GFDL-1.2-no-invariants','GFDL-1.3-no-invariants'):
+                candidate=copy.deepcopy(entry);candidate['rights']['license']=license
+                self.assertEqual(metadata(candidate)['rights']['license'],license)
+                with Memory(Config.load(data_dir=str(root/license))) as m:
+                    with self.assertRaises(PermissionError):ScientificLibrary(m).import_entry(root/'pack',candidate)
+                candidate['rights']['ai_retrieval_permitted']=False
+                with self.assertRaises(PermissionError):metadata(candidate)
+            for license in ('GFDL','GFDL-1.3','CC-BY-NC-4.0','CC-BY-ND-4.0','CC-BY-NC-SA-4.0'):
+                candidate=copy.deepcopy(entry);candidate['rights']['license']=license
+                with self.assertRaises(PermissionError):metadata(candidate)
+
     def test_noncommercial_ai_restrictions_and_missing_medical_dates_fail_closed(self):
         with tempfile.TemporaryDirectory() as folder:
             entry=fixture(Path(folder)/'pack')

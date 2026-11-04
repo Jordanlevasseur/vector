@@ -1,0 +1,13 @@
+# Mathematics Library integration
+
+Mathematics uses the existing ScientificLibrary preserved-original, reviewed-rights, bounded page-indexing and provenance contracts. It does not create another knowledge database or inference route. The exact subject tag `collection:Mathematics` makes only the corresponding complete publication originals appear in the Mathematics category. Extracted pages and rights records remain distinct supporting catalogue entries. Existing Science entries retain their category. Collections use the existing library membership records.
+
+The reviewed manifest records one primary discipline and academic level per complete resource, publication/edition, institution, source URL, licence/version, full source-specific evidence, duplicate review, SHA-256 and extraction limitations. Subject tags expose discipline and level to existing catalogue search. No schema migration is required.
+
+The importer now recognizes explicitly reviewed U.S. public-domain books and specifically reviewed GFDL 1.2/1.3 works without invariant sections. Generic GFDL, noncommercial, no-derivatives, unknown rights and AI-restricted entries remain rejected. A supported identifier is not automatic legal approval: the source-specific evidence and intended-use review must precede explicit import approval. GFDL works require preserved licence/notices and a separate source/redistribution compliance review.
+
+Original files must be byte-identical to acquisition records. Extracted text is a separate derivative: layout, mathematical notation, image-only content and semantic correctness are not certified by a complete page cursor. The original PDF remains authoritative. Complete indexing means every declared extraction segment is indexed, not that every equation is faithfully represented. Future model training requires separate review.
+
+Acquisition is performed only by separate owner-authorized development processes without VECTOR data/model mounts or local IPC. VECTOR has no downloader and remains subject to its existing mandatory network denial. No model, default inference profile, Foundational Law or existing original is changed by a mathematics import.
+
+Before permanent import, verify a consistent database backup and every existing managed original. Import and indexing are restartable with fixed original identities and bounded batches. Preserve existing rows and original hashes after import; validate installed readers and source-linked search against real publications. The per-acquisition report, rather than this integration description, states the actual counts and acceptance outcomes.

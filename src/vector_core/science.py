@@ -14,7 +14,7 @@ from vector_core.projects import append,identity,latest,page,text
 from vector_core.storage import DIGEST,safe_path
 
 CONTRACTS={'scientific_editions','scientific_runs'}
-LICENSES={'CC0-1.0','CC-BY-4.0','CC-BY-SA-4.0','CC-BY-3.0','CC-BY-SA-3.0','US-GOV-PUBLIC-DOMAIN'}
+LICENSES={'CC0-1.0','CC-BY-4.0','CC-BY-SA-4.0','CC-BY-3.0','CC-BY-SA-3.0','US-GOV-PUBLIC-DOMAIN','US-PUBLIC-DOMAIN','GFDL-1.2-no-invariants','GFDL-1.3-no-invariants'}
 USES={'preservation','text-indexing','source-linked-retrieval'}
 FEATURES={'equations','tables','figures','external_assets','text_completeness'}
 
