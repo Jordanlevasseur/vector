@@ -460,7 +460,7 @@ def conversation_view(memory,record,run):
     if run['status']=='complete':
         stage=completed[-1]
         output=(conversational_output(memory,stage['generation']['text'],run.get('context')) if run['response_kind']==CHAT_FORMAT else validate_output(memory,stage['generation']['text'],run.get('context')))
-        outcome.update(status='simulated-test-response' if any(s['generation']['simulated'] for s in completed) else 'model-inference-unverified',generation=stage['generation'],model_text=output['text'],uncertainty=output['uncertainty'],issues=controller.issues(run),citations=output['citations'],message=MODES[run['mode']]+' — unverified model response.')
+        outcome.update(status='simulated-test-response' if any(s['generation']['simulated'] for s in completed) else 'model-inference-unverified',generation=stage['generation'],model_text=output['text'],uncertainty=output['uncertainty'],issues=controller.issues(run),citations=output['citations'],message=' + '.join(dict.fromkeys(s['model'] for s in completed))+' — unverified model response.')
         if (record.get('routing') or {}).get('kind')=='summarize' and (not (run.get('context') or {}).get('document',{}).get('complete_body_supplied') or not output['citations'] or output['text'] in [s['quote'] for s in run['context']['sources']]):
             outcome.update(status='summary-unfulfilled',model_text=None,message='No usable cited model summary was produced. The recorded output remains unverified.')
     if record.get('context') is None and run.get('context'):

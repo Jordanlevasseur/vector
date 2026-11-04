@@ -90,3 +90,9 @@ class AdaptiveTests(unittest.TestCase):
             with self.subTest(code=code):
                 f=self.wire([InferenceError('Explicit rejection fixture',code=code)]);run=self.run_fixture()
                 self.assertEqual(run['status'],'failed');self.assertEqual(len(f.calls),1);self.assertIsNone(run['parent'])
+
+    def test_answer_header_uses_actual_generic_model_identity_in_auto_role_a(self):
+        self.wire(['Hi from the selected fixture'])
+        result=self.app.handle('ask',{'question':'Hi','manual':True})
+        self.assertEqual(result['outcome']['status'],'simulated-test-response')
+        self.assertIn(LARGE,result['outcome']['message']);self.assertNotIn('Qwen',result['outcome']['message'])

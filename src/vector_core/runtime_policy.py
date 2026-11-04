@@ -75,7 +75,7 @@ def memory_estimate(model,context=2048,observations=()):
     return {'estimated_bytes':math.ceil(estimate/MIB)*MIB,'weight_bytes':weights,'kv_estimate':kv,'basis':'Verified local descriptor + runtime/generation allowance + KV estimate; measured peaks only raise the floor. Recommendations are not kernel limits.','observations_used':used}
 
 def rank_models(models,observations=(),task='chat'):
-    """Functional evidence and relevant capabilities precede size as a tie-break."""
+    """Owner/task capability preferences precede provisional size; functional evidence breaks ties."""
     def rank(m):
         matching=[o for o in observations if o.get('model_digest')==m.get('digest') and o.get('simulated') is False and o.get('inference_completed')]
         owner=m.get('owner_priority',0);owner=owner if type(owner) is int and -100<=owner<=100 else 0
