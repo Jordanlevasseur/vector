@@ -70,7 +70,7 @@ def format_name(media,name):
     if 'xml' in media or extension in {'.xml','.nxml','.rdf'}:return 'XML'
     if media=='application/json' or extension=='.json':return 'JSON'
     if extension in {'.md','.markdown'}:return 'Markdown'
-    if media.startswith('text/') or extension in {'.txt','.csv','.log','.rst'}:return 'Text'
+    if media.startswith('text/') or extension in {'.txt','.csv','.log','.rst','.v'}:return 'Text'
     if media.startswith('image/') or extension in {'.jpg','.jpeg','.png','.gif'}:return 'Image'
     return 'Unrecognized'
 
@@ -408,6 +408,16 @@ class Resources:
             passage=Library(self.memory).passage(unit_id);event_id=passage['event_id'];start=passage['start']
         p=self.detail(identity(event_id));page=1
         if p['original_event_id']:
+            archive=re.fullmatch(r'Archive member (.+); raw character (\d+)',p['locator'] or '')
+            if archive:
+                member=archive[1];offset=int(archive[2])
+                if (len(member)>1024 or Path(member).is_absolute() or '..' in Path(member).parts
+                    or type(start) is not int or start<0 or not 0<=offset+start<=2**40):
+                    raise ValueError('Invalid archive source location.')
+                if self.detail(p['original_event_id'])['format'] not in {'Archive','EPUB'}:
+                    raise ValueError('Archive source location requires an original archive.')
+                return {'resource_id':p['original_event_id'],'member':member,'offset':offset+start,
+                        'page':1,'derived_event_id':event_id,'locator':p['locator']}
             match=re.fullmatch(r'PDF page (\d+)',p['locator'] or '')
             return {'resource_id':p['original_event_id'],'page':int(match[1]) if match else 1,'offset':0,'derived_event_id':event_id,'locator':p['locator']}
         return {'resource_id':event_id,'offset':start,'page':page}

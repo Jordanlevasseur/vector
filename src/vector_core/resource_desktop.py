@@ -113,6 +113,7 @@ class ResourceDesktop:
             self.call('resource_reference',{'event_id':row['id'],'start':row['start']},lambda ref:self.open(ref['resource_id'],location=ref))
         else:self.open(row['id'])
     def open(self,key,member='',location=None):
+        if location and not member:member=location.get('member','')
         self.epoch+=1;epoch=self.epoch;self.key=key;self.member=member;self.kind=None;self.last_query='';self.find_after=0;self.find_page=1
         self.catalog.pack_forget();self.reader.pack(fill='both',expand=True);self.reader_notice.set('Verifying complete original and opening local reader…')
         def loaded(r):

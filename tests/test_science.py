@@ -20,6 +20,25 @@ def fixture(root,pages=None):
     x=store(json.dumps(extraction).encode(),'application/json')
     return {'provider_id':'fixture:science','title':'Explicit science fixture','authors':['Fixture author'],'language':'en','edition':'Unit-test edition','publication_date':'2001','revision_date':None,'subjects':['physics','materials'],'source_url':'urn:fixture:science','download_url':'urn:fixture:science','acquired':'fixture','original':original,'evidence':[evidence],'rights':{'license':'CC0-1.0','jurisdiction':'US','basis':'Explicit user-authored test material','attribution':'Fixture author','restrictions':[],'reviewed_uses':['preservation','text-indexing','source-linked-retrieval'],'future_training':'requires-separate-review','ai_retrieval_permitted':True},'medical':{'is_medical':False,'temporal_status':'not-medical'},'extraction_sha256':x['sha256']}
 
+def proof_fixture(root,locator=None):
+    import io,tarfile
+    source='(* Original α header; retain CRLF. *)\r\nDefinition plus_one (n : nat) := S n.\r\n'
+    offset=source.index('Definition');entry=fixture(root,[source[offset:]])
+    original=io.BytesIO()
+    with tarfile.open(fileobj=original,mode='w:gz') as archive:
+        body=source.encode();item=tarfile.TarInfo('formal/Proof.v');item.size=len(body);archive.addfile(item,io.BytesIO(body))
+    raw=original.getvalue();digest=hashlib.sha256(raw).hexdigest();(root/'objects'/digest).write_bytes(raw)
+    entry['original']={'sha256':digest,'bytes':len(raw),'media_type':'application/gzip'}
+    entry['subjects']=['collection:Mathematics','Formal verification'];entry['rights']['license']='MIT'
+    notice=b'Copyright Fixture author. MIT permission applies to the fixture and associated documentation.'
+    digest=hashlib.sha256(notice).hexdigest();(root/'objects'/digest).write_bytes(notice)
+    entry['evidence']=[{'sha256':digest,'bytes':len(notice),'media_type':'text/plain'}]
+    spec=json.loads((root/'objects'/entry['extraction_sha256']).read_text())
+    spec['original_sha256']=entry['original']['sha256'];spec['method']='author-raw-proof-source-fixture'
+    spec['pages'][0]['locator']=locator or 'Archive member formal/Proof.v; raw character '+str(offset)
+    data=json.dumps(spec).encode();digest=hashlib.sha256(data).hexdigest();(root/'objects'/digest).write_bytes(data);entry['extraction_sha256']=digest
+    return entry,raw,source
+
 class ScientificLibraryTests(unittest.TestCase):
     def test_original_preservation_incremental_restart_and_no_literary_reprocessing(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -80,14 +99,14 @@ class ScientificLibraryTests(unittest.TestCase):
     def test_new_rights_identifiers_preserve_explicit_review_and_authorization(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);entry=fixture(root/'pack')
-            for license in ('US-PUBLIC-DOMAIN','GFDL-1.2-no-invariants','GFDL-1.3-no-invariants'):
+            for license in ('US-PUBLIC-DOMAIN','GFDL-1.2-no-invariants','GFDL-1.3-no-invariants','MIT'):
                 candidate=copy.deepcopy(entry);candidate['rights']['license']=license
                 self.assertEqual(metadata(candidate)['rights']['license'],license)
                 with Memory(Config.load(data_dir=str(root/license))) as m:
                     with self.assertRaises(PermissionError):ScientificLibrary(m).import_entry(root/'pack',candidate)
                 candidate['rights']['ai_retrieval_permitted']=False
                 with self.assertRaises(PermissionError):metadata(candidate)
-            for license in ('GFDL','GFDL-1.3','CC-BY-NC-4.0','CC-BY-ND-4.0','CC-BY-NC-SA-4.0'):
+            for license in ('GFDL','GFDL-1.3','MIT-code-only','CC-BY-NC-4.0','CC-BY-ND-4.0','CC-BY-NC-SA-4.0'):
                 candidate=copy.deepcopy(entry);candidate['rights']['license']=license
                 with self.assertRaises(PermissionError):metadata(candidate)
 

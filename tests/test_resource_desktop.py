@@ -43,5 +43,40 @@ print('native-library-controls-passed')
         from vector_core.desktop import configure_startup
         args=SimpleNamespace(library=True,no_inference=False,models_directory=None,managed=False,runtime_profile=None)
         configure_startup(args);self.assertTrue(args.no_inference);self.assertIsNone(args.runtime_profile)
+    def test_indexed_archive_hit_opens_the_original_proof_member(self):
+        if not os.environ.get('DISPLAY'):self.skipTest('No local X11 display; archive citation controls unverified.')
+        script=r'''
+import argparse,tempfile,time
+from pathlib import Path
+from test_science import proof_fixture
+from vector_core.config import Config
+from vector_core.memory import Memory
+from vector_core.science import ScientificLibrary
+from vector_core.desktop import bootstrap,Desktop
+with tempfile.TemporaryDirectory() as folder:
+ rootdir=Path(folder);entry,raw,source=proof_fixture(rootdir/'pack')
+ with Memory(Config.load(data_dir=str(rootdir/'data'))) as memory:
+  lib=ScientificLibrary(memory);item=lib.import_entry(rootdir/'pack',entry,approved=True);lib.index(rootdir/'pack',item['id'],approved=True)
+ args=argparse.Namespace(data_dir=str(rootdir/'data'),choose_data=False,choose_models=False,models_directory=None,managed=False,no_inference=True,runtime_profile=None)
+ root,client=bootstrap(args);app=Desktop(root,client);view=app.library;errors=[];app.dialog.showerror=lambda *a,**k:errors.append(a)
+ def wait():
+  end=time.monotonic()+30
+  while time.monotonic()<end:
+   root.update();time.sleep(.02)
+   if not client.pending and not view.queue and view.timer is None and view.save_timer is None:break
+  assert not client.pending and not view.queue and not errors,errors
+ wait();app.shell.nav['Library'].invoke();wait()
+ view.search_mode.set('Indexed content');view.query.insert(0,'Definition');view.search_button.invoke();wait()
+ assert len(view.rows)==1;view.listing.selection_set('0');view.open_button.invoke();wait()
+ assert view.kind=='text' and view.member=='formal/Proof.v'
+ assert view.offset==source.index('Definition')
+ assert view.text.get('1.0','end-1c')==source[source.index('Definition'):].replace('\r\n','\n')
+ app.close()
+print('archive-original-citation-passed')
+'''
+        root=Path(__file__).resolve().parents[1]
+        env={**os.environ,'PYTHONPATH':os.pathsep.join((str(root/'src'),str(root/'tests'))),'PYTHONDONTWRITEBYTECODE':'1'}
+        result=subprocess.run([sys.executable,'-B','-c',script],env=env,capture_output=True,text=True,timeout=120)
+        self.assertEqual(result.returncode,0,result.stderr+'\n'+result.stdout);self.assertIn('archive-original-citation-passed',result.stdout)
 
 if __name__=='__main__':unittest.main()

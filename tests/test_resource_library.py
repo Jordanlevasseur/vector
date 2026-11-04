@@ -50,6 +50,28 @@ class ResourceLibraryTests(unittest.TestCase):
     def test_html_xml_are_inert_and_raw_source_stays_available(self):
         key=self.ingest(b'<h1>Chapter</h1><script>do_bad()</script><p>Readable</p>','a.html','text/html')
         self.assertNotIn('do_bad',self.r.read(key)['text']);self.assertIn('<script>',self.r.read(key,raw=True)['text']);self.assertEqual(self.memory.original(key),b'<h1>Chapter</h1><script>do_bad()</script><p>Readable</p>')
+    def test_formal_book_archive_citation_opens_exact_original_character_span(self):
+        from test_science import proof_fixture
+        from vector_core.science import ScientificLibrary
+        from vector_core.retrieval import search
+        entry,raw,source=proof_fixture(self.root/'pack');lib=ScientificLibrary(self.memory)
+        item=lib.import_entry(self.root/'pack',entry,approved=True);lib.index(self.root/'pack',item['id'],approved=True)
+        hit=search(self.memory,'Definition')[0];ref=self.r.reference(hit['event_id'],start=hit['start'])
+        self.assertEqual(ref['resource_id'],item['original_event_id']);self.assertEqual(ref['member'],'formal/Proof.v')
+        self.assertEqual(ref['offset'],source.index('Definition')+hit['start'])
+        page=self.r.read(ref['resource_id'],member=ref['member'],offset=ref['offset'])
+        self.assertEqual(page['source_text'],source[ref['offset']:]);self.assertEqual(page['format'],'Text')
+        self.assertEqual(self.memory.original(ref['resource_id']),raw)
+    def test_archive_citations_reject_traversal_and_out_of_bounds_locations(self):
+        from test_science import proof_fixture
+        from vector_core.science import ScientificLibrary
+        from vector_core.retrieval import search
+        for i,locator in enumerate(('Archive member ../escape.v; raw character 0','Archive member /etc/passwd; raw character 0','Archive member formal/Proof.v; raw character '+str(2**40+1))):
+            root=self.root/str(i);entry,raw,source=proof_fixture(root,locator);entry['provider_id']='fixture:proof:'+str(i)
+            lib=ScientificLibrary(self.memory);item=lib.import_entry(root,entry,approved=True);lib.index(root,item['id'],approved=True)
+            event=self.memory.db.execute("SELECT id FROM events WHERE parent_id=? AND json_extract(metadata,'$.role')='page-1'",(item['original_event_id'],)).fetchone()[0]
+            with self.assertRaises(ValueError):self.r.reference(event)
+        self.assertFalse((self.root/'escape.v').exists())
     def test_zip_members_are_not_extracted_to_the_host_and_unsafe_names_are_visible(self):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w') as z:z.writestr('chapters/one.txt','Chapter one');z.writestr('../escape.txt','unsafe');z.writestr('animation.swf','inert')
