@@ -54,6 +54,9 @@ class Application:
         row=self.memory.db.execute("SELECT payload FROM persistent_records WHERE contract='preferences' AND record_key=? ORDER BY rowid DESC LIMIT 1",(key,)).fetchone()
         return json.loads(row[0]) if row else None
     def handle(self,operation,p):
+        if operation.startswith('resource_'):
+            from vector_core.resources import dispatch
+            return dispatch(self,operation,p)
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
