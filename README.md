@@ -217,3 +217,18 @@ scores and production readiness. Use **Local AI / memory** for the explicit
 experimental startup option, then close/reopen to apply it. See
 [operation and security policy](DEVELOPMENT_MODE.md) and
 [actual functionality verification](DEVELOPMENT_MODE_REPORT.md).
+
+### Complete-original Library
+
+Open **☰ → Library** in VECTOR, or choose **VECTOR Library** from the application
+menu to read without starting AI inference. Browse/search the existing catalogue,
+read preserved complete text and original PDF pages, browse archived documents,
+navigate sections, and save bookmarks/reading positions. Collections and custom
+manual revisions use the existing persistent store; original bytes and knowledge
+indexes remain authoritative. Home / Chat, Projects and History are retained.
+
+See [Library specification and measured installed results](LIBRARY_SPEC.md).
+The current inventory accounts for 4,722 entries / 4,588 verified original streams,
+plus 119 nested archive files (116 supported static entries, three preserved
+multimedia files requiring another reader). No model, download, cloud viewer or
+database rebuild is required for ordinary reading.
