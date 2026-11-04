@@ -24,23 +24,28 @@ class WorkerTransport:
     @property
     def retained_fds(self):return (self.process.stdin.fileno(),self.process.stdout.fileno())
     def close(self):
-        self.qualified=False
-        if getattr(self,'service_unit',None):
-            # The service belongs to the user manager, not to the pipe client.
-            # Terminate its entire cgroup and verify cleanup before reuse.
-            stopped=subprocess.run(['/usr/bin/systemctl','--user','stop',self.service_unit],capture_output=True,timeout=10,env=self.service_environment)
-            if stopped.returncode and 'not loaded' not in stopped.stderr.decode('utf-8','replace') and 'not found' not in stopped.stderr.decode('utf-8','replace'):raise InferenceError('Worker service stop failed; cleanup unverified.',code='RUNNER_CLEANUP_FAILED')
-            cg=Path(self.report.get('cgroup','/nonexistent'))
-            if cg.exists() and (cg/'cgroup.events').exists() and 'populated 1' in (cg/'cgroup.events').read_text():
-                subprocess.run(['/usr/bin/systemctl','--user','kill','--signal=KILL',self.service_unit],capture_output=True,timeout=5,env=self.service_environment)
-                if cg.exists() and 'populated 1' in (cg/'cgroup.events').read_text():raise InferenceError('Worker service cleanup could not be verified; restart refused.',code='RUNNER_CLEANUP_FAILED')
-            self.service_unit=None
-        if self.process.poll() is None:
-            self.process.terminate()
-            try:self.process.wait(timeout=3)
-            except subprocess.TimeoutExpired:self.process.kill();self.process.wait(timeout=3)
-        for stream in (self.process.stdin,self.process.stdout):stream.close()
-        if getattr(self,'temporary',None):self.temporary.cleanup();self.temporary=None
+        self.qualified=False;cleanup_error=None
+        try:
+            if getattr(self,'service_unit',None):
+                stopped=subprocess.run(['/usr/bin/systemctl','--user','stop',self.service_unit],capture_output=True,timeout=10,env=self.service_environment)
+                if stopped.returncode and 'not loaded' not in stopped.stderr.decode('utf-8','replace') and 'not found' not in stopped.stderr.decode('utf-8','replace'):raise InferenceError('Worker service stop failed; cleanup unverified.',code='RUNNER_CLEANUP_FAILED')
+                cg=Path(self.report.get('cgroup','/nonexistent'))
+                if cg.exists() and (cg/'cgroup.events').exists() and 'populated 1' in (cg/'cgroup.events').read_text():
+                    subprocess.run(['/usr/bin/systemctl','--user','kill','--signal=KILL',self.service_unit],capture_output=True,timeout=5,env=self.service_environment)
+                    if cg.exists() and 'populated 1' in (cg/'cgroup.events').read_text():raise InferenceError('Worker cgroup remains populated; replacement refused.',code='RUNNER_CLEANUP_FAILED')
+                self.service_unit=None
+        except (OSError,subprocess.SubprocessError,InferenceError) as error:
+            cleanup_error=InferenceError('Worker cleanup unverified: '+str(error),code='RUNNER_CLEANUP_FAILED',stage='worker-cleanup')
+        finally:
+            try:
+                if self.process.poll() is None:
+                    self.process.terminate()
+                    try:self.process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:self.process.kill();self.process.wait(timeout=3)
+            except (OSError,subprocess.SubprocessError) as error:cleanup_error=InferenceError('Worker pipe-client termination failed: '+str(error),code='RUNNER_CLEANUP_FAILED',stage='worker-cleanup')
+            for stream in (self.process.stdin,self.process.stdout):stream.close()
+            if getattr(self,'temporary',None):self.temporary.cleanup();self.temporary=None
+        if cleanup_error:raise cleanup_error
     def request(self,payload,timeout,cancellation=None):
         if not self.qualified:raise InferenceError('Worker is closed/unqualified. Restart VECTOR to qualify a new isolated worker; saved conversation work remains available.',code='WORKER_CLOSED',stage='availability')
         frame=json.dumps(payload,allow_nan=False).encode()+b'\n'
@@ -98,7 +103,12 @@ class WorkerTransport:
             if failure.code=='INFERENCE_TIMEOUT':failure.stage='model-discovery' if payload.get('operation')=='discover' else 'model-execution'
             if self.resource_watch:
                 failure.resources={k:v for k,v in self.resource_watch.items() if k not in {'next','pressure_since'}}
-            self.close()
+            try:self.close()
+            except InferenceError as cleanup:
+                cleanup.resources=getattr(failure,'resources',None)
+                combined=InferenceError(str(failure)+'; '+str(cleanup),code=cleanup.code,stage=cleanup.stage)
+                combined.resources=cleanup.resources;combined.raw_generation=getattr(failure,'raw_generation',None)
+                raise combined from failure
             if failure is error:raise
             raise failure from error
     def _check(self,end,cancellation):
@@ -145,12 +155,15 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     validate_layout(model_root)
     if not isinstance(additional_model_directories,(list,tuple)) or len(additional_model_directories)>7:raise InferenceError('Select at most eight explicit local stores.')
     model_roots=tuple(dict.fromkeys([model_root,*[validate_layout(p) for p in additional_model_directories]]))
-    if type(memory_bytes) is not int or not 256*1024*1024<=memory_bytes<=(1024**4 if service_mode else 2*1024**3) or type(tasks) is not int or not 16<=tasks<=128:
+    if type(memory_bytes) is not int or not 256*1024*1024<=memory_bytes<=1024**4 or type(tasks) is not int or not 16<=tasks<=128:
         raise InferenceError('Invalid worker resource limits.')
     if type(cpu_threads) is not int or not 1<=cpu_threads<=8 or type(cpu_quota_percent) is not int or not 1<=cpu_quota_percent<=65536:raise InferenceError('Invalid CPU resource limits.')
     if type(experimental) is not bool:raise InferenceError('Experimental memory selection must be a boolean.')
     available=int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:')))*1024
-    if available<384*1024*1024 or not experimental and available<memory_bytes+384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: insufficient available RAM plus 384 MiB host reserve.')
+    from vector_core.runtime_policy import hardware
+    resources=hardware()
+    if memory_bytes>resources['effective_total']-384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: requested ceiling exceeds the actual host/cgroup RAM minus the mandatory reserve.',code='RESOURCE_LIMIT',stage='resource-protection')
+    if available<384*1024*1024 or not experimental and resources['effective_available']<memory_bytes+384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: insufficient available RAM plus 384 MiB host reserve.',code='RESOURCE_LIMIT',stage='resource-protection')
     executables={}
     for executable in ('bwrap','systemd-run','systemctl','ollama'):
         located=trusted_executables.get(executable,{}).get('path') if trusted_executables is not None else shutil.which(executable)
@@ -277,7 +290,7 @@ def read_runtime_profile(path=None):
     if not isinstance(settings,dict) or set(settings)-{'model_directories','memory_bytes','tasks','experimental_memory'} or not {'model_directories','memory_bytes','tasks'}<=set(settings):raise InferenceError('Invalid local inference startup declaration.')
     roots=settings['model_directories']
     if not isinstance(roots,list) or not 1<=len(roots)<=8 or any(not isinstance(p,str) or not Path(p).is_absolute() for p in roots):raise InferenceError('Explicit absolute local model stores required.')
-    if type(settings['memory_bytes']) is not int or not 256*1024*1024<=settings['memory_bytes']<=2*1024**3 or type(settings['tasks']) is not int or not 16<=settings['tasks']<=128 or type(settings.get('experimental_memory',False)) is not bool:raise InferenceError('Invalid fixed runtime limits.')
+    if type(settings['memory_bytes']) is not int or not 256*1024*1024<=settings['memory_bytes']<=1024**4 or type(settings['tasks']) is not int or not 16<=settings['tasks']<=128 or type(settings.get('experimental_memory',False)) is not bool:raise InferenceError('Invalid fixed runtime limits.')
     return settings
 
 
@@ -285,7 +298,9 @@ def save_runtime_options(path=None,*,memory_mib,experimental,acknowledged=False)
     path=Path(path) if path else Path.home()/'.config/vector/local-inference.json'
     settings=read_runtime_profile(path)
     if settings is None:raise InferenceError('No startup profile exists. Select an authorized local model folder first.')
-    if type(memory_mib) is not int or not 256<=memory_mib<=2048 or type(experimental) is not bool:raise ValueError('Choose256–2048MiB and an explicit experimental boolean.')
+    from vector_core.runtime_policy import hardware
+    host=hardware();reserve=max(384*1024*1024,min(1024**3,host['effective_total']//10));maximum=min(1024**4,host['effective_total']-reserve)//1048576
+    if type(memory_mib) is not int or not 256<=memory_mib<=maximum or type(experimental) is not bool:raise ValueError('Choose256–'+str(maximum)+'MiB within this host/cgroup ceiling and an explicit experimental boolean.')
     if experimental and acknowledged is not True:raise PermissionError('Acknowledge possible crashes and resource exhaustion before enabling experimental memory.')
     settings.update(memory_bytes=memory_mib*1024*1024,experimental_memory=experimental)
     from vector_core.intake import write_new_file

@@ -50,13 +50,13 @@ class AdaptiveRuntime:
             candidate=next((m for m in ordered if m['name'] not in settings['bindings'].values()),None)
             if candidate:settings['bindings'][role]=candidate['name']
         return settings
-    def settings(self,saved):
+    def settings(self,saved,*,context_required=2048):
         settings=self.manual_settings(saved)
         if self.automatic():
             # Re-evaluate RAM on each new task. A previous error is not a
             # permanent disable flag; exclusions are scoped to one request.
             self.host=hardware(self.app.memory.config.data_dir)
-            p=plan(self.models,self.host,observations=self.observations,exclude=self.excluded)
+            p=plan(self.models,self.host,context_required=context_required,observations=self.observations,exclude=self.excluded)
             settings['bindings']={'a':p['models'][0]};settings['synthesis']='a';settings['extra_reviews']=0
             settings['generation']=asdict(GenerationConfig('',p['context_tokens'],p['output_tokens'],300))
             self.last_selection=p
@@ -89,7 +89,7 @@ class AdaptiveRuntime:
             row=next(m for m in self.models if m['name']==name)
             observed=discovered.get(name,{}).get('digest')
             if observed not in {row.get('source_manifest_sha256'),row.get('selector_sha256'),row.get('digest')} or not observed:raise InferenceError('Qualified runtime model digest differs from the verified local manifest/selector.',code='MODEL_INTEGRITY',stage='model-metadata')
-            row['digest']=observed
+            row.update(digest=observed,integrity_verified=True,availability='Selected file graph SHA-verified; protected runtime metadata inspected. Inference completion is recorded separately.')
             if not row.get('runtime_inspected'):
                 info=self.proxy.request({'operation':'inspect','model':name},45)
                 row.update(runtime_inspected=True,capabilities=info.get('capabilities',[]),tool_calling='tools' in info.get('capabilities',[]),runtime_version=self.proxy.runtime_version)
@@ -103,6 +103,8 @@ class AdaptiveRuntime:
             if not peak:continue
             record={'id':run['id']+':'+step['phase'],'model':step['model'],'model_digest':step['model_digest'],'simulated':False,'inference_completed':True,'accuracy_operational_gate':False,'context_tokens':generation['configuration']['context_tokens'],'peak_memory_bytes':peak,'peak_swap_bytes':resources.get('peak_swap_bytes'),'hardware_fingerprint':self.host['fingerprint'],'runtime_version':generation.get('runtime_version'),'metrics':generation.get('metrics'),'resources':resources}
             put(self.app.memory,'capabilities','local-runtime:'+record['id'],record);self.observations.append(record)
+            row=next((m for m in self.models if m.get('name')==step['model'] and m.get('digest')==step['model_digest']),None)
+            if row is not None:row.update(compatible=True,real_inference_completed=True,availability='Genuine inference completed on this host; accuracy remains unverified.')
         self.observations=self.observations[-64:]
     def catalog(self):
         try:settings=self.app.model_controller.settings();reason=None

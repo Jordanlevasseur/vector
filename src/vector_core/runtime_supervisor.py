@@ -31,14 +31,25 @@ class SupervisorProxy:
         self.process=process;self.unit=unit;self.model_directories=tuple(Path(p) for p in roots);self.model_directory=self.model_directories[0] if roots else None
         self.report={};self.runtime_version='not-started';self.buffer=b'';self.serial=0;self.abandoned=None;self.last_plan=None
     @property
-    def retained_fds(self):return (self.process.stdin.fileno(),self.process.stdout.fileno())
+    def retained_fds(self):return (self.process.stdin.fileno(),self.process.stdout.fileno())+((self.process.stderr.fileno(),) if self.process.stderr is not None else ())
+    def diagnostic(self):
+        stream=self.process.stderr
+        if stream is None:return ''
+        chunks=[];size=0
+        while size<65536 and select.select([stream],[],[],0)[0]:
+            part=os.read(stream.fileno(),min(4096,65536-size))
+            if not part:break
+            chunks.append(part);size+=len(part)
+        return b''.join(chunks)[-8000:].decode('utf-8','replace')
     def _write(self,value):
         frame=encode(value);fd=self.process.stdin.fileno();os.set_blocking(fd,False);sent=0;end=time.monotonic()+5
         # SIGUSR1 may interrupt the wait, never half of a JSON frame.
         old=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGUSR1})
         try:
             while sent<len(frame):
-                if self.process.poll() is not None or time.monotonic()>end:raise InferenceError('Runtime controller write failed.',code='SUPERVISOR_CLOSED')
+                if self.process.poll() is not None or time.monotonic()>end:
+                    self.qualified=False
+                    raise InferenceError('Runtime controller write failed; exit='+str(self.process.poll())+'; '+self.diagnostic(),code='SUPERVISOR_CLOSED',stage='runtime-control')
                 if select.select([], [fd], [], .05)[1]:
                     try:sent+=os.write(fd,frame[sent:])
                     except BlockingIOError:pass
@@ -50,7 +61,9 @@ class SupervisorProxy:
             if time.monotonic()>end:raise InferenceError('Runtime control deadline reached.',code='INFERENCE_TIMEOUT',stage='runtime-control')
             if select.select([self.process.stdout],[],[],.05)[0]:
                 chunk=os.read(self.process.stdout.fileno(),65536)
-                if not chunk:raise InferenceError('Protected runtime controller exited.',code='SUPERVISOR_CLOSED')
+                if not chunk:
+                    self.qualified=False
+                    raise InferenceError('Protected runtime controller exited; exit='+str(self.process.poll())+'; '+self.diagnostic(),code='SUPERVISOR_CLOSED',stage='runtime-control')
                 self.buffer+=chunk
                 if len(self.buffer)>MAX_FRAME:raise InferenceError('Excessive runtime control response.')
         raw,self.buffer=self.buffer.split(b'\n',1);reply=json.loads(raw,object_pairs_hook=unique)
@@ -75,8 +88,11 @@ class SupervisorProxy:
             # Cancellation is an inert protocol message, not a signal/command.
             # Drain the abandoned reply before a subsequent request.
             if not self.reply_received:
-                self.abandoned=request_id
-                self._write({'id':request_id,'payload':{'operation':'cancel'}})
+                if self.process.poll() is None:
+                    self.abandoned=request_id
+                    try:self._write({'id':request_id,'payload':{'operation':'cancel'}})
+                    except (OSError,InferenceError):self.qualified=False
+                else:self.qualified=False;self.abandoned=None
             raise
     def ensure(self,plan):
         self.qualified=False
@@ -97,6 +113,7 @@ class SupervisorProxy:
             try:self.process.wait(timeout=15)
             except subprocess.TimeoutExpired:self.process.terminate();self.process.wait(timeout=5)
             self.process.stdout.close()
+            if self.process.stderr is not None:self.process.stderr.close()
 
 
 def profile_limit(boot,proposed):
@@ -147,8 +164,7 @@ def create(*,profile=None,roots=None):
     for root in roots:command+=['--ro-bind',root,root]
     command+=['/usr/bin/python3','-B','-m','vector_core.runtime_supervisor',json.dumps(boot)]
     environment={'PATH':'/usr/bin:/bin','XDG_RUNTIME_DIR':'/run/user/'+uid,'DBUS_SESSION_BUS_ADDRESS':'unix:path='+bus}
-    diagnostic=subprocess.DEVNULL
-    process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=diagnostic,bufsize=0,start_new_session=True,env=environment)
+    process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,bufsize=0,start_new_session=True,env=environment)
     proxy=SupervisorProxy(process,unit+'.service',roots)
     try:proxy.boot=proxy.call({'operation':'status'},30)
     except BaseException:proxy.shutdown();raise
@@ -226,7 +242,12 @@ def main(boot):
                 else:raise InferenceError('Unknown fixed runtime operation.')
                 reply={'id':request_id,'ok':True,'result':result}
             except (RuntimeError,ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError) as error:
-                stop();reply={'id':request_id,'ok':False,'result':{'error':str(error)[:2000],'code':getattr(error,'code','RESOURCE_LIMIT' if str(error).startswith('RESOURCE_BLOCKED:') else 'RUNTIME_CONTROL_FAILED'),'stage':getattr(error,'stage','runtime-control'),'resources':getattr(error,'resources',None),'raw_generation':getattr(error,'raw_generation',None)}}
+                original_error=error
+                try:stop()
+                except (RuntimeError,OSError,subprocess.SubprocessError) as cleanup:
+                    error=InferenceError(str(original_error)+'; cleanup unverified: '+str(cleanup),code='RUNNER_CLEANUP_FAILED',stage='worker-cleanup')
+                    error.resources=getattr(original_error,'resources',None)
+                reply={'id':request_id,'ok':False,'result':{'error':str(error)[:2000],'code':getattr(error,'code','RESOURCE_LIMIT' if str(error).startswith('RESOURCE_BLOCKED:') else 'RUNTIME_CONTROL_FAILED'),'stage':getattr(error,'stage','runtime-control'),'resources':getattr(error,'resources',None),'raw_generation':getattr(error,'raw_generation',None)}}
             old=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGUSR1})
             try:sys.stdout.buffer.write(encode(reply));sys.stdout.buffer.flush()
             finally:signal.pthread_sigmask(signal.SIG_SETMASK,old)

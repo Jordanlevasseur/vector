@@ -92,3 +92,15 @@ class SelectorIdentityTests(unittest.TestCase):
             manifest=root/manifest_relative(name);body=json.loads(manifest.read_text())
             raw=json.dumps({'model_format':'gguf','model_type':'9'*300+'B'}).encode();digest=hashlib.sha256(raw).hexdigest();(root/'blobs'/('sha256-'+digest)).write_bytes(raw);body['config']={'digest':'sha256:'+digest,'size':len(raw)};manifest.write_text(json.dumps(body))
             rows={r['name']:r for r in local_inventory([root])};self.assertIsNone(rows['good:tag']['compatible']);self.assertFalse(rows['bad:tag']['compatible']);self.assertIn('bounded',rows['bad:tag']['unavailable_reason'])
+
+    def test_simulated_upgrade_allows_larger_manual_profile_with_host_clamping(self):
+        from unittest.mock import patch
+        from vector_core.worker_launcher import save_runtime_options,read_runtime_profile
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'profile.json';path.write_text(json.dumps({'model_directories':['/approved/local'],'memory_bytes':1536*MIB,'tasks':64}));path.chmod(0o600)
+            with patch('vector_core.runtime_policy.hardware',return_value=host(16)):
+                saved=save_runtime_options(path,memory_mib=8192,experimental=False)
+                with self.assertRaises(ValueError):save_runtime_options(path,memory_mib=16384,experimental=False)
+            self.assertEqual(read_runtime_profile(path)['memory_bytes'],8192*MIB)
+            p=plan([{'name':'selected:local','weight_bytes':400*MIB}],host(4,2),manual_names=['selected:local'],manual_limit=8192*MIB)
+            self.assertLess(p['memory_bytes'],host(4,2)['effective_available']);self.assertFalse(p['experimental'])

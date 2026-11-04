@@ -161,7 +161,7 @@ class Desktop:
         tab=self.tabs['Settings'];ttk.Label(tab,text='Development Mode — manual operation does not depend on accuracy or release readiness.').pack(anchor='w')
         runtime=ttk.LabelFrame(tab,text='Local AI startup / memory',padding=6);runtime.pack(fill='x')
         self.experimental_memory=tk.BooleanVar(value=False);ttk.Checkbutton(runtime,text='Experimental memory estimates (user controlled)',variable=self.experimental_memory).pack(anchor='w')
-        line=ttk.Frame(runtime);line.pack(fill='x');ttk.Label(line,text='Manual memory cap (MiB,256–2048)').pack(side='left');self.runtime_memory=ttk.Entry(line,width=8);self.runtime_memory.insert(0,'1536');self.runtime_memory.pack(side='left',padx=5)
+        line=ttk.Frame(runtime);line.pack(fill='x');ttk.Label(line,text='Manual memory cap (MiB; host checked)').pack(side='left');self.runtime_memory=ttk.Entry(line,width=8);self.runtime_memory.insert(0,'1536');self.runtime_memory.pack(side='left',padx=5)
         self.runtime_apply=ttk.Button(line,text='Save startup options',command=self.save_runtime_options);self.runtime_apply.pack(side='left')
         ttk.Label(runtime,text='Experimental estimates can cause crashes or resource exhaustion. Kernel limits and offline isolation remain enforced. Close and reopen VECTOR after saving.',wraplength=900).pack(anchor='w')
         self.runtime_notice=tk.StringVar();ttk.Label(runtime,textvariable=self.runtime_notice,wraplength=900).pack(anchor='w')
@@ -233,7 +233,8 @@ class Desktop:
             if warnings:self.show_chat('Experimental memory warning: '+'; '.join(warnings))
             if record.get('checked'):self.show_chat('Independent calculation check:\n'+self.shell.document_text(record['checked']))
             failure=outcome.get('failure') or {}
-            if failure.get('restart_required'):self.show_chat('The protected worker stopped. The next request will qualify a fresh worker; saved work is preserved.' if getattr(self,'mode_catalog',{}).get('adaptive') else 'The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
+            if failure.get('restart_required') and failure.get('code')=='SUPERVISOR_CLOSED':self.show_chat('The protected controller exited. Reopen VECTOR to create a fresh controller; the technical diagnostic and saved work remain available.')
+            elif failure.get('restart_required'):self.show_chat('The protected worker stopped. The next request will qualify a fresh worker; saved work is preserved.' if getattr(self,'mode_catalog',{}).get('adaptive') else 'The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
             selection=(record.get('context') or {}).get('context',{}).get('history_selection',{})
             if selection.get('omitted_for_context'):self.show_chat('This reply used a bounded selection of earlier messages; the full conversation remains saved.')
             if outcome.get('uncertainty'):self.show_chat('Uncertainty: '+outcome['uncertainty'])
@@ -398,7 +399,7 @@ class Desktop:
         self.call('runtime_options_get',{},shown)
     def save_runtime_options(self):
         try:memory=int(self.runtime_memory.get())
-        except ValueError:self.dialog.showerror('Memory cap','Enter an integer from256to2048MiB.');return
+        except ValueError:self.dialog.showerror('Memory cap','Enter a whole number of MiB; the maximum is checked against this computer.');return
         experimental=self.experimental_memory.get()
         if experimental and not self.dialog.askyesno('Experimental memory','Allow attempts despite conservative memory estimates and pressure warnings? Crashes and resource exhaustion are possible. Kernel memory/pids/CPU limits, zero worker swap and offline isolation remain enforced. Close and reopen VECTOR to apply.'):return
         self.call('runtime_options_set',{'memory_mib':memory,'experimental':experimental,'acknowledged':experimental},lambda result:self.runtime_notice.set(result['message']))

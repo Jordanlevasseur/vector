@@ -197,10 +197,10 @@ class ModelController:
             known={m['name'] for m in result.get('models',[])}
             result={**result,'models':[*result.get('models',[]),*[m for m in managed_catalog(self.memory) if m['name'] not in known]]}
         return result
-    def settings(self,discover=False,models=None):
+    def settings(self,discover=False,models=None,context_required=2048):
         saved=self.app.preference('model_collaboration')
         settings=validate_settings(saved) if saved else {'bindings':{},'synthesis':'b','extra_reviews':0,'generation':asdict(GenerationConfig('',2048,192,300))}
-        if getattr(self.app,'adaptive',None):return self.app.adaptive.settings(settings)
+        if getattr(self.app,'adaptive',None):return self.app.adaptive.settings(settings,context_required=context_required)
         if models is not None or discover and set(settings['bindings'])!={'a','b'}:
             for row in models if models is not None else self.discovery().get('models',[]):
                 name=row.get('name','');details=row.get('details',{});family=details.get('family','')
@@ -329,6 +329,7 @@ class ModelController:
         manager=getattr(self.app,'adaptive',None)
         if not manager or not manager.automatic() or options.get('resume') or options.get('parent'):
             return self._execute_once(prompt,config,**options)
+        if options.get('settings_snapshot') is None:options['settings_snapshot']=self.settings(discover=True,context_required=config.context_tokens)
         manager.excluded=[];attempted=[];restarted=False
         try:
             while True:
@@ -344,7 +345,7 @@ class ModelController:
                 else:
                     manager.excluded=list(set(attempted))
                     if len(manager.excluded)>=3:return run
-                    try:settings=self.settings(discover=True)
+                    try:settings=self.settings(discover=True,context_required=config.context_tokens)
                     except (RuntimeError,ValueError,OSError):return run
                     options['settings_snapshot']=settings;options['mode']='a'
                     if self.progress:self.progress({'phase':'fallback','label':'AUTO: previous runtime attempt failed; trying '+settings['bindings']['a']+' with the same complete request'})
@@ -442,7 +443,7 @@ class ModelController:
             run['status']='complete';run['final_phase']=run['steps'][-1]['phase']
         except Exception as error:
             run['status']='cancelled' if (cancellation and cancellation.cancelled) or type(error).__name__=='Cancelled' or getattr(error,'code',None)=='CANCELLED' else 'failed';run['error']=(str(error) or type(error).__name__+' in model execution')[:2000]
-            run['failure']={'code':getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','model-preparation'),'restart_required':bool(self.app.transport and not self.app.transport.qualified)}
+            run['failure']={'code':'CANCELLED' if run['status']=='cancelled' else getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','model-preparation'),'restart_required':bool(self.app.transport and not self.app.transport.qualified)}
             if run['failure']['restart_required']:self.app.startup_error=run['error']
             if run['status']=='cancelled' and getattr(self.raw,'transport',None):self.raw.transport.close()
         self._request_catalog=None
@@ -688,7 +689,12 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None,m
                 selected_mode='b' if settings['bindings'].get('b')==config.model else 'a'
                 settings={**settings,'bindings':dict(settings['bindings'],**{selected_mode:config.model})}
             messages=[{'role':'system','content':CHAT_SYSTEM_V2},{'role':'user','content':question}];refs=[]
-            if generation_prompt_bytes(chat_prompt(messages),CHAT_FORMAT)>config.prompt_bytes:raise InferenceError('The complete request and required instructions do not fit this model context.',code='CONTEXT_BUDGET',stage='prompt-preparation')
+            required=generation_prompt_bytes(chat_prompt(messages),CHAT_FORMAT)
+            if required>config.prompt_bytes and getattr(app,'adaptive',None) and app.adaptive.automatic():
+                tokens=max(2048,((required+config.output_tokens+256+511)//512)*512)
+                if tokens>32768:raise InferenceError('The complete request and required instructions exceed the trusted maximum context; nothing was truncated.',code='CONTEXT_BUDGET',stage='prompt-preparation')
+                settings=controller.settings(discover=True,context_required=tokens);config=GenerationConfig(**settings['generation'])
+            if required>config.prompt_bytes:raise InferenceError('The complete request and required instructions do not fit this model context.',code='CONTEXT_BUDGET',stage='prompt-preparation')
             candidates=memory.db.execute("SELECT id,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND record_key!=? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 64",(app.session['conversation_id'],key)).fetchall()
             selected=[];omitted=0
             for old in candidates:

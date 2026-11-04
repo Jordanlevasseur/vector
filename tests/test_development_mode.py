@@ -39,7 +39,7 @@ class DevelopmentModeTests(unittest.TestCase):
   r=save_runtime_options(path,memory_mib=2048,experimental=True,acknowledged=True);self.assertTrue(r['restart_required']);saved=json.loads(path.read_text());self.assertEqual(saved['model_directories'],original['model_directories']);self.assertEqual(saved['tasks'],64);self.assertTrue(saved['experimental_memory']);self.assertEqual(path.stat().st_mode&0o777,0o600)
   with patch('vector_core.worker_launcher.launch',return_value='EXPLICIT FIXTURE') as launch:
    self.assertEqual(desktop_runtime(path),'EXPLICIT FIXTURE');self.assertTrue(launch.call_args.kwargs['experimental']);self.assertEqual(launch.call_args.kwargs['memory_bytes'],2048*1048576)
-  for value in (0,4096,True):
+  for value in (0,1048577,True):
    with self.assertRaises(ValueError):save_runtime_options(path,memory_mib=value,experimental=True,acknowledged=True)
  def test_experimental_pressure_is_advisory_but_hard_stops_remain(self):
   for changed in ('pressure','swapout','reserve','swap','oom','monitor'):

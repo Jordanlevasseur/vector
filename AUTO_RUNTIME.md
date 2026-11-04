@@ -10,7 +10,7 @@ The hardware policy reads RAM, available memory, swap, CPU affinity/features,
 cgroup ancestors, memory pressure, storage and GPU descriptors. CPU is the only
 qualified backend. GPU detection does not authorize devices. Runtime limits are
 finite: memory after host reserve, zero worker swap, per-service pids/CPU caps,
-one loaded runner, bounded context/output/time and live pressure/OOM monitoring.
+one loaded runner, task-sized context/output/time and live pressure/OOM monitoring.
 Previously measured peaks can raise estimates, never erase the weight floor.
 Functional evidence and task capabilities are distinct from accuracy evaluations.
 Model size is only a provisional preference among otherwise comparable candidates;
@@ -26,6 +26,8 @@ fingerprints are captured before user-namespace entry and checked again inside.
 Each inference service retains the existing complete qualification and its own
 namespace, cgroup and seccomp filter. BindsTo terminates workers if their controller
 exits. Stop verifies service/cgroup cleanup before a replacement can start.
+
+AUTO expands context for the complete current request when a model and safe budget can support it; required instructions are never shortened. Manual profile ceilings can grow with actual host/cgroup RAM and are clamped again at launch, rather than retaining the old fixed2GiB assumption.
 
 The first message verifies complete selected-model SHA dependencies, starts the
 private runtime, independently checks isolation/cgroups, inspects local runtime
@@ -55,3 +57,10 @@ model; automatic collaboration/parallel/GPU execution awaits separate real local
 qualification. Managed-model launch/import remains available through its existing
 explicit workflow. Actual results and limits are recorded in the workspace report;
 policy simulations are never inference acceptance results.
+
+Controller diagnostics use a third explicit pipe, never a desktop socket or
+execution exemption. An EOF clears qualification and preserves bounded stderr;
+cancellation cannot replace the original diagnostic. A service-stop failure keeps
+the exact unverified unit identity and prevents replacement until cleanup succeeds.
+A controller-process crash itself requires a fresh application startup; ordinary
+worker failures, stops and cancellations can recover within the current session.

@@ -103,3 +103,16 @@ class AdaptiveTests(unittest.TestCase):
         self.assertGreater(self.proxy.starts[-1]['memory_bytes'],700*MIB);self.assertEqual(self.proxy.starts[-1]['selection'],'auto');self.assertEqual(self.proxy.starts[-1]['tasks'],32)
         self.app.handle('runtime_selection_set',{'mode':'model','model':SMALL});self.wire(['Hi from manual fixture']);self.assertEqual(self.run_fixture()['status'],'complete')
         self.assertLessEqual(self.proxy.starts[-1]['memory_bytes'],700*MIB);self.assertEqual(self.proxy.starts[-1]['selection'],'manual');self.assertEqual(self.proxy.starts[-1]['tasks'],32)
+
+    def test_auto_context_expands_for_complete_question_without_truncation(self):
+        from vector_core.inference import chat_messages
+        fixture=self.wire(['A fixture response']);captured=[];original=fixture.generate
+        def generate(prompt,config,*args,**kwargs):captured.append((prompt,config));return original(prompt,config,*args,**kwargs)
+        fixture.generate=generate;question='Hi '+('amber '*300)
+        result=self.app.handle('ask',{'question':question,'manual':True})
+        self.assertEqual(result['outcome']['status'],'simulated-test-response');self.assertGreater(captured[0][1].context_tokens,2048);self.assertEqual(chat_messages(captured[0][0])[-1]['content'],question)
+    def test_oversized_complete_request_fails_without_inference_or_truncation(self):
+        fixture=self.wire([]);question='Hi '+('amber '*7000)
+        with self.assertRaisesRegex(ValueError,'Invalid question'):self.app.handle('ask',{'question':question,'manual':True})
+        self.assertEqual(fixture.calls,[])
+        self.assertEqual(self.memory.db.execute("SELECT count(*) FROM persistent_records WHERE contract='conversations'").fetchone()[0],0)
