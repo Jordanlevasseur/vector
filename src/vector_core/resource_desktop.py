@@ -129,7 +129,7 @@ class ResourceDesktop:
     def set_text(self,text):self.text.configure(state='normal',font=('DejaVu Sans',self.font_size));self.text.delete('1.0','end');self.text.insert('1.0',text.replace('\r\n','\n').replace('\r','\n'));self.text.configure(state='disabled')
     def show_members(self):
         self.member_list.delete(0,'end')
-        for m in self.members:self.member_list.insert('end',m['name']+' ['+m['format']+']'+('' if m['readable'] else ' — '+m['reason']))
+        for m in self.members:self.member_list.insert('end',m['name']+' ['+m['format']+']'+(' — '+m['note'] if m.get('note') else '')+('' if m['readable'] else ' — '+m['reason']))
     def open_member(self):
         chosen=self.member_list.curselection()
         if not chosen:return
@@ -149,7 +149,7 @@ class ResourceDesktop:
             if self.kind in {'pdf','image'}:
                 self.text.pack_forget();self.canvas_frame.pack(fill='both',expand=True);self.image=self.tk.PhotoImage(file=r['image_path']);self.canvas.delete('all');self.canvas.create_image(0,0,image=self.image,anchor='nw');self.canvas.configure(scrollregion=(0,0,self.image.width(),self.image.height()));self.canvas.yview_moveto(scroll);self.reader_notice.set('Original '+('PDF page '+str(self.page)+' / '+str(r['pages']) if self.kind=='pdf' else 'image')+' • zoom '+str(self.width)+' px'+(' • '+self.member if self.member else ''))
             else:
-                self.canvas_frame.pack_forget();self.text.pack(fill='both',expand=True);self.set_text(r['text']);self.text.yview_moveto(scroll);self.reader_notice.set('Complete original text • character '+str(self.offset)+' • '+('more text follows' if self.next_offset is not None else 'end of original')+(' • '+self.member if self.member else ''))
+                self.canvas_frame.pack_forget();self.text.pack(fill='both',expand=True);self.set_text(r['text']);self.text.yview_moveto(scroll);self.reader_notice.set('Complete original text • character '+str(self.offset)+' • '+('more text follows' if self.next_offset is not None else 'end of original')+(' • NCBI ASN.1 source; no 3D rendering' if r['format']=='NCBI ASN.1' else '')+(' • '+self.member if self.member else ''))
             self.save_position(scroll=scroll)
         self.call('resource_read',{'id':self.key,'member':self.member,'offset':self.offset,'page':self.page,'width':self.width,'raw':self.raw.get()},loaded)
     def turn(self,delta):

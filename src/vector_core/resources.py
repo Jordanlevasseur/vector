@@ -21,6 +21,7 @@ from vector_core.storage import object_chunks,object_path,input_file,safe_path
 
 CONTRACTS={'library_collections','library_memberships','library_reading','library_bookmarks','library_manuals'}
 CATEGORIES=('Books','Science','Extracted text','Rights & references','Other documents','Attachments','Retained objects')
+TEXT_FORMATS={'Text','Markdown','HTML','XML','JSON','NCBI ASN.1'}
 READ_OPERATIONS={'resource_list','resource_detail','resource_inventory','resource_search','resource_passage','resource_reference','resource_read','resource_outline','resource_find','resource_compare','resource_collections','resource_bookmarks'}
 
 def resource_id(value):
@@ -121,7 +122,7 @@ class Resources:
             item={k:p[k] for k in ('id','source_id','sha256','bytes','media_type','parent_id','claims_count','extraction_status')}
             from urllib.parse import urlparse
             filename=Path(urlparse(m.get('source_url','')).path).name or p['submission_name']
-            item.update(event_id=p['id'],title=title,name=p['submission_name'],file_name=filename,source_url=m.get('source_url'),authors=m.get('authors',[]),subjects=subjects,description=m.get('edition',''),category=category,format=fmt,created=p['occurred'],original_event_id=meta.get('original_event_id'),locator=meta.get('locator'),available=not reason,reason=reason,manual_id=manuals.get(p['id'],{}).get('id'),reader='pdf' if fmt=='PDF' else 'image' if fmt=='Image' else 'archive' if fmt in {'Archive','EPUB'} else 'text' if fmt in {'Text','Markdown','HTML','XML','JSON'} else 'unsupported')
+            item.update(event_id=p['id'],title=title,name=p['submission_name'],file_name=filename,source_url=m.get('source_url'),authors=m.get('authors',[]),subjects=subjects,description=m.get('edition',''),category=category,format=fmt,created=p['occurred'],original_event_id=meta.get('original_event_id'),locator=meta.get('locator'),available=not reason,reason=reason,manual_id=manuals.get(p['id'],{}).get('id'),reader='pdf' if fmt=='PDF' else 'image' if fmt=='Image' else 'archive' if fmt in {'Archive','EPUB'} else 'text' if fmt in TEXT_FORMATS else 'unsupported')
             result.append(item)
         # Registered attachments and retained unacknowledged objects remain accounted for.
         for row in self.db.execute('SELECT r.*,o.raw_bytes FROM managed_refs r JOIN managed_objects o ON o.digest=r.digest WHERE r.purpose NOT IN (\'model-weight\',\'adapter\',\'extension\',\'capability\')'):
@@ -226,6 +227,14 @@ class Resources:
 
     def _members(self,path):
         entries=[];total=0;end=time.monotonic()+15
+        def source_format(name,size,regular,opener):
+            fmt=format_name('',name)
+            # .prt is ambiguous (CAD or NCBI data). Recognize only the actual
+            # NCBI text header, and provide source text rather than claiming 3D.
+            if fmt=='Unrecognized' and Path(name).suffix.casefold()=='.prt' and regular and size<=128*1024*1024:
+                with opener() as stream:
+                    if stream.read(64).startswith(b'Ncbi-mime-asn1 ::='):fmt='NCBI ASN.1'
+            return fmt
         if zipfile.is_zipfile(path):
             with zipfile.ZipFile(path) as archive:
                 for i,p in enumerate(archive.infolist()):
@@ -233,7 +242,7 @@ class Resources:
                     total+=p.file_size
                     if total>512*1024*1024 or time.monotonic()>end:raise ValueError('Archive listing exceeds a bounded 512 MiB/15-second slice.')
                     rejection='Archive symbolic link is not followed.' if stat.S_ISLNK(p.external_attr>>16) else 'Encrypted archive member requires a different reader.' if p.flag_bits&1 else 'Unsupported archive compression method '+str(p.compress_type)+'.' if p.compress_type not in {zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED} else ''
-                    if not p.is_dir():entries.append({'name':p.filename,'bytes':p.file_size,'format':format_name('',p.filename),'regular':not rejection,'rejection':rejection})
+                    if not p.is_dir():entries.append({'name':p.filename,'bytes':p.file_size,'format':source_format(p.filename,p.file_size,not rejection,lambda:archive.open(p)),'regular':not rejection,'rejection':rejection})
         else:
             try:
                 with input_file(path) as check:
@@ -244,11 +253,12 @@ class Resources:
                         if i>=20000:raise ValueError('Archive member limit reached.')
                         total+=p.size
                         if total>512*1024*1024 or time.monotonic()>end:raise ValueError('Archive listing exceeds bounded size/time.')
-                        if not p.isdir():entries.append({'name':p.name,'bytes':p.size,'format':format_name('',p.name),'regular':p.isfile(),'rejection':'' if p.isfile() else 'Archive link or special-file type '+repr(p.type)+' is not opened.'})
+                        if not p.isdir():entries.append({'name':p.name,'bytes':p.size,'format':source_format(p.name,p.size,p.isfile(),lambda:archive.extractfile(p)),'regular':p.isfile(),'rejection':'' if p.isfile() else 'Archive link or special-file type '+repr(p.type)+' is not opened.'})
             except tarfile.ReadError as error:raise ValueError('Archive format is not supported: '+str(error)) from error
         for p in entries:
             p['safe']=p['regular'] and not Path(p['name']).is_absolute() and '..' not in Path(p['name']).parts and len(p['name'])<=1024
-            p['readable']=p['safe'] and p['format'] in {'PDF','Text','Markdown','HTML','XML','JSON','Image'} and p['bytes']<=128*1024*1024
+            p['readable']=p['safe'] and p['format'] in (TEXT_FORMATS|{'PDF','Image'}) and p['bytes']<=128*1024*1024
+            p['note']='Molecular-structure source text only; no 3D rendering.' if p['format']=='NCBI ASN.1' else ''
             p['reason']='' if p['readable'] else p['rejection'] if not p['regular'] else 'Unsafe archive member name; never extracted.' if not p['safe'] else 'Member exceeds the 128 MiB reader working-file limit.' if p['bytes']>128*1024*1024 else 'No qualified inert reader for '+(Path(p['name']).suffix or 'unrecognized format')+'; preserved without execution.'
         return entries
     def member(self,key,name):
@@ -306,7 +316,7 @@ class Resources:
         if fmt=='Image':
             if not self.renderer:raise ValueError('Image reader unavailable: '+str(self.renderer_error))
             return {'resource':p,'kind':'image','member':member,'pages':1,'state':p['reading']}
-        if fmt not in {'Text','Markdown','HTML','XML','JSON'}:return {'resource':p,'kind':'unsupported','member':member,'reason':'No safe built-in reader for '+fmt+'. Exact original export is available; file content is never executed.'}
+        if fmt not in TEXT_FORMATS:return {'resource':p,'kind':'unsupported','member':member,'reason':'No safe built-in reader for '+fmt+'. Exact original export is available; file content is never executed.'}
         return {'resource':p,'kind':'text','member':member,'state':p['reading'],'format':fmt,'message':'Complete original text, paginated without using a passage index. Markup can be read as inert source or readable text.'}
     def read(self,key,*,member='',offset=0,page=1,width=900,raw=False):
         if type(offset) is not int or not 0<=offset<=2**40:raise ValueError('Invalid text offset.')
@@ -338,7 +348,7 @@ class Resources:
                 if not 1<=w<=1600 or not 1<=h<=5000 or w*h>8000000:raise ValueError('Rendered image exceeds display bounds.')
             for old in sorted((self.cache/'outputs').glob('*.png'),key=lambda p:p.stat().st_mtime_ns)[:-3]:old.unlink()
             return {**result,'image_path':str(image)}
-        if meta['format'] not in {'Text','Markdown','HTML','XML','JSON'}:raise ValueError('Select a supported document member to read.')
+        if meta['format'] not in TEXT_FORMATS:raise ValueError('Select a supported document member to read.')
         with input_file(path) as handle:
             # Character positions, CRLF and bytes remain distinct; no original normalization.
             stream=io.TextIOWrapper(handle,encoding='utf-8',errors='strict',newline='');remaining=offset
@@ -360,7 +370,7 @@ class Resources:
             if not result['items']:result['message']='This original has no PDF bookmarks. Use page navigation or search within the original.'
             return result
         result=[];position=0;end=time.monotonic()+10
-        if meta['format'] not in {'Text','Markdown','HTML','XML','JSON'}:return {'items':self._members(path)}
+        if meta['format'] not in TEXT_FORMATS:return {'items':self._members(path)}
         with input_file(path) as handle,io.TextIOWrapper(handle,encoding='utf-8',newline='') as text:
             while line:=text.readline(65536):
                 if re.match(r'\s*(?:#{1,6}\s|(?:CHAPTER|Chapter|BOOK|Book|CANTO|SECTION|Section)\s+[\wIVXLCDM]+\b|<h[1-6]\b|<title\b)',line):result.append({'title':line.strip()[:200],'offset':position})

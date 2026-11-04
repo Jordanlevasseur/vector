@@ -64,6 +64,14 @@ class ResourceLibraryTests(unittest.TestCase):
         key=self.ingest(raw.getvalue(),'book.tar.gz','application/x-gzip');members=self.r.open(key)['members'];self.assertFalse(members[0]['safe'])
         for name in ('link.txt','same.txt'):
             with self.assertRaises(ValueError):self.r.member(key,name)
+    def test_ncbi_molecular_source_requires_real_header_and_is_inert_complete_text(self):
+        source='Ncbi-mime-asn1 ::= strucseqs {\n'+'  description "Original molecular data"\n'*600+'}\n';data=io.BytesIO()
+        with zipfile.ZipFile(data,'w') as archive:
+            archive.writestr('molecule.prt',source);archive.writestr('unknown-cad.prt',b'\xff\x00 binary CAD')
+        key=self.ingest(data.getvalue(),'Sources.zip','application/zip');members=self.r.open(key)['members']
+        self.assertEqual(members[0]['format'],'NCBI ASN.1');self.assertIn('no 3D',members[0]['note']);self.assertTrue(members[0]['readable']);self.assertFalse(members[1]['readable'])
+        first=self.r.read(key,member='molecule.prt');last=self.r.read(key,member='molecule.prt',offset=first['next_offset']);self.assertEqual(first['source_text']+last['source_text'],source)
+        with self.assertRaises(ValueError):self.r.member(key,'unknown-cad.prt')
     def test_epub_spine_order_and_complete_inert_chapter_source(self):
         data=io.BytesIO()
         with zipfile.ZipFile(data,'w') as z:

@@ -58,3 +58,9 @@ Read-only current inventory verified all 4,588 distinct original streams and
 accounted for 4,722 event entries, including 134 duplicates; no missing original
 or orphan indexed source was found. Installed acceptance and final preservation
 remain separate checks before claiming delivery.
+
+Corpus inspection identified nine archived `.prt` files with the NCBI ASN.1
+text header. These receive a bounded inert source-text view, explicitly without
+3D rendering. A `.prt` extension alone is insufficient: binary/unknown CAD files
+remain unsupported. This small follow-up passed all 19 reader/native-Library
+tests (25.493 seconds); the complete installed regression remains required.
