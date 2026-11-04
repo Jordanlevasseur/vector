@@ -5,7 +5,7 @@ from tkinter import ttk
 from vector_core.desktop_theme import COLORS as C,FONT,Core,CommandInput,Workspace,apply
 
 PRIMARY=('Home / Chat','Projects','History')
-SECONDARY=('Knowledge','Memory','Investigations','Settings','Advanced')
+SECONDARY=('Library','Knowledge','Memory','Investigations','Settings','Advanced')
 
 
 class Interface:
@@ -30,6 +30,7 @@ class Interface:
                 frame=Workspace(self.stack);app.tabs[name]=frame.content;self.legacy[name]=frame
             frame.grid(row=0,column=0,sticky='nsew')
         self.views={'Home / Chat':self.legacy['Assistant'],'Projects':self.legacy['Projects'],'Knowledge':self.legacy['Knowledge'],'Memory':self.legacy['Knowledge'],'Settings':self.legacy['Settings'],'Advanced':self.legacy['Tools']}
+        self.library_parent=ttk.Frame(self.stack);self.library_parent.grid(row=0,column=0,sticky='nsew');self.views['Library']=self.library_parent
         self.create_home();self.create_history();self.create_investigations()
         self.menu=tk.Frame(root,background=C['border'],padx=1,pady=1);panel=ttk.Frame(self.menu,padding=10);panel.pack(fill='both',expand=True)
         ttk.Label(panel,text='WORKSPACE',style='Muted.TLabel').pack(anchor='w',padx=10,pady=(4,8))
@@ -160,6 +161,7 @@ class Interface:
         if name not in self.views:raise ValueError('Unknown interface destination.')
         self.hide_menu();self.current=name;self.destination.set(name.upper());self.views[name].tkraise();self.core.state(visible=name=='Home / Chat')
         for key,button in self.nav.items():button.configure(style='Selected.TButton' if key==name else 'TButton')
+        if load and name=='Library' and getattr(self.app,'library',None):self.app.library.enter()
         if load and not self.app.client.pending:
             if name=='Projects' and not self.app.project_rows:self.app.projects()
             elif name=='History' and not self.history_rows:self.browse_history()

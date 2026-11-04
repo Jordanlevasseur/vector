@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from uuid import uuid4
 
 from vector_core.storage import safe_path,input_file
@@ -24,6 +25,7 @@ class PDF:
         signature(self.p,'poppler_document_get_n_pages',integer,[ptr]);signature(self.p,'poppler_document_get_page',ptr,[ptr,integer])
         signature(self.p,'poppler_page_get_size',None,[ptr,C.POINTER(double),C.POINTER(double)])
         signature(self.p,'poppler_page_render',None,[ptr,ptr]);signature(self.p,'poppler_page_get_text',ptr,[ptr])
+        signature(self.p,'poppler_index_iter_new',ptr,[ptr]);signature(self.p,'poppler_index_iter_get_action',ptr,[ptr]);signature(self.p,'poppler_index_iter_get_child',ptr,[ptr]);signature(self.p,'poppler_index_iter_next',integer,[ptr]);signature(self.p,'poppler_index_iter_free',None,[ptr]);signature(self.p,'poppler_action_free',None,[ptr]);signature(self.p,'poppler_document_find_dest',ptr,[ptr,C.c_char_p]);signature(self.p,'poppler_dest_free',None,[ptr])
         signature(self.g,'g_object_unref',None,[ptr]);signature(self.glib,'g_free',None,[ptr]);signature(self.glib,'g_error_free',None,[ptr])
         signature(self.c,'cairo_image_surface_create',ptr,[integer,integer,integer]);signature(self.c,'cairo_surface_status',integer,[ptr])
         signature(self.c,'cairo_create',ptr,[ptr]);signature(self.c,'cairo_set_source_rgb',None,[ptr,double,double,double]);signature(self.c,'cairo_paint',None,[ptr]);signature(self.c,'cairo_scale',None,[ptr,double,double]);signature(self.c,'cairo_destroy',None,[ptr]);signature(self.c,'cairo_surface_destroy',None,[ptr]);signature(self.c,'cairo_surface_write_to_png',integer,[ptr,C.c_char_p])
@@ -63,6 +65,37 @@ class PDF:
             try:return C.string_at(pointer).decode('utf-8','replace')
             finally:self.glib.g_free(pointer)
         finally:self.g.g_object_unref(p)
+    def outline(self,token):
+        self.open(token);items=[]
+        class Destination(C.Structure):
+            _fields_=[('type',C.c_int),('page_num',C.c_int),('left',C.c_double),('bottom',C.c_double),('right',C.c_double),('top',C.c_double),('zoom',C.c_double),('named_dest',C.c_char_p)]
+        class Action(C.Structure):_fields_=[('type',C.c_int),('title',C.c_char_p),('dest',C.POINTER(Destination))]
+        def walk(iterator,level):
+            if not iterator:return
+            try:
+                while len(items)<1000:
+                    pointer=self.p.poppler_index_iter_get_action(iterator)
+                    if pointer:
+                        try:
+                            action=C.cast(pointer,C.POINTER(Action)).contents;page=None
+                            if action.type==2 and action.dest:
+                                dest=action.dest.contents;candidate=dest.page_num
+                                if not 1<=candidate<=self.count and dest.named_dest:
+                                    resolved=self.p.poppler_document_find_dest(self.doc,dest.named_dest)
+                                    if resolved:
+                                        try:candidate=C.cast(resolved,C.POINTER(Destination)).contents.page_num
+                                        finally:self.p.poppler_dest_free(resolved)
+                                if 1<=candidate<=self.count:page=candidate
+                            items.append({'title':(action.title or b'Untitled section').decode('utf-8','replace')[:200],'page':page,'level':level,'reason':'' if page else 'Nonlocal or unresolved destination; no action is executed.'})
+                        finally:self.p.poppler_action_free(pointer)
+                    child=self.p.poppler_index_iter_get_child(iterator)
+                    if child:
+                        if level<12:walk(child,level+1)
+                        else:self.p.poppler_index_iter_free(child)
+                    if not self.p.poppler_index_iter_next(iterator):break
+            finally:self.p.poppler_index_iter_free(iterator)
+        walk(self.p.poppler_index_iter_new(self.doc),1)
+        return {'items':items,'truncated':len(items)>=1000,'method':'Original PDF bookmarks; only internal verified page destinations are navigable.'}
     def render(self,token,page,width):
         if type(width) is not int or not 400<=width<=1600:raise ValueError('PDF width must be 400–1600 pixels.')
         p=self.page(token,page);surface=None;context=None
@@ -108,6 +141,9 @@ class PDF:
         finally:self.g.g_object_unref(pix)
 
 def worker():
+    import resource
+    resource.setrlimit(resource.RLIMIT_FSIZE,(16*1024*1024,16*1024*1024))
+    resource.setrlimit(resource.RLIMIT_NOFILE,(256,256))
     pdf=PDF()
     from vector_core.security import activate
     policy=activate()
@@ -126,9 +162,13 @@ def worker():
                     if child==0:os._exit(0)
                     os.waitpid(child,0)
                 except PermissionError:fork_denied=True
-                result={**policy,'runtime_version':'Poppler '+pdf.p.poppler_get_version().decode(),'network_namespace':str(Path('/proc/self/ns/net').readlink()),'routes':len(Path('/proc/net/route').read_text().splitlines())>1,'host_home_absent':not Path('/home/mint').exists(),'inputs_readonly':readonly,'no_subprocesses':fork_denied}
+                result={**policy,'runtime_version':'Poppler '+pdf.p.poppler_get_version().decode(),'network_namespace':str(Path('/proc/self/ns/net').readlink()),'routes':len(Path('/proc/net/route').read_text().splitlines())>1,'host_home_absent':not Path('/home/mint').exists(),'inputs_readonly':readonly,'no_subprocesses':fork_denied,'file_size_max':resource.getrlimit(resource.RLIMIT_FSIZE)[0],'fd_max':resource.getrlimit(resource.RLIMIT_NOFILE)[0]}
             elif operation=='open' and set(p)=={'operation','token'}:result=pdf.open(p['token'])
             elif operation=='render' and set(p)=={'operation','token','page','width'}:result=pdf.render(p['token'],p['page'],p['width'])
+            elif operation=='outline' and set(p)=={'operation','token'}:result=pdf.outline(p['token'])
+            elif operation=='text' and set(p)=={'operation','token','page','offset'}:
+                if type(p['offset']) is not int or not 0<=p['offset']<=2**32:raise ValueError('Invalid page text offset.')
+                text=pdf.text(p['token'],p['page']);start=p['offset'];result={'text':text[start:start+16000],'page':p['page'],'start':start,'end':min(len(text),start+16000),'next_offset':start+16000 if start+16000<len(text) else None,'qualification':'Poppler page text derived from the verified original PDF; layout and meaning are not certified.'}
             elif operation=='image' and set(p)=={'operation','token','width'}:result=pdf.render_image(p['token'],p['width'])
             elif operation=='image_chunk' and set(p)=={'operation','name','offset'}:
                 if not isinstance(p['name'],str) or not re.fullmatch(r'[0-9a-f]{64}-\d+-\d+\.png',p['name']) or type(p['offset']) is not int or not 0<=p['offset']<=16*1024*1024:raise ValueError('Invalid bounded image chunk.')
@@ -150,9 +190,24 @@ def launch_reader():
     """Trusted startup only, before the core's no-exec policy; no original mounts."""
     from vector_core.worker_launcher import WorkerTransport
     class ReaderTransport(WorkerTransport):
+        def __init__(self,*args,**kwargs):super().__init__(*args,**kwargs);self.reader_resources={};self.next_monitor=0
+        def _check(self,end,cancellation):
+            super()._check(end,cancellation)
+            if self.report.get('cgroup') and time.monotonic()>=self.next_monitor:
+                self.next_monitor=time.monotonic()+.25
+                from vector_core.inference import InferenceError
+                try:
+                    group=Path(self.report['cgroup']);available=int(next(l.split()[1] for l in Path('/proc/meminfo').read_text().splitlines() if l.startswith('MemAvailable:')))*1024
+                    events={k:int(v) for k,v in (l.split() for l in (group/'memory.events').read_text().splitlines())}
+                    self.reader_resources={'memory_peak':int((group/'memory.peak').read_text()),'memory_current':int((group/'memory.current').read_text()),'swap_current':int((group/'memory.swap.current').read_text()),'host_available':available,'memory_events':events}
+                    if available<384*1024*1024 or self.reader_resources['swap_current'] or events.get('oom_kill'):raise InferenceError('Reader resource protection: '+json.dumps(self.reader_resources),code='READER_RESOURCE_LIMIT',stage='library-renderer')
+                except (OSError,ValueError,StopIteration) as error:raise InferenceError('Reader memory monitor failed closed: '+str(error),code='READER_MONITOR_FAILED',stage='library-renderer') from error
         def request(self,*args,**kwargs):
-            result=super().request(*args,**kwargs)
+            try:result=super().request(*args,**kwargs)
+            except BaseException:
+                self.close();raise
             if isinstance(result,dict) and 'reader_error' in result:raise ValueError(result['reader_error'])
+            if isinstance(result,dict) and self.reader_resources:result['reader_resources']=dict(self.reader_resources)
             return result
     binary={}
     for name in ('bwrap','systemd-run','systemctl'):

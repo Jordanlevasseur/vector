@@ -36,8 +36,25 @@ operations are permitted. It does not expose the full application dispatcher,
 imports, approvals, index resets, state writes or commands. Native chat is not
 modified to search automatically. Human browsing requires no model.
 
-Implementation is staged. Backend/reader batch A passed 364 complete source tests
-(901.961 seconds, no skips), including original preservation, actual isolated PDF
-page 1000, archive safety, durable reading/collection state and portable restore.
-Native UI integration, installed runtime acceptance, corpus coverage and final
-preservation are separate required checks before claiming the Library delivered.
+The native dark/cyan interface adds Library as a secondary destination while
+preserving Home / Chat, Projects, History and all original workspaces. It provides
+metadata/FTS search, category/format/collection filters, sorting, bounded catalogue
+pages, complete-source reading windows, PDF/image pages, archive contents, chapter
+navigation, search, zoom/text size, saved positions and bookmarks. Custom manual
+sections have arbitrary titles/nesting and an explicit complete-revision save.
+The desktop save limit is 60 KiB; larger originals remain supported through the
+existing file intake. Imported originals are never edited.
+
+`vector-desktop --library` explicitly starts without inference. The additive
+`vector-install-desktop --library` command creates VECTOR Library in the local
+application menu without replacing an existing customized VECTOR launcher.
+
+Backend batch A passed 364 complete source tests (901.961 seconds, no skips).
+Desktop integration batch B passed 369 complete source tests (1120.129 seconds,
+no skips), including actual isolated PDF page 1000, archive safety, source
+preservation, durable reading/collection state, portable restore and real Tk
+reading controls. An earlier terminated batch B run is incomplete, not a pass.
+Read-only current inventory verified all 4,588 distinct original streams and
+accounted for 4,722 event entries, including 134 duplicates; no missing original
+or orphan indexed source was found. Installed acceptance and final preservation
+remain separate checks before claiming delivery.

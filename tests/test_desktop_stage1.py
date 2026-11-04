@@ -24,7 +24,7 @@ with tempfile.TemporaryDirectory() as folder:
   r=subprocess.run([sys.executable,'-B','-c',script],env=env,capture_output=True,text=True,timeout=100);self.assertEqual(r.returncode,0,r.stderr);self.assertTrue(json.loads(r.stdout)['passed'])
  def test_menu_keyboard_drafts_layout_animation_and_network_denial(self):
   self.run_gui(r'''
-assert PRIMARY==('Home / Chat','Projects','History') and len(SECONDARY)==5
+assert PRIMARY==('Home / Chat','Projects','History') and set(SECONDARY)=={'Library','Knowledge','Memory','Investigations','Settings','Advanced'}
 assert s.hamburger.cget('text')=='☰' and not s.menu_open and not s.menu.winfo_ismapped()
 assert app.planning_enabled.get() is False and app.semantic_enabled.get() is False
 assert app.mode_catalog['available'] is False and 'runtime stopped' in s.model_state.get().lower()

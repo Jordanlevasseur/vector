@@ -17,7 +17,13 @@ def cancel(signum,frame):
 def main():
     global busy
     parser=argparse.ArgumentParser();parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile');parser.add_argument('--no-inference',action='store_true')
-    args=parser.parse_args();transport=None;startup_error=None
+    args=parser.parse_args();transport=None;startup_error=None;reader=None;reader_error=None
+    try:
+        from vector_core.reader_runtime import launch_reader
+        reader=launch_reader()
+        import atexit
+        atexit.register(reader.close)
+    except (RuntimeError,ValueError,OSError) as error:reader_error=str(error)
     signal.signal(signal.SIGUSR1,cancel)
     if not args.no_inference and (args.models_directory or args.managed or args.runtime_profile or args.data_dir is None):
         print(json.dumps({'startup_progress':'Starting local AI: verifying model files and qualifying isolation. This can take minutes on this disk; accuracy scores do not affect startup.'}),flush=True)
@@ -37,7 +43,7 @@ def main():
         except (RuntimeError,ValueError,OSError) as error:startup_error=str(error)
         finally:busy=False
     from vector_core.security import activate
-    policy=activate(pipe_fds=transport.retained_fds if transport else ())
+    policy=activate(pipe_fds=(transport.retained_fds if transport else ())+(reader.retained_fds if reader else ()))
     from vector_core.config import Config
     from vector_core.memory import Memory
     from vector_core.service import Application
@@ -46,6 +52,7 @@ def main():
     application=None
     try:
         application=Application(Memory(Config.load(data_dir=args.data_dir)),transport,startup_error);application.policy=policy
+        application.reader_transport=reader;application.reader_error=reader_error
         application.runtime_profile=args.runtime_profile
         try:
             from vector_core.worker_launcher import read_runtime_profile
@@ -69,7 +76,10 @@ def main():
                 result=application.handle(request['operation'],request['parameters'])
                 response={'id':request_id,'ok':True,'result':result}
             except (ValueError,KeyError,TypeError,RuntimeError,OSError,sqlite3.Error) as error:
-                if isinstance(error,Cancelled) and transport:transport.close()
+                if isinstance(error,Cancelled):
+                    if request.get('operation','').startswith('resource_'):
+                        pass  # ReaderTransport terminates only an interrupted render; text cancellation needs no runtime reset.
+                    elif transport:transport.close()
                 response={'id':request_id,'ok':False,'result':str(error)[:2000]}
                 # Error records use the same portable state, never a hidden side database.
                 if application:
@@ -86,6 +96,8 @@ def main():
             if len(encoded)>1024*1024:encoded=json.dumps({'id':request_id,'ok':False,'result':'Response exceeds desktop page budget.'}).encode()
             sys.stdout.buffer.write(encoded+b'\n');sys.stdout.buffer.flush()
     finally:
+        if application and hasattr(application,'resources'):application.resources.close()
+        elif reader:reader.close()
         if transport:transport.close()
         if application:application.memory.close()
 

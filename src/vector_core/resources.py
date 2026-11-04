@@ -90,7 +90,7 @@ class Resources:
         self.temporary=None
         if renderer:self.cache=Path(renderer.cache)
         else:self.temporary=tempfile.TemporaryDirectory(prefix='vector_library_');self.cache=Path(self.temporary.name);(self.cache/'inputs').mkdir(mode=0o700);(self.cache/'outputs').mkdir(mode=0o700)
-        self.cached={};self.catalog=[];self.fingerprint=None;self.text_cache={}
+        self.cached={};self.catalog=[];self.fingerprint=None;self.text_cache={};self.member_cache={}
     def close(self):
         if self.renderer:self.renderer.close();self.renderer=None
         if self.temporary:self.temporary.cleanup();self.temporary=None
@@ -100,10 +100,15 @@ class Resources:
         fingerprint=(self.db.execute('SELECT count(*),max(rowid) FROM events').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_refs').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_objects').fetchone()[:],tuple(self.db.execute("SELECT max(rowid) FROM persistent_records WHERE contract IN ('literary_editions','scientific_editions','library_manuals')").fetchone()))
         if fingerprint==self.fingerprint:return
         books={p['event_id']:p for p in self._records('literary_editions')};science={p['original_event_id']:p for p in self._records('scientific_editions')};manuals={p['event_id']:p for p in self._records('library_manuals')}
-        rows=self.db.execute('SELECT e.*,COALESCE(o.raw_bytes,b.byte_count) AS bytes,o.stored_bytes,o.codec,x.object_digest,b.sha256 AS blob_digest,t.status AS extraction_status,(SELECT count(*) FROM claims c WHERE c.event_id=e.id) AS claims_count FROM events e LEFT JOIN blobs b ON b.sha256=e.sha256 LEFT JOIN external_originals x ON x.digest=e.sha256 LEFT JOIN managed_objects o ON o.digest=x.object_digest LEFT JOIN texts t ON t.event_id=e.id ORDER BY e.rowid')
+        # Do not read texts.status here: it follows a potentially huge TEXT field
+        # in the SQLite record and can force overflow-page reads just to list titles.
+        # FTS row identities establish index presence; search itself retains its
+        # original status/hash/span verification unchanged.
+        indexed={r[0] for r in self.db.execute('SELECT t.event_id FROM text_search f JOIN texts t ON t.rowid=f.rowid')}
+        rows=self.db.execute('SELECT e.*,COALESCE(o.raw_bytes,b.byte_count) AS bytes,o.stored_bytes,o.codec,x.object_digest,b.sha256 AS blob_digest,(SELECT count(*) FROM claims c WHERE c.event_id=e.id) AS claims_count FROM events e LEFT JOIN blobs b ON b.sha256=e.sha256 LEFT JOIN external_originals x ON x.digest=e.sha256 LEFT JOIN managed_objects o ON o.digest=x.object_digest ORDER BY e.rowid')
         result=[]
         for row in rows:
-            p=dict(row);meta=json.loads(p['metadata']);edition=books.get(p['id']) or science.get(p['id']);m=edition['metadata'] if edition else {}
+            p=dict(row);p['extraction_status']='FTS text representation exists' if p['id'] in indexed else 'No direct FTS text; original retained';meta=json.loads(p['metadata']);edition=books.get(p['id']) or science.get(p['id']);m=edition['metadata'] if edition else {}
             category='Books' if p['id'] in books else 'Science' if p['id'] in science else 'Extracted text' if meta.get('resource_type')=='scientific-extracted-text' else 'Rights & references' if 'rights' in p['submission_name'].casefold() or p['media_type']=='application/rdf+xml' else 'Other documents'
             title=m.get('title') or p['submission_name'];subjects=m.get('subjects',[]);subjects=subjects if isinstance(subjects,list) else [subjects] if subjects else []
             fmt=format_name(p['media_type'],p['submission_name']);reason=''
@@ -114,7 +119,9 @@ class Resources:
                     if not stat.S_ISREG(info.st_mode) or info.st_size!=p['stored_bytes']:reason='Managed original file length/type does not match its descriptor.'
                 except (OSError,ValueError) as error:reason='Original file inaccessible: '+str(error)
             item={k:p[k] for k in ('id','source_id','sha256','bytes','media_type','parent_id','claims_count','extraction_status')}
-            item.update(event_id=p['id'],title=title,name=p['submission_name'],authors=m.get('authors',[]),subjects=subjects,description=m.get('edition',''),category=category,format=fmt,created=p['occurred'],original_event_id=meta.get('original_event_id'),locator=meta.get('locator'),available=not reason,reason=reason,manual_id=manuals.get(p['id'],{}).get('id'),reader='pdf' if fmt=='PDF' else 'archive' if fmt in {'Archive','EPUB'} else 'text' if fmt in {'Text','Markdown','HTML','XML','JSON'} else 'unsupported')
+            from urllib.parse import urlparse
+            filename=Path(urlparse(m.get('source_url','')).path).name or p['submission_name']
+            item.update(event_id=p['id'],title=title,name=p['submission_name'],file_name=filename,source_url=m.get('source_url'),authors=m.get('authors',[]),subjects=subjects,description=m.get('edition',''),category=category,format=fmt,created=p['occurred'],original_event_id=meta.get('original_event_id'),locator=meta.get('locator'),available=not reason,reason=reason,manual_id=manuals.get(p['id'],{}).get('id'),reader='pdf' if fmt=='PDF' else 'image' if fmt=='Image' else 'archive' if fmt in {'Archive','EPUB'} else 'text' if fmt in {'Text','Markdown','HTML','XML','JSON'} else 'unsupported')
             result.append(item)
         # Registered attachments and retained unacknowledged objects remain accounted for.
         for row in self.db.execute('SELECT r.*,o.raw_bytes FROM managed_refs r JOIN managed_objects o ON o.digest=r.digest WHERE r.purpose NOT IN (\'model-weight\',\'adapter\',\'extension\',\'capability\')'):
@@ -128,7 +135,14 @@ class Resources:
     def detail(self,key):
         self._refresh();resource_id(key)
         if key not in self.by_id:raise KeyError('Resource not found.')
-        item=dict(self.by_id[key]);item['reading']=self.state(key);return item
+        item=dict(self.by_id[key])
+        descriptor=self.db.execute('SELECT * FROM managed_objects WHERE digest=?',(item['sha256'],)).fetchone()
+        if descriptor:
+            try:
+                info=object_path(self.memory.config.data_dir,item['sha256']).stat()
+                if not stat.S_ISREG(info.st_mode) or info.st_size!=descriptor['stored_bytes']:item.update(available=False,reason='Original file size/type differs from its immutable descriptor.')
+            except (OSError,ValueError) as error:item.update(available=False,reason='Original inaccessible: '+str(error))
+        item['reading']=self.state(key);return item
     def list(self,query='',*,category='',format='',collection='',sort='title',after=0,limit=40):
         if not isinstance(query,str) or len(query)>512 or type(after) is not int or after<0 or type(limit) is not int or not 1<=limit<=100:raise ValueError('Invalid catalogue page/query.')
         if category and category not in CATEGORIES:raise ValueError('Unknown category.')
@@ -139,7 +153,7 @@ class Resources:
         terms=query.casefold().split();rows=[]
         for item in self.catalog:
             if category and item['category']!=category or format and item['format']!=format or members is not None and item['id'] not in members:continue
-            hay=' '.join([item['title'],item['name'],item['format'],item['category'],*item['authors'],*item['subjects']]).casefold()
+            hay=' '.join([item['title'],item['name'],item.get('file_name',''),item['format'],item['category'],*item['authors'],*item['subjects']]).casefold()
             if all(t in hay for t in terms):rows.append(item)
         rows.sort(key=lambda p:(p['created'] if sort=='newest' else ' '.join(p['authors']).casefold() if sort=='author' else p['format'] if sort=='format' else p['title'].casefold(),p['id']),reverse=sort=='newest')
         return {'items':rows[after:after+limit],'total':len(rows),'next_cursor':after+limit if after+limit<len(rows) else None,'categories':list(CATEGORIES),'formats':sorted({p['format'] for p in self.catalog}),'collections':self.collections()}
@@ -202,12 +216,13 @@ class Resources:
         # Small legacy originals are inexpensive to verify before reusing a cache.
         return hashlib.sha256(b''.join(self.chunks(p['id']))).hexdigest()
     def inventory(self):
-        self._refresh();by_format={};by_category={};unavailable=[];unsupported=[];hashes={}
+        self.fingerprint=None;self._refresh();by_format={};by_category={};unavailable=[];unsupported=[];hashes={}
         for p in self.catalog:
             by_format[p['format']]=by_format.get(p['format'],0)+1;by_category[p['category']]=by_category.get(p['category'],0)+1;hashes[p['sha256']]=hashes.get(p['sha256'],0)+1
             if not p['available']:unavailable.append({'id':p['id'],'title':p['title'],'reason':p['reason']})
             elif p['reader']=='unsupported':unsupported.append({'id':p['id'],'title':p['title'],'format':p['format'],'reason':'No inert reader for this format; exact export remains available.'})
-        return {'catalogue_entries':len(self.catalog),'unique_original_contents':len(hashes),'duplicate_records':sum(n-1 for n in hashes.values()),'unavailable':unavailable,'unsupported':unsupported,'by_format':by_format,'by_category':by_category,'collections':[{'id':c['id'],'name':c['name'],'entries':sum(p['collection_id']==c['id'] and p['included'] for p in self._records('library_memberships'))} for c in self.collections()],'integrity_scope':'Location/descriptor checks; SHA-256 verified on original open/export. Full verification is an explicit bounded inventory job, never implied by a catalogue row.'}
+        needs_renderer=[{'id':p['id'],'title':p['title'],'reason':str(self.renderer_error or 'Qualified local renderer is stopped/unavailable.')} for p in self.catalog if p['available'] and p['reader'] in {'pdf','image'} and not(self.renderer and self.renderer.qualified)]
+        return {'catalogue_entries':len(self.catalog),'unique_original_contents':len(hashes),'originals_located_entries':len(self.catalog)-len(unavailable),'direct_reader_supported_entries':len(self.catalog)-len(unavailable)-len(unsupported)-len(needs_renderer),'requires_different_reader_entries':len(unsupported)+len(needs_renderer),'duplicate_records':sum(n-1 for n in hashes.values()),'unavailable':unavailable,'unsupported':unsupported,'renderer_unavailable':needs_renderer,'unrecognized_formats':sum(p['format']=='Unrecognized' for p in self.catalog),'by_format':by_format,'by_category':by_category,'collections':[{'id':c['id'],'name':c['name'],'entries':sum(p['collection_id']==c['id'] and p['included'] for p in self._records('library_memberships'))} for c in self.collections()],'reader_qualification':self.renderer.report if self.renderer and self.renderer.qualified else None,'integrity_scope':'Location/descriptor checks and supported reader classification, not a claim that every page was rendered. SHA-256 is verified on original open/export; full verification is an explicit bounded inventory job.'}
 
     def _members(self,path):
         entries=[];total=0;end=time.monotonic()+15
@@ -217,25 +232,30 @@ class Resources:
                     if i>=20000:raise ValueError('Archive member limit reached; original remains available for exact export.')
                     total+=p.file_size
                     if total>512*1024*1024 or time.monotonic()>end:raise ValueError('Archive listing exceeds a bounded 512 MiB/15-second slice.')
-                    if not p.is_dir():entries.append({'name':p.filename,'bytes':p.file_size,'format':format_name('',p.filename),'regular':not stat.S_ISLNK(p.external_attr>>16) and not(p.flag_bits&1)})
+                    rejection='Archive symbolic link is not followed.' if stat.S_ISLNK(p.external_attr>>16) else 'Encrypted archive member requires a different reader.' if p.flag_bits&1 else 'Unsupported archive compression method '+str(p.compress_type)+'.' if p.compress_type not in {zipfile.ZIP_STORED,zipfile.ZIP_DEFLATED} else ''
+                    if not p.is_dir():entries.append({'name':p.filename,'bytes':p.file_size,'format':format_name('',p.filename),'regular':not rejection,'rejection':rejection})
         else:
             try:
+                with input_file(path) as check:
+                    header=check.read(6)
+                    if header.startswith((b'BZh',b'\xfd7zXZ\x00')):raise ValueError('This archive compression requires a different bounded reader. Original retained; no decompressor was started.')
                 with tarfile.open(path,mode='r:*') as archive:
                     for i,p in enumerate(archive):
                         if i>=20000:raise ValueError('Archive member limit reached.')
                         total+=p.size
                         if total>512*1024*1024 or time.monotonic()>end:raise ValueError('Archive listing exceeds bounded size/time.')
-                        if not p.isdir():entries.append({'name':p.name,'bytes':p.size,'format':format_name('',p.name),'regular':p.isfile()})
+                        if not p.isdir():entries.append({'name':p.name,'bytes':p.size,'format':format_name('',p.name),'regular':p.isfile(),'rejection':'' if p.isfile() else 'Archive link or special-file type '+repr(p.type)+' is not opened.'})
             except tarfile.ReadError as error:raise ValueError('Archive format is not supported: '+str(error)) from error
         for p in entries:
             p['safe']=p['regular'] and not Path(p['name']).is_absolute() and '..' not in Path(p['name']).parts and len(p['name'])<=1024
             p['readable']=p['safe'] and p['format'] in {'PDF','Text','Markdown','HTML','XML','JSON','Image'} and p['bytes']<=128*1024*1024
-            p['reason']='' if p['readable'] else 'Inert unsupported member, unsafe name, or member exceeds the bounded reader size; never executed.'
+            p['reason']='' if p['readable'] else p['rejection'] if not p['regular'] else 'Unsafe archive member name; never extracted.' if not p['safe'] else 'Member exceeds the 128 MiB reader working-file limit.' if p['bytes']>128*1024*1024 else 'No qualified inert reader for '+(Path(p['name']).suffix or 'unrecognized format')+'; preserved without execution.'
         return entries
     def member(self,key,name):
         path=self.stage(key);matches=[p for p in self._members(path) if p['name']==name]
         if len(matches)!=1 or not matches[0]['readable']:raise ValueError('Unsupported, ambiguous or unsafe archive member.')
         meta=matches[0];token=hashlib.sha256((self.detail(key)['sha256']+'\0'+name).encode()).hexdigest();target=self.cache/'inputs'/token
+        if target.exists() and (token not in self.member_cache or self.member_cache[token]!=self._file_signature(target)):target.unlink()
         if not target.exists():
             from vector_core.intake import write_new_chunks
             def copy(stream):
@@ -253,11 +273,13 @@ class Resources:
                     if not entry.isfile():raise ValueError('Archive links and special files are never opened.')
                     with archive.extractfile(entry) as stream:write_new_chunks(target,copy(stream))
             target.chmod(0o400)
+            self.member_cache[token]=self._file_signature(target)
         return target,meta
     def open(self,key,member=''):
         self.cached.pop(key,None)
         p=self.detail(key);path,meta=self.member(key,member) if member else (self.stage(key),p);fmt=meta['format']
         if fmt in {'Archive','EPUB'}:
+            if path.stat().st_size>128*1024*1024:raise ValueError('Archive exceeds this reader’s bounded 128 MiB input budget. Complete original remains available for export.')
             members=self._members(path)
             if fmt=='EPUB':
                 import posixpath,xml.etree.ElementTree as ET
@@ -319,7 +341,7 @@ class Resources:
         if meta['format'] not in {'Text','Markdown','HTML','XML','JSON'}:raise ValueError('Select a supported document member to read.')
         with input_file(path) as handle:
             # Character positions, CRLF and bytes remain distinct; no original normalization.
-            stream=io.TextIOWrapper(handle,encoding='utf-8-sig',errors='strict',newline='');remaining=offset
+            stream=io.TextIOWrapper(handle,encoding='utf-8',errors='strict',newline='');remaining=offset
             while remaining:
                 part=stream.read(min(65536,remaining))
                 if not part:break
@@ -329,13 +351,17 @@ class Resources:
         display=text
         if not raw and meta['format'] in {'HTML','XML'}:
             parser=_Markup();parser.feed(text);display=''.join(parser.parts)
-        return {'kind':'text','text':display,'source_text':text,'offset':offset,'next_offset':offset+len(text) if more else None,'previous_offset':max(0,offset-16000),'format':meta['format'],'complete_original_source':True}
+        return {'kind':'text','text':display,'source_text':text,'offset':offset,'next_offset':offset+len(text) if more else None,'previous_offset':max(0,offset-16000),'format':meta['format'],'original_source_preserved':True,'whole_original_supplied':offset==0 and not more,'range_is_excerpt':offset>0 or more}
     def outline(self,key,member=''):
         p=self.detail(key);path,meta=self.member(key,member) if member else (self.stage(key),p)
-        if meta['format']=='PDF':return {'items':[],'message':'Use page navigation; this renderer does not invent a PDF outline.'}
+        if meta['format']=='PDF':
+            if not self.renderer:raise ValueError('PDF reader unavailable.')
+            result=self.renderer.request({'operation':'outline','token':path.name},30)
+            if not result['items']:result['message']='This original has no PDF bookmarks. Use page navigation or search within the original.'
+            return result
         result=[];position=0;end=time.monotonic()+10
         if meta['format'] not in {'Text','Markdown','HTML','XML','JSON'}:return {'items':self._members(path)}
-        with input_file(path) as handle,io.TextIOWrapper(handle,encoding='utf-8-sig',newline='') as text:
+        with input_file(path) as handle,io.TextIOWrapper(handle,encoding='utf-8',newline='') as text:
             while line:=text.readline(65536):
                 if re.match(r'\s*(?:#{1,6}\s|(?:CHAPTER|Chapter|BOOK|Book|CANTO|SECTION|Section)\s+[\wIVXLCDM]+\b|<h[1-6]\b|<title\b)',line):result.append({'title':line.strip()[:200],'offset':position})
                 position+=len(line)
@@ -349,7 +375,7 @@ class Resources:
             return self.renderer.request({'operation':'find','token':path.name,'query':query,'page':page},30)
         if type(after) is not int or after<0:raise ValueError('Invalid search position.')
         position=0;tail='';end=time.monotonic()+15
-        with input_file(path) as handle,io.TextIOWrapper(handle,encoding='utf-8-sig',newline='') as stream:
+        with input_file(path) as handle,io.TextIOWrapper(handle,encoding='utf-8',newline='') as stream:
             while chunk:=stream.read(65536):
                 value=tail+chunk;origin=position-len(tail);match=re.compile(re.escape(query),re.I).search(value,max(0,after-origin))
                 if match:
@@ -380,6 +406,7 @@ class Resources:
         if old and old['revision']!=revision:raise ValueError('Manual revision changed; reload before saving.')
         # Validate complete structured revision before acknowledging an immutable source.
         if not isinstance(title,str) or not 1<=len(title.strip())<=200 or not isinstance(sections,list) or not 1<=len(sections)<=100:raise ValueError('Title and 1–100 custom sections required.')
+        if len(canonical(sections).encode())>900000:raise ValueError('Structured manual metadata exceeds the portable record budget; import the complete large original instead.')
         body=[]
         for s in sections:
             if not isinstance(s,dict) or set(s)!={'title','body','level'} or not isinstance(s['title'],str) or not 1<=len(s['title'])<=200 or not isinstance(s['body'],str) or len(s['body'])>32000 or type(s['level']) is not int or not 1<=s['level']<=6:raise ValueError('Invalid custom section.')
@@ -418,8 +445,18 @@ def dispatch(app,operation,p):
     if operation=='resource_compare':
         if not isinstance(p.get('ids'),list) or not 1<=len(p['ids'])<=8:raise ValueError('Compare 1–8 resource identities.')
         return {'items':[r.detail(key) for key in p['ids']]}
-    if operation=='resource_passage':return {'resource':r.detail(p['id']),'passage':r.read(p['id'],offset=p.get('offset',0))}
+    if operation=='resource_passage':
+        if p.get('unit_id'):
+            from vector_core.literature import Library
+            return Library(r.memory).passage(p['unit_id'])
+        resource=r.detail(p['id']);path,meta=r.member(p['id'],p['member']) if p.get('member') else (r.stage(p['id']),resource)
+        if meta['format']=='PDF':
+            if not r.renderer:raise ValueError('PDF reader unavailable.')
+            passage=r.renderer.request({'operation':'text','token':path.name,'page':p.get('page',1),'offset':p.get('offset',0)},30)
+        else:passage=r.read(p['id'],member=p.get('member',''),offset=p.get('offset',0))
+        return {'resource':resource,'passage':passage}
     if operation=='resource_manual_save':return r.manual(**p)
+    if operation=='resource_manual_get':return latest(r.memory,'library_manuals',identity(p['id']))
     raise ValueError('Unknown resource operation.')
 
 def read_tool(app,request):

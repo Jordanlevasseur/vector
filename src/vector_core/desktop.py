@@ -127,6 +127,7 @@ class Desktop:
         self.knowledge.pack(fill='both',expand=True,pady=8);self.knowledge.bind('<<TreeviewSelect>>',self.select_source);self.knowledge.bind('<Double-1>',lambda event:self.view_source())
         ttk.Button(tab,text='View selected original / evidence',command=self.view_source).pack(anchor='w')
         ttk.Button(tab,text='Export selected original',command=self.export_original).pack(anchor='w',pady=4)
+        ttk.Button(tab,text='Open selected original in Library',command=lambda:self.open_resource_reference(self.selected_event) if self.selected_event else None).pack(anchor='w')
         more=ttk.Frame(tab);more.pack(fill='x')
         for label,command in [('Compare / versions',lambda:self.source_operation('memory_compare')),('Relationships',lambda:self.source_operation('memory_links')),('Link evidence',self.link_evidence),('Assessments',self.assessment_history),('Dispute claim',self.assess_claim),('Entity',self.entity_lookup)]:ttk.Button(more,text=label,command=command).pack(side='left',padx=2)
         tab=self.tabs['Learning'];ttk.Label(tab,text='Import originals or learn explicit subject | predicate | value statements. Sources remain unverified.').pack(anchor='w')
@@ -190,6 +191,8 @@ class Desktop:
         actions=ttk.Frame(self.tabs['Tools']);actions.pack(fill='x',pady=4);self.advanced_actions=actions
         for index,(label,command) in enumerate([('Storage usage / available space',lambda:self.call('storage',{},self.show_result)),('Verify originals',lambda:self.call('verify',{},self.show_result)),('Create separate recovery key',self.create_key),('Export VECTOR',self.backup),('Verify backup (actual restore)',self.verify_backup),('Restore to a new folder',self.restore),('Move data location',self.move),('Rebuild search indexes',lambda:self.call('rebuild',{},self.show_result)),('Recover interrupted storage',lambda:self.call('recover_storage',{},self.show_result)),('System / offline diagnostics',lambda:self.call('health',{},self.show_result))]):ttk.Button(actions,text=label,command=command).grid(row=index//2,column=index%2,sticky='ew',padx=4,pady=3)
         self.shell.finish()
+        from vector_core.resource_desktop import ResourceDesktop
+        self.library=ResourceDesktop(self,self.shell.library_parent)
         self.root.protocol('WM_DELETE_WINDOW',self.close);root.deiconify();root.after(30,self.poll);self.call('health',{},self.health)
     def call(self,operation,parameters,callback=None):
         try:
@@ -322,10 +325,13 @@ class Desktop:
         view=self.active_planning['planning'];self.call('question_explore',{'id':view['id'],'revision':view['state']['revision'],'approved':True},self.planned_answer)
     def reset_history(self,message):
         self.history_cursor=0;self.shell.reset();self.active_response=None;self.show_chat(message)
-    def source_link(self,identity):
-        tag='source:'+identity;self.shell.append('View original source '+identity,tag)
+    def source_link(self,identity,start=0):
+        tag='source:'+identity+':'+str(start);self.shell.append('Read original source '+identity,tag)
         self.chat.tag_configure(tag,foreground='#42dfe8',underline=True)
-        self.chat.tag_bind(tag,'<Button-1>',lambda event:self.call('show',{'event_id':identity},self.show_result));self.chat.configure(state='disabled')
+        self.chat.tag_bind(tag,'<Button-1>',lambda event:self.open_resource_reference(identity,start));self.chat.configure(state='disabled')
+    def open_resource_reference(self,event_id,start=0):
+        self.shell.navigate('Library');self.selected_event=event_id
+        self.library.call('resource_reference',{'event_id':event_id,'start':start},lambda r:self.library.open(r['resource_id'],location=r))
     def load_history(self):self.call('history',{'after':self.history_cursor},lambda r:self.history(r))
     def history(self,result):
         self.history_cursor=result['next_cursor']
@@ -689,12 +695,17 @@ class Desktop:
         if destination and self.dialog.askyesno('Move data','Verify the new copy and redirect VECTOR? Old originals will be retained.'):
             self.call('move',{'destination':destination,'approved':True},self.show_result)
     def close(self):
+        if getattr(self,'library',None) and not self.client.pending:
+            self.library.save_position();end=time.monotonic()+2
+            while (self.client.pending or self.library.queue) and time.monotonic()<end:self.root.update();time.sleep(.01)
         if self.client.pending and not self.dialog.askyesno('Operation running','Cancel the current operation and close?'):return
         if self.client.pending:self.client.cancel()
+        if getattr(self,'library',None):self.library.close()
         self.shell.close();self.client.close();self.root.destroy()
 
 
 def configure_startup(args):
+    if getattr(args,'library',False):args.no_inference=True
     if args.no_inference:
         if args.models_directory or args.managed or args.runtime_profile:raise ValueError('Storage-only startup cannot also request a model runtime.')
     elif not args.models_directory and not args.managed and not args.runtime_profile:
@@ -705,11 +716,14 @@ def configure_startup(args):
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description='VECTOR offline development desktop');parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--choose-models',action='store_true');parser.add_argument('--choose-data',action='store_true');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile');parser.add_argument('--no-inference',action='store_true',help='Explicit storage-only session.')
+    parser.add_argument('--library',action='store_true',help='Open the Library without starting local AI; default model settings remain unchanged.')
     args=parser.parse_args(argv)
     try:
         configure_startup(args);root,client=bootstrap(args)
         if root is None:return 0
-        Desktop(root,client,managed=args.managed);root.mainloop();return 0
+        app=Desktop(root,client,managed=args.managed)
+        if args.library:app.shell.navigate('Library')
+        root.mainloop();return 0
     except Exception as error:
         print('VECTOR desktop startup blocked: '+str(error),file=sys.stderr);return 1
 

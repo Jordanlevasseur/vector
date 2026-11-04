@@ -6,11 +6,14 @@ from vector_core.memory import Memory,Submission
 from vector_core.resources import Resources,read_tool
 from vector_core.service import Application
 
-def pdf_bytes(pages=3):
+def pdf_bytes(pages=3,outline=False):
     objects=[b'<< /Type /Catalog /Pages 2 0 R >>',('<< /Type /Pages /Count '+str(pages)+' /Kids ['+' '.join(str(4+i*2)+' 0 R' for i in range(pages))+'] >>').encode(),b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>']
     for i in range(pages):
         content=('BT /F1 18 Tf 30 160 Td (Library page '+str(i+1)+') Tj ET').encode()
         objects.extend([('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /Font << /F1 3 0 R >> >> /Contents '+str(5+i*2)+' 0 R >>').encode(),b'<< /Length '+str(len(content)).encode()+b' >>\nstream\n'+content+b'\nendstream'])
+    if outline:
+        parent=len(objects)+1;item=parent+1;objects[0]=('<< /Type /Catalog /Pages 2 0 R /Outlines '+str(parent)+' 0 R >>').encode()
+        objects.extend([('<< /Type /Outlines /First '+str(item)+' 0 R /Last '+str(item)+' 0 R /Count 1 >>').encode(),('<< /Title (Last chapter) /Parent '+str(parent)+' 0 R /Dest ['+str(4+(pages-1)*2)+' 0 R /Fit] >>').encode()])
     data=bytearray(b'%PDF-1.4\n');offsets=[0]
     for i,obj in enumerate(objects):offsets.append(len(data));data.extend(str(i+1).encode()+b' 0 obj\n'+obj+b'\nendobj\n')
     xref=len(data);data.extend(b'xref\n0 '+str(len(offsets)).encode()+b'\n0000000000 65535 f \n')
@@ -30,11 +33,20 @@ class ResourceLibraryTests(unittest.TestCase):
     def test_complete_original_beyond_preview_has_stable_character_navigation(self):
         raw=('CHAPTER I\n'+'First chapter text\n'*1200+'\nCHAPTER II\nSecond chapter Ω and café\n').encode();key=self.ingest(raw)
         first=self.r.read(key);second=self.r.read(key,offset=first['next_offset']);self.assertEqual(first['source_text']+second['source_text'],raw.decode())
+        self.assertFalse(first['whole_original_supplied']);self.assertTrue(first['range_is_excerpt'])
         self.assertTrue(self.r.find(key,'Second chapter')['found']);self.assertEqual(len(self.r.outline(key)['items']),2);self.assertEqual(self.memory.original(key),raw)
     def test_metadata_search_filters_and_pagination_do_not_read_originals(self):
         for i in range(7):self.ingest(str(i).encode(),'Manual '+str(i)+'.md','text/markdown')
         self.memory.original_chunks=lambda key:(_ for _ in ()).throw(AssertionError('Catalogue must not read original content'))
         page=self.r.list('manual markdown',limit=3);self.assertEqual(page['total'],7);self.assertEqual(len(page['items']),3);self.assertEqual(self.r.list(after=3,limit=3)['next_cursor'],6)
+    def test_catalogue_does_not_need_large_extracted_text_payload_or_tail_columns(self):
+        import sqlite3
+        key=self.ingest(('large text\n'*10000).encode())
+        def authorize(action,table,column,*rest):
+            return sqlite3.SQLITE_DENY if action==sqlite3.SQLITE_READ and (table=='texts' and column in {'text','status'} or table=='blobs' and column=='body') else sqlite3.SQLITE_OK
+        self.memory.db.set_authorizer(authorize)
+        try:self.assertEqual(self.r.list()['items'][0]['id'],key)
+        finally:self.memory.db.set_authorizer(None)
     def test_html_xml_are_inert_and_raw_source_stays_available(self):
         key=self.ingest(b'<h1>Chapter</h1><script>do_bad()</script><p>Readable</p>','a.html','text/html')
         self.assertNotIn('do_bad',self.r.read(key)['text']);self.assertIn('<script>',self.r.read(key,raw=True)['text']);self.assertEqual(self.memory.original(key),b'<h1>Chapter</h1><script>do_bad()</script><p>Readable</p>')
@@ -52,6 +64,14 @@ class ResourceLibraryTests(unittest.TestCase):
         key=self.ingest(raw.getvalue(),'book.tar.gz','application/x-gzip');members=self.r.open(key)['members'];self.assertFalse(members[0]['safe'])
         for name in ('link.txt','same.txt'):
             with self.assertRaises(ValueError):self.r.member(key,name)
+    def test_epub_spine_order_and_complete_inert_chapter_source(self):
+        data=io.BytesIO()
+        with zipfile.ZipFile(data,'w') as z:
+            z.writestr('META-INF/container.xml','<container><rootfiles><rootfile full-path="book/content.opf"/></rootfiles></container>')
+            z.writestr('book/content.opf','<package><manifest><item id="second" href="two.xhtml"/><item id="first" href="one.xhtml"/></manifest><spine><itemref idref="first"/><itemref idref="second"/></spine></package>')
+            z.writestr('book/two.xhtml','<h1>Chapter two</h1><p>Last chapter text.</p>');z.writestr('book/one.xhtml','<h1>Chapter one</h1><p>First chapter text.</p>')
+        key=self.ingest(data.getvalue(),'Book.epub','application/epub+zip');opened=self.r.open(key)
+        self.assertEqual([p['name'] for p in opened['members'][:2]],['book/one.xhtml','book/two.xhtml']);chapter=self.r.read(key,member='book/two.xhtml');self.assertIn('Last chapter text.',chapter['text']);self.assertTrue(chapter['whole_original_supplied'])
     def test_position_bookmark_collection_persist_across_reopen(self):
         key=self.ingest();collection=self.r.collection('Reference',approved=True);self.r.membership(collection['id'],key,approved=True)
         self.r.position(key,offset=3,font_size=16,scroll=.25);self.r.position(key,offset=3,bookmark='Important')
@@ -86,6 +106,18 @@ class ResourceLibraryTests(unittest.TestCase):
             finally:r.close()
 
 class ReaderIsolationTests(unittest.TestCase):
+    def test_original_pdf_bookmark_destinations_and_text_are_read_not_executed(self):
+        from vector_core.reader_runtime import launch_reader
+        transport=launch_reader()
+        with tempfile.TemporaryDirectory() as temp,Memory(Config.load(data_dir=str(Path(temp)/'data'))) as memory:
+            key=memory.ingest(Submission(pdf_bytes(4,outline=True),'Original PDF outline.pdf','application/pdf'))['event_id'];r=Resources(memory,transport)
+            try:
+                outline=r.outline(key);self.assertEqual(outline['items'][0]['title'],'Last chapter');self.assertEqual(outline['items'][0]['page'],4)
+                path=r.stage(key);text=transport.request({'operation':'text','token':path.name,'page':4,'offset':0},10);self.assertIn('Library page 4',text['text'])
+                bad=memory.ingest(Submission(b'%PDF-1.4 not a valid document','Damaged.pdf','application/pdf'))['event_id']
+                with self.assertRaises(ValueError):r.open(bad)
+                self.assertTrue(transport.qualified);self.assertEqual(r.read(key,page=4,width=600)['page'],4)
+            finally:r.close()
     def test_actual_isolated_pdf_page_1000_network_denial_and_cleanup(self):
         from vector_core.reader_runtime import launch_reader
         transport=launch_reader();group=Path(transport.report['cgroup']);self.addCleanup(transport.close)
