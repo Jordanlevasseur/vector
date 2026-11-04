@@ -21,6 +21,8 @@ class Application:
     def __init__(self,memory,transport=None,startup_error=None):
         self.memory=memory;self.transport=transport;self.raw_adapter=OllamaAdapter(transport) if transport else UnavailableAdapter();self.adapter=self.raw_adapter
         self.startup_error=startup_error
+        self.runtime_profile=None
+        self.installed_models=[]
         self.session=self.preference('desktop_session') or {'conversation_id':uuid4().hex,'project_id':None}
         self.generation=GenerationConfig(**(self.preference('generation') or {})).validate()
         if self.preference('desktop_session') is None:put(memory,'preferences','desktop_session',self.session)
@@ -33,12 +35,12 @@ class Application:
         if not self.transport or not self.transport.qualified:raise ValueError(self.startup_error or 'No qualified local inference worker is available.')
         catalog=getattr(self.model_controller,'_request_catalog',None)
         known=next((m for m in (catalog or self.raw_adapter.discover()).get('models',[]) if m.get('name')==model),None)
-        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max']:
+        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max'] and not self.transport.report.get('experimental_memory'):
             error=ValueError('RESOURCE_BLOCKED: selected model assets exceed the qualified worker memory ceiling. A larger qualified profile and sufficient host RAM are required; loading was not attempted.');error.code='RESOURCE_LIMIT';error.stage='resource-protection';raise error
         if getattr(self.transport,'managed',False):
             from vector_core.models import materialize,managed_catalog
             selected=next((m for m in managed_catalog(self.memory) if m['name']==model),None)
-            if selected and selected['size']>=self.transport.report['memory_max']:raise ValueError('RESOURCE_BLOCKED: managed model assets exceed the qualified worker memory ceiling; materialization and loading were not attempted.')
+            if selected and selected['size']>=self.transport.report['memory_max'] and not self.transport.report.get('experimental_memory'):raise ValueError('RESOURCE_BLOCKED: managed model assets exceed the qualified worker memory ceiling; materialization and loading were not attempted.')
             materialize(self.memory,model,self.transport.model_directory)
         else:
             from vector_core.models import register_external,model_root
@@ -55,6 +57,12 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation=='runtime_options_get':
+            from vector_core.worker_launcher import read_runtime_profile
+            return {'settings':read_runtime_profile(self.runtime_profile),'active':self.transport.report if self.transport else None,'startup_error':self.startup_error,'restart_required':False}
+        if operation=='runtime_options_set':
+            from vector_core.worker_launcher import save_runtime_options
+            return save_runtime_options(self.runtime_profile,memory_mib=p['memory_mib'],experimental=p['experimental'],acknowledged=p.get('acknowledged',False))
         from vector_core.model_routing import ModeAdapter
         if self.model_controller.mode():
             if not isinstance(self.adapter,ModeAdapter):self.adapter=ModeAdapter(self.model_controller)
@@ -156,10 +164,10 @@ class Application:
         if operation=='health':
             return {'core_policy':getattr(self,'policy',{'status':'Direct library caller owns the OS boundary; use the supported CLI/desktop.'}),'schema':memory.db.execute('PRAGMA user_version').fetchone()[0],'data_directory':str(memory.config.data_dir),
                     'inference':self.transport.report if self.transport and self.transport.qualified else {'available':False,'reason':self.startup_error or 'No isolated worker selected.'},
-                    'session':self.session,'generation':asdict(self._generation),'effective_generation':asdict(self.generation),'model_mode':self.model_controller.mode(),'appearance':self.preference('appearance'),'release_ready':False}
+                    'session':self.session,'generation':asdict(self._generation),'effective_generation':asdict(self.generation),'model_mode':self.model_controller.mode(),'appearance':self.preference('appearance'),'build_mode':'development','evaluations':{'functionality':'Runtime and response delivery only; accuracy never gates manual use.','accuracy':'Recorded separately; unverified unless independently checked.','production':{'release_ready':False,'blocks_manual_operation':False}},'release_ready':False}
         if operation=='models':
             if self.transport and self.transport.qualified:return self.adapter.discover()
-            return {'models':[],'available':False,'reason':self.startup_error or 'No active isolated worker; restart with local models.'}
+            return {'models':self.installed_models,'available':False,'reason':self.startup_error or 'Local runtime stopped. Close and reopen VECTOR to start it again; saved work remains available.'}
         if operation=='select_model':
             config=GenerationConfig(**p['configuration']).validate()
             if not self.transport or not self.transport.qualified:raise ValueError('No qualified worker; restart with local models.')
@@ -190,7 +198,7 @@ class Application:
         if operation=='ask':
             if (self.model_controller.mode() or self.generation.model) and p.get('planning') is not True:
                 from vector_core.model_routing import chat
-                return chat(self,p['question'],request_id=p.get('request_id'),semantic=p.get('semantic',False),scope=p.get('scope'))
+                return chat(self,p['question'],request_id=p.get('request_id'),semantic=p.get('semantic',False),scope=p.get('scope'),manual=p.get('manual',False))
             if p.get('planning') is True:
                 from vector_core.planner import chat
                 return chat(memory,p['question'],conversation_id=self.session['conversation_id'],project_id=self.session['project_id'],adapter=self.adapter,config=self.generation,request_id=p.get('request_id'),investigation_id=p.get('investigation_id'),revision=p.get('revision'),constraints=p.get('constraints'))

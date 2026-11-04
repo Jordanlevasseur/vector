@@ -164,16 +164,16 @@ class CollaborationTests(unittest.TestCase):
         run=self.execute_fixture([output('A')],'a');self.assertEqual(run['steps'][0]['isolation'],{'qualified':False,'simulated':True})
         self.assertIn('qualification',run['steps'][0]['core_policy']);run['parent']='f'*32
         with self.assertRaisesRegex(ValueError,'parent'):put(self.memory,'model_runs',run['id'],run)
-    def test_authorized_task_is_separate_from_untrusted_evidence_and_echo_rejected(self):
+    def test_authorized_task_remains_separate_when_real_response_echoes_it(self):
         self.select('a');question='Explain whether the stated premises imply the conclusion.';self.fixture.responses=iter([output(question)])
-        response=self.app.handle('ask',{'question':question});self.assertEqual(response['model_run']['status'],'failed')
-        self.assertIn('copied the request',response['outcome']['errors'][0]);self.assertNotIn('model_text',response['outcome'])
+        response=self.app.handle('ask',{'question':question});self.assertEqual(response['model_run']['status'],'complete')
+        self.assertEqual(response['outcome']['model_text'],question);self.assertTrue(response['outcome']['quality_observations'])
         package=chat_packet(self.fixture.calls[0]['prompt']);self.assertEqual(package['task'],question)
         self.assertEqual([m['role'] for m in package['messages']],['system','user']);self.assertEqual(package['messages'][-1]['content'],question)
-    def test_partial_question_copy_is_not_a_completed_answer(self):
+    def test_partial_question_copy_is_completed_inference_with_no_accuracy_claim(self):
         self.select('a');self.fixture.responses=iter([output('Object K is red. Does K float?')])
-        response=self.app.handle('ask',{'question':'Every red object is metal. Object K is red. Does K float? Explain briefly.'})
-        self.assertEqual(response['model_run']['status'],'failed');self.assertIn('copied',response['outcome']['errors'][0])
+        response=self.app.handle('ask',{'question':'Every red object is metal. Object K is red. Does K float? Explain briefly.','manual':True})
+        self.assertEqual(response['model_run']['status'],'complete');self.assertEqual(response['outcome']['evaluations']['accuracy']['status'],'unverified')
     def test_managed_roles_are_prepared_before_runtime_discovery(self):
         from types import SimpleNamespace
         self.select('both');self.app.transport=SimpleNamespace(managed=True,qualified=True,report={'memory_max':2*1024**3})

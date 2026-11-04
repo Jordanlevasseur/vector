@@ -77,6 +77,13 @@ class WorkerTransport:
             # Retain the last bounded observation for runtime errors, timeouts
             # and crashes too: a missing answer alone cannot diagnose pressure.
             failure=error if isinstance(error,InferenceError) else InferenceError('Worker communication failed: '+str(error))
+            if self.report.get('cgroup'):
+                try:
+                    final_events={k:int(v) for k,v in (line.split() for line in (Path(self.report['cgroup'])/'memory.events').read_text().splitlines())}
+                    if self.resource_watch:self.resource_watch['final_cgroup_memory_events']=final_events
+                    if final_events.get('oom_kill',0):
+                        failure=InferenceError('Kernel cgroup memory kill: memory.events oom_kill='+str(final_events['oom_kill'])+', MemoryMax='+str(self.report.get('memory_max'))+' bytes. No accuracy evaluation caused this failure.',code='KERNEL_MEMORY_LIMIT',stage='model-loading-or-inference')
+                except (OSError,ValueError):pass
             failure.operation=payload.get('operation')
             if failure.code=='INFERENCE_TIMEOUT':failure.stage='model-discovery' if payload.get('operation')=='discover' else 'model-execution'
             if self.resource_watch:
@@ -105,17 +112,21 @@ class WorkerTransport:
                 watch.update(samples=watch['samples']+1,peak_memory_bytes=max(used,watch['peak_memory_bytes']),peak_swap_bytes=max(swap,watch['peak_swap_bytes']),max_full_pressure=max(pressure,watch['max_full_pressure']),minimum_host_available=min(available,watch['minimum_host_available']),host_swap_out_bytes=(int(vm['pswpout'])-watch['swap_out_initial'])*os.sysconf('SC_PAGE_SIZE'),current_host_available_bytes=available,current_full_pressure=pressure,current_memory_bytes=used,current_swap_bytes=swap,cgroup_memory_events=events,cgroup_memory_stat=statistics)
                 watch['pressure_since']=(watch['pressure_since'] or time.monotonic()) if pressure>30 else None
                 violations=[]
+                advisory=[]
                 if available<384*1024*1024:violations.append('host available RAM below384MiB ('+str(available)+' bytes)')
                 if swap:violations.append('worker swap is nonzero ('+str(swap)+' bytes)')
                 if int(vm['oom_kill'])>watch['oom_initial']:violations.append('host OOM-kill counter increased')
-                if watch['host_swap_out_bytes']>128*1024*1024:violations.append('host swap-out exceeded128MiB ('+str(watch['host_swap_out_bytes'])+' bytes)')
-                if watch['pressure_since'] and time.monotonic()-watch['pressure_since']>15:violations.append('full-memory PSI above30percent for15seconds (avg10='+str(pressure)+')')
+                if watch['host_swap_out_bytes']>128*1024*1024:advisory.append('host swap-out exceeded128MiB ('+str(watch['host_swap_out_bytes'])+' bytes)')
+                if watch['pressure_since'] and time.monotonic()-watch['pressure_since']>15:advisory.append('full-memory PSI above30percent for15seconds (avg10='+str(pressure)+')')
+                if self.report.get('experimental_memory') is True:
+                    if advisory:watch['experimental_advisories']=advisory
+                else:violations.extend(advisory)
                 if violations:
                     error=InferenceError('RESOURCE_BLOCKED: '+'; '.join(violations),code='RESOURCE_LIMIT',stage='resource-protection');error.resources={k:v for k,v in watch.items() if k not in {'next','pressure_since'}};raise error
             except (OSError,ValueError,StopIteration,KeyError) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error),code='RESOURCE_MONITOR_FAILED',stage='resource-protection') from error
 
 
-def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=()):
+def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=(),experimental=False):
     """Called only by trusted startup before the main strict filter. Fail closed."""
     model_root=safe_path(models_directory)
     if not model_root.is_dir() or not all((model_root/name).is_dir() for name in ('blobs','manifests')):raise InferenceError('Explicit model directory must contain blobs and manifests.')
@@ -125,8 +136,9 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     model_roots=tuple(dict.fromkeys([model_root,*[validate_layout(p) for p in additional_model_directories]]))
     if type(memory_bytes) is not int or not 256*1024*1024<=memory_bytes<=2*1024**3 or type(tasks) is not int or not 16<=tasks<=128:
         raise InferenceError('Invalid worker resource limits.')
+    if type(experimental) is not bool:raise InferenceError('Experimental memory selection must be a boolean.')
     available=int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:')))*1024
-    if available<memory_bytes+384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: insufficient available RAM plus 384 MiB host reserve.')
+    if available<384*1024*1024 or not experimental and available<memory_bytes+384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: insufficient available RAM plus 384 MiB host reserve.')
     executables={}
     for executable in ('bwrap','systemd-run','systemctl','ollama'):
         located=shutil.which(executable)
@@ -153,6 +165,7 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
              '--ro-bind',str(model_root/'manifests'),'/models/manifests','--dir','/models/manifests-v2',
              '--ro-bind',str(package),'/application/vector_core',
              '--setenv','PYTHONPATH','/application','--chdir','/tmp','/usr/bin/python3','-m','vector_core.inference_worker']
+    if experimental:command[command.index('OLLAMA_LOAD_TIMEOUT')+1]='240s'
     if (model_root/'manifests-v2').is_dir():
         at=command.index('--chdir');command[at:at]=['--ro-bind',str(model_root/'manifests-v2'),'/models/manifests-v2']
     if len(model_roots)>1:
@@ -197,6 +210,8 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
         quota,period=(cgroup/'cpu.max').read_text().split()
         if quota=='max' or int(quota)>int(period):raise InferenceError('Per-worker CPU quota was not enforced.')
         report.update(cpu_max=(cgroup/'cpu.max').read_text().strip(),memory_max=memory_bytes,memory_swap_max=0,pids_max=tasks,cgroup=str(cgroup),unit=unit)
+        report['experimental_memory']=experimental
+        if experimental:report['resource_notice']='Experimental memory: estimates, sustained PSI and host swap-out are advisory. Crashes/resource exhaustion are possible. Kernel memory, zero-worker-swap, CPU/pids, isolation, host reserve and OOM stops remain enforced.'
         transport.report=report;transport.runtime_version=report['runtime_version'];transport.model_directory=model_root
         transport.model_directories=model_roots
         return transport
@@ -217,7 +232,7 @@ def launch_managed(**limits):
     return transport
 
 
-def desktop_runtime(path=None):
+def read_runtime_profile(path=None):
     """Small owner-controlled startup declaration, read before strict core policy.
 
     It contains paths and bounded limits only, never executable startup options.
@@ -229,9 +244,36 @@ def desktop_runtime(path=None):
     from vector_core.intake import read_file
     from vector_core.portable import unique
     settings=json.loads(read_file(path,16384),object_pairs_hook=unique)
-    if not isinstance(settings,dict) or set(settings)!={'model_directories','memory_bytes','tasks'}:raise InferenceError('Invalid local inference startup declaration.')
+    if not isinstance(settings,dict) or set(settings)-{'model_directories','memory_bytes','tasks','experimental_memory'} or not {'model_directories','memory_bytes','tasks'}<=set(settings):raise InferenceError('Invalid local inference startup declaration.')
     roots=settings['model_directories']
     if not isinstance(roots,list) or not 1<=len(roots)<=8 or any(not isinstance(p,str) or not Path(p).is_absolute() for p in roots):raise InferenceError('Explicit absolute local model stores required.')
+    if type(settings['memory_bytes']) is not int or not 256*1024*1024<=settings['memory_bytes']<=2*1024**3 or type(settings['tasks']) is not int or not 16<=settings['tasks']<=128 or type(settings.get('experimental_memory',False)) is not bool:raise InferenceError('Invalid fixed runtime limits.')
+    return settings
+
+
+def save_runtime_options(path=None,*,memory_mib,experimental,acknowledged=False):
+    path=Path(path) if path else Path.home()/'.config/vector/local-inference.json'
+    settings=read_runtime_profile(path)
+    if settings is None:raise InferenceError('No startup profile exists. Select an authorized local model folder first.')
+    if type(memory_mib) is not int or not 256<=memory_mib<=2048 or type(experimental) is not bool:raise ValueError('Choose256–2048MiB and an explicit experimental boolean.')
+    if experimental and acknowledged is not True:raise PermissionError('Acknowledge possible crashes and resource exhaustion before enabling experimental memory.')
+    settings.update(memory_bytes=memory_mib*1024*1024,experimental_memory=experimental)
+    from vector_core.intake import write_new_file
+    temporary=path.with_name(path.name+'.'+uuid4().hex+'.tmp')
+    try:
+        write_new_file(temporary,(json.dumps(settings,indent=2)+'\n').encode());temporary.chmod(0o600);os.replace(temporary,path)
+        from vector_core.maintenance import sync
+        sync(path)
+    finally:
+        if temporary.exists():temporary.unlink()
+    return {'saved':True,'restart_required':True,'settings':settings,'message':'Saved. Close and reopen VECTOR to qualify a new isolated runtime with these limits. Models, model selection and knowledge were not changed.'}
+
+
+def desktop_runtime(path=None):
+    settings=read_runtime_profile(path)
+    if settings is None:return None
+    roots=settings['model_directories']
+    if settings.get('experimental_memory') is True:return launch(roots[0],additional_model_directories=roots[1:],memory_bytes=settings['memory_bytes'],tasks=settings['tasks'],experimental=True)
     try:return launch(roots[0],additional_model_directories=roots[1:],memory_bytes=settings['memory_bytes'],tasks=settings['tasks'])
     except InferenceError as error:
         if 'RESOURCE_BLOCKED' not in str(error) or type(settings['memory_bytes']) is not int or settings['memory_bytes']<=768*1024*1024:raise

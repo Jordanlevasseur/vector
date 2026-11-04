@@ -209,4 +209,11 @@ Measured ordinary-chat routing repair: [ROUTING_REPAIR_REPORT.md](ROUTING_REPAIR
 Native conversation and durable critique/refinement repair:
 [specification](RESPONSE_PIPELINE_SPEC.md), [measured failures and qualification](RESPONSE_REPAIR_REPORT.md).
 Ordinary selected-model chat no longer requires archive evidence or JSON prose.
-Model output remains unverified; real2B and Both operation remain resource-blocked.
+Model output remains unverified. That report records the earlier conservative
+runtime measurements; current manual operation is assessed separately below.
+
+Current build: **Development Mode**. Manual inference is independent of accuracy
+scores and production readiness. Use **Local AI / memory** for the explicit
+experimental startup option, then close/reopen to apply it. See
+[operation and security policy](DEVELOPMENT_MODE.md) and
+[actual functionality verification](DEVELOPMENT_MODE_REPORT.md).

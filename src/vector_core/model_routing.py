@@ -91,6 +91,15 @@ def conversational_output(memory,text,context):
     Older models/history may still emit the previous four fields. This is an
     optional compatibility path, never a JSON requirement or an action decoder.
     """
+    if (context or {}).get('response_validation_version')==3:
+        # Manual development output is inert prose. Never promote a generated
+        # citation, operation or quality assessment into trusted authority.
+        try:
+            p=decode(text)
+            if isinstance(p,dict) and set(p)=={'text','uncertainty','issues','citations'} and p['citations']==[]:
+                return validate_output(memory,text,context)
+        except (ValueError,TypeError,InferenceError):pass
+        return {'text':text,'uncertainty':'','issues':[],'citations':[]}
     if isinstance(text,str) and text.lstrip().startswith('{'):
         try:packet=decode(text)
         except (ValueError,TypeError):
@@ -175,7 +184,11 @@ class ModelController:
     def __init__(self,app):self.app=app;self.memory=app.memory;self.raw=app.raw_adapter;self.progress=None;self.physical_calls=0
     def mode(self):return self.app.preference('model_mode:'+self.app.session['conversation_id']) or self.app.preference('default_model_mode')
     def discovery(self):
+        if self.app.transport is not None and not self.app.transport.qualified:
+            return {'available':False,'models':getattr(self.app,'installed_models',[]),'reason':self.app.startup_error or 'Local runtime stopped after a loading/inference failure. Close and reopen VECTOR; use Local AI / memory for startup options.'}
         result=self.raw.discover()
+        if result.get('available') is not True and not result.get('models'):result={**result,'models':getattr(self.app,'installed_models',[])}
+        elif result.get('models'):self.app.installed_models=result['models']
         if self.app.transport and getattr(self.app.transport,'managed',False) and self.app.transport.qualified:
             from vector_core.models import managed_catalog
             known={m['name'] for m in result.get('models',[])}
@@ -188,12 +201,12 @@ class ModelController:
             for row in models if models is not None else self.discovery().get('models',[]):
                 name=row.get('name','');details=row.get('details',{});family=details.get('family','')
                 if 'a' not in settings['bindings'] and name.startswith('qwen2.5-coder:0.5b'):settings['bindings']['a']=name
-                if 'b' not in settings['bindings'] and name=='vector-qwen35-local:2b-q4_k_m' and (family in {'qwen35','qwen3_5'} or row.get('managed')):settings['bindings']['b']=name
+                if 'b' not in settings['bindings'] and name=='vector-qwen35-local:2b-q4_k_m' and (family in {'qwen35','qwen3_5'} or row.get('managed') or row.get('installed')):settings['bindings']['b']=name
         return settings
     def catalog(self):
         discovered=self.discovery();settings=self.settings(models=discovered.get('models',[]));names={r['name'] for r in discovered.get('models',[])}
         resources=getattr(self.app.transport,'report',{}) if self.app.transport else {}
-        blocked={r['name'] for r in discovered.get('models',[]) if type(r.get('size')) is int and r['size']>=resources.get('memory_max',2**63)}
+        blocked={r['name'] for r in discovered.get('models',[]) if type(r.get('size')) is int and r['size']>=resources.get('memory_max',2**63) and not resources.get('experimental_memory')}
         return {'mode':self.mode(),'default_mode':self.app.preference('default_model_mode'),'settings':settings,'models':discovered.get('models',[]),'available':discovered.get('available',False),'reason':discovered.get('reason',self.app.startup_error),
                 'resources':resources,'modes':[{'id':m,'label':label,'available':all(settings['bindings'].get(role) in names-blocked for role in (('a','b') if m=='both' else (m,))),'resource_blocked':any(settings['bindings'].get(role) in blocked for role in (('a','b') if m=='both' else (m,)))} for m,label in MODES.items()]}
     def select(self,mode,*,scope='conversation',settings=None):
@@ -215,7 +228,8 @@ class ModelController:
             if not isinstance(body,str) or not body.strip() or len(body.encode())>16000:raise InferenceError('Empty or excessive conversational response.',code='INVALID_OUTPUT',stage='response-validation')
             question=(run.get('context') or {}).get('question','')
             validation=(run.get('context') or {}).get('response_validation_version',1)
-            if type(validation) is not int or validation not in (1,2):raise InferenceError('Unknown conversational validation version.')
+            if type(validation) is not int or validation not in (1,2,3):raise InferenceError('Unknown conversational validation version.')
+            if validation==3:return body
             normalized=lambda s:' '.join(s.casefold().split()).rstrip(' .!?')
             from vector_core.reasoning import processing
             greeting=bool(re.fullmatch(r'(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening))[.!?\s]*',question,re.I))
@@ -386,8 +400,9 @@ class ModelController:
                     step['seconds']=time.monotonic()-tick;self._save(run)
             run['status']='complete';run['final_phase']=run['steps'][-1]['phase']
         except Exception as error:
-            run['status']='cancelled' if (cancellation and cancellation.cancelled) or 'cancel' in str(error).lower() else 'failed';run['error']=(str(error) or type(error).__name__+' in model execution')[:2000]
+            run['status']='cancelled' if (cancellation and cancellation.cancelled) or type(error).__name__=='Cancelled' or getattr(error,'code',None)=='CANCELLED' else 'failed';run['error']=(str(error) or type(error).__name__+' in model execution')[:2000]
             run['failure']={'code':getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','model-preparation'),'restart_required':bool(self.app.transport and not self.app.transport.qualified)}
+            if run['failure']['restart_required']:self.app.startup_error=run['error']
             if run['status']=='cancelled' and getattr(self.raw,'transport',None):self.raw.transport.close()
         self._request_catalog=None
         self._save(run)
@@ -410,6 +425,15 @@ def conversation_view(memory,record,run):
         from vector_core.context import display_notices
         record={**record,'context':{'context':run['context'],'sha256':digest(canonical(run['context'])),'display_notices':display_notices(memory,[s['event_id'] for s in run['context']['sources']])}}
     if run.get('failure'):outcome['failure']=run['failure']
+    if run['response_kind']==CHAT_FORMAT and (run.get('context') or {}).get('response_validation_version')==3:
+        outcome['evaluations']={'functionality':{'inference_completed':run['status']=='complete','status':'passed' if run['status']=='complete' else 'failed','blocks_future_requests':False},'accuracy':{'status':'unverified','operational_gate':False},'production':{'release_ready':False,'operational_gate':False}}
+        outcome['quality_observations']=[]
+        if outcome.get('model_text'):
+            if outcome['model_text'].strip().casefold().rstrip('.!?')==record['question'].strip().casefold().rstrip('.!?'):outcome['quality_observations'].append('Response repeats the input; real inference still completed.')
+            if re.search(r"\b(?:cannot|can't) (?:assist|help)\b",outcome['model_text'],re.I):outcome['quality_observations'].append('Model declined the request; real inference still completed.')
+        if run['status']!='complete':
+            outcome['partial_responses']=[{'phase':s['phase'],'model':s['model'],'text':conversational_output(memory,s['generation']['text'],run.get('context'))['text']} for s in completed]
+            if run['steps'] and run['steps'][-1].get('partial'):outcome['partial_text']=run['steps'][-1]['partial']['text']
     result={**record,'model_run_ref':run['id'],'outcome':outcome,'model_run':{'id':run['id'],'mode':run['mode'],'status':run['status'],'participants':sorted({s['model'] for s in completed}),'completed_phases':[s['phase'] for s in completed],'can_continue':run['status']!='complete','parent':run['parent']}}
     if record.get('calculation_ref',{}).get('answer_record'):
         from vector_core.assistant import materialize_calculation
@@ -418,7 +442,10 @@ def conversation_view(memory,record,run):
             verification=_numeric_check(record['question'],outcome['model_text'],result['checked'])
             outcome['verification']=verification
             if verification['matches'] is False:
-                outcome['status']='model-answer-contradicted';outcome['errors'].append('The model answer disagrees with the independently checked calculation.')
+                outcome['status']='model-answer-contradicted'
+                if outcome.get('evaluations'):
+                    outcome['evaluations']['accuracy']['status']='contradicted-by-independent-calculation';outcome['quality_observations'].append('The model answer disagrees with the independently checked calculation. Inference completed.')
+                else:outcome['errors'].append('The model answer disagrees with the independently checked calculation.')
     return result
 
 
@@ -539,12 +566,14 @@ def _verify_history(memory,run):
     expected_keys={'question','sources','claims','conflicts','policy','chat_history','processing','history_selection'}
     if 'instruction_version' in context:expected_keys.add('instruction_version')
     if 'response_validation_version' in context:expected_keys.add('response_validation_version')
+    if 'manual_operation' in context:expected_keys.add('manual_operation')
     if (set(context)!=expected_keys or context['sources']!=[] or context['claims']!=[] or context['conflicts']!=[]
         or context['policy']!=POLICY or not isinstance(context['processing'],dict)
         or context['processing']!=processing(context['question'],version=context['processing'].get('version'))):raise ValueError('Frozen chat context differs from the actual shared prompt or request authority boundary.')
-    if run.get('workflow','direct')!=('direct' if run['mode']=='both' else context['processing']['workflow']):raise ValueError('Model workflow differs from its frozen processing hint.')
+    if 'manual_operation' in context and type(context['manual_operation']) is not bool:raise ValueError('Invalid frozen manual-operation selection.')
+    if run.get('workflow','direct')!=('direct' if run['mode']=='both' or context.get('manual_operation') else context['processing']['workflow']):raise ValueError('Model workflow differs from its frozen processing hint.')
     validation=context.get('response_validation_version',1)
-    if type(validation) is not int or validation not in (1,2):raise ValueError('Unknown frozen conversational validation version.')
+    if type(validation) is not int or validation not in (1,2,3):raise ValueError('Unknown frozen conversational validation version.')
     if not isinstance(refs,list) or len(refs)>64:raise ValueError('Invalid frozen conversation history.')
     for ref in refs:
         if not isinstance(ref,dict) or set(ref)!={'record','run_record','message_sha256'}:raise ValueError('Invalid historical record reference.')
@@ -587,7 +616,7 @@ def _numeric_check(question,text,document):
     return {'kind':'independent-computation','matches':matches,'expected':expected,'basis':'Existing checked computation from the original user request; no model-proposed operation was executed.'}
 
 
-def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None):
+def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None,manual=False):
     from vector_core.reasoning import request,processing
     from vector_core.assistant import calculate_ask,materialize_response
     memory=app.memory;controller=app.model_controller;decision=request(question);schedule=processing(question)
@@ -627,7 +656,8 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None):
                 trial=messages[:1]+group+messages[1:]
                 if generation_prompt_bytes(chat_prompt(trial),CHAT_FORMAT)>config.prompt_bytes:omitted+=1;continue
                 messages=trial;selected.insert(0,{'record':old['id'],'run_record':revision,'message_sha256':[digest(m['content']) for m in group]})
-            context={'question':question,'sources':[],'claims':[],'conflicts':[],'policy':POLICY,'chat_history':selected,'processing':schedule,'instruction_version':2,'response_validation_version':2,'history_selection':{'candidate_limit':64,'included':len(selected),'omitted_for_context':omitted,'method':'Recent complete input/output messages; full originals remain in persistent history. No current instruction, request or peer handoff was shortened.'}}
+            if type(manual) is not bool:raise ValueError('Manual operation must be an explicit boolean.')
+            context={'question':question,'sources':[],'claims':[],'conflicts':[],'policy':POLICY,'chat_history':selected,'processing':schedule,'instruction_version':2,'response_validation_version':3,'manual_operation':manual,'history_selection':{'candidate_limit':64,'included':len(selected),'omitted_for_context':omitted,'method':'Recent complete input/output messages; full originals remain in persistent history. No current instruction, request or peer handoff was shortened.'}}
             record['context']={'context':context,'sha256':digest(canonical(context)),'display_notices':[],'bytes':len(canonical(context).encode())};record['trace'].append({'stage':'understand','processing':schedule})
             put(memory,'conversations',key,record)
             prompt=chat_prompt(messages)
@@ -635,7 +665,7 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None):
                 original=controller.get(parent)
                 if original['turn_id']!=turn:raise ValueError('Continuation belongs to a different request.')
                 prompt=original['prompt'];context=original['context'];config=GenerationConfig(**original['configuration']);settings=original['settings']
-            run=controller.execute(prompt,config,mode=selected_mode,response_kind=CHAT_FORMAT,context=context,turn_id=turn,parent=parent,settings_snapshot=settings,workflow=context['processing']['workflow'])
+            run=controller.execute(prompt,config,mode=selected_mode,response_kind=CHAT_FORMAT,context=context,turn_id=turn,parent=parent,settings_snapshot=settings,workflow='direct' if context.get('manual_operation') else context['processing']['workflow'])
         result=conversation_view(memory,record,run)
     except Exception as error:
         record['outcome']={'status':'model-failed','answer':None,'generation':None,'errors':[(str(error) or type(error).__name__+' in request preparation')[:1000]],'message':'The local model response could not be completed.','failure':{'code':getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','request-preparation'),'restart_required':bool(app.transport and not app.transport.qualified)}}
@@ -645,7 +675,7 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None):
     return result
 
 
-def chat(app,question,*,request_id=None,semantic=False,scope=None,resume=None,mode=None,parent=None):
+def chat(app,question,*,request_id=None,semantic=False,scope=None,resume=None,mode=None,parent=None,manual=False):
     from vector_core.reasoning import request,processing
     if resume or parent:
         prior=app.model_controller.get(resume or parent)
@@ -653,5 +683,5 @@ def chat(app,question,*,request_id=None,semantic=False,scope=None,resume=None,mo
     else:
         decision=request(question)
         native=decision['kind']!='summarize' and not (decision['kind']=='retrieve' and not decision.get('implicit')) and not (semantic and processing(question)['task_type']!='conversation')
-    if native:return text_chat(app,question,request_id=request_id,resume=resume,mode=mode,parent=parent)
+    if native:return text_chat(app,question,request_id=request_id,resume=resume,mode=mode,parent=parent,manual=manual)
     return evidence_chat(app,question,request_id=request_id,semantic=semantic,scope=scope,resume=resume,mode=mode,parent=parent)

@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory() as folder:
 assert PRIMARY==('Home / Chat','Projects','History') and len(SECONDARY)==5
 assert s.hamburger.cget('text')=='☰' and not s.menu_open and not s.menu.winfo_ismapped()
 assert app.planning_enabled.get() is False and app.semantic_enabled.get() is False
-assert 'unavailable' in s.model_state.get().lower()
+assert app.mode_catalog['available'] is False and 'runtime stopped' in s.model_state.get().lower()
 assert all(w.winfo_class()!='TNotebook' for w in root.winfo_children())
 app.question.insert(0,'An unsent\nmultiline draft');draft=app.question.get()
 s.toggle_menu();root.update();assert s.menu.winfo_ismapped();s.menu_focus(1);s.hide_menu();assert not s.menu_open

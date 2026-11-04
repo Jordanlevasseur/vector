@@ -16,10 +16,13 @@ def cancel(signum,frame):
 
 def main():
     global busy
-    parser=argparse.ArgumentParser();parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile')
+    parser=argparse.ArgumentParser();parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile');parser.add_argument('--no-inference',action='store_true')
     args=parser.parse_args();transport=None;startup_error=None
     signal.signal(signal.SIGUSR1,cancel)
-    if args.models_directory or args.managed:
+    if not args.no_inference and (args.models_directory or args.managed or args.runtime_profile or args.data_dir is None):
+        print(json.dumps({'startup_progress':'Starting local AI: verifying model files and qualifying isolation. This can take minutes on this disk; accuracy scores do not affect startup.'}),flush=True)
+    if args.no_inference:startup_error='Storage-only session explicitly requested (--no-inference).'
+    elif args.models_directory or args.managed:
         busy=True
         try:
             from vector_core.worker_launcher import launch,launch_managed
@@ -43,6 +46,15 @@ def main():
     application=None
     try:
         application=Application(Memory(Config.load(data_dir=args.data_dir)),transport,startup_error);application.policy=policy
+        application.runtime_profile=args.runtime_profile
+        try:
+            from vector_core.worker_launcher import read_runtime_profile
+            from vector_core.models import installed_catalog
+            settings=read_runtime_profile(args.runtime_profile)
+            roots=settings['model_directories'] if settings else ([args.models_directory] if args.models_directory else [])
+            application.installed_models=installed_catalog(roots)
+        except (ValueError,OSError,RuntimeError) as error:
+            application.startup_error=(application.startup_error+'; ' if application.startup_error else '')+'Local catalog: '+str(error)
         signal.signal(signal.SIGUSR1,cancel)
         for raw in iter(lambda:sys.stdin.buffer.readline(65537),b''):
             if len(raw)>65536 or not raw.endswith(b'\n'):raise ValueError('Desktop request exceeds framing limit.')

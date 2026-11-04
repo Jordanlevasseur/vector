@@ -35,6 +35,11 @@ class Client:
         if b'\n' not in self.input and self.process.poll() is not None:raise RuntimeError('Application backend stopped. Restart VECTOR; committed data remains recoverable.')
         if b'\n' in self.input:
             raw,self.input=self.input.split(b'\n',1);response=json.loads(raw)
+            if isinstance(response,dict) and set(response)=={'startup_progress'}:
+                label=response['startup_progress']
+                if not isinstance(label,str) or len(label)>500:raise RuntimeError('Invalid startup progress frame.')
+                if self.on_progress:self.on_progress({'phase':'startup','label':label})
+                return
             if response.get('initialization_error'):raise RuntimeError('VECTOR startup blocked: '+str(response['result']))
             if not self.pending or response.get('id')!=self.pending[0]:raise RuntimeError('Application response identity mismatch.')
             if 'progress' in response:
@@ -86,6 +91,7 @@ def bootstrap(args):
     if args.data_dir:command+=['--data-dir',args.data_dir]
     if args.models_directory:command+=['--models-directory',args.models_directory]
     if args.managed:command+=['--managed']
+    if getattr(args,'no_inference',False):command+=['--no-inference']
     if getattr(args,'runtime_profile',None):command+=['--runtime-profile',args.runtime_profile]
     process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,bufsize=0)
     from vector_core.security import activate
@@ -151,7 +157,14 @@ class Desktop:
         self.tool_form=ttk.Frame(tab);self.tool_form.pack(fill='x');self.tool_inputs={};self.tool_fields()
         ttk.Button(tab,text='Run calculation',command=self.run_tool).pack(anchor='w',pady=8)
         self.tool_result=ScrolledText(tab,height=12,wrap='word');self.tool_result.pack(fill='both',expand=True)
-        tab=self.tabs['Settings'];self.model_status=tk.StringVar(value='No model availability assumed');ttk.Label(tab,textvariable=self.model_status,wraplength=950).pack(anchor='w')
+        tab=self.tabs['Settings'];ttk.Label(tab,text='Development Mode — manual operation does not depend on accuracy or release readiness.').pack(anchor='w')
+        runtime=ttk.LabelFrame(tab,text='Local AI startup / memory',padding=6);runtime.pack(fill='x')
+        self.experimental_memory=tk.BooleanVar(value=False);ttk.Checkbutton(runtime,text='Experimental memory estimates (user controlled)',variable=self.experimental_memory).pack(anchor='w')
+        line=ttk.Frame(runtime);line.pack(fill='x');ttk.Label(line,text='Kernel memory cap (MiB,256–2048)').pack(side='left');self.runtime_memory=ttk.Entry(line,width=8);self.runtime_memory.insert(0,'1536');self.runtime_memory.pack(side='left',padx=5)
+        self.runtime_apply=ttk.Button(line,text='Save startup options',command=self.save_runtime_options);self.runtime_apply.pack(side='left')
+        ttk.Label(runtime,text='Experimental estimates can cause crashes or resource exhaustion. Kernel limits and offline isolation remain enforced. Close and reopen VECTOR after saving.',wraplength=900).pack(anchor='w')
+        self.runtime_notice=tk.StringVar();ttk.Label(runtime,textvariable=self.runtime_notice,wraplength=900).pack(anchor='w')
+        self.model_status=tk.StringVar(value='No model availability assumed');ttk.Label(tab,textvariable=self.model_status,wraplength=950).pack(anchor='w')
         bar=ttk.Frame(tab);bar.pack(fill='x',pady=8);self.model=tk.StringVar();self.model_box=ttk.Combobox(bar,textvariable=self.model,width=30,state='readonly');self.model_box.pack(side='left')
         self.model_limits={}
         for key,default in [('context',2048),('output',256),('timeout',30)]:
@@ -205,11 +218,16 @@ class Desktop:
         if self.client.pending:
             self.dialog.showinfo('Operation running','Wait for the current operation or cancel it. Your question remains in the input field.');return
         self.shell.history_rows=[];self.shell.history_cursor=0
-        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'request_id':uuid4().hex},self.answer)
+        self.question.delete(0,'end');self.show_chat('You: '+question);self.call('ask',{'question':question,'semantic':self.semantic_enabled.get(),'planning':self.planning_enabled.get(),'manual':self.manual_enabled.get(),'request_id':uuid4().hex},self.answer)
     def answer(self,record):
         if record.get('model_run'):
             self.active_response=record;self.active_planning=None;outcome=record['outcome'];self.show_chat('VECTOR: '+outcome['message'])
             if outcome.get('model_text'):self.show_chat(outcome['model_text'])
+            for part in outcome.get('partial_responses',[]):self.show_chat('Completed '+part['phase']+' from '+part['model']+' (overall run incomplete):\n'+part['text'])
+            if outcome.get('partial_text'):self.show_chat('Partial actual model response (incomplete):\n'+outcome['partial_text'])
+            for note in outcome.get('quality_observations',[]):self.show_chat('Quality note: '+note)
+            warnings=(outcome.get('generation') or {}).get('resources',{}).get('experimental_advisories',[])
+            if warnings:self.show_chat('Experimental memory warning: '+'; '.join(warnings))
             if record.get('checked'):self.show_chat('Independent calculation check:\n'+self.shell.document_text(record['checked']))
             failure=outcome.get('failure') or {}
             if failure.get('restart_required'):self.show_chat('The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
@@ -316,7 +334,7 @@ class Desktop:
         appearance=result.get('appearance') or {}
         self.shell.reduced.set(appearance.get('reduced_motion',False) or os.environ.get('VECTOR_REDUCED_MOTION')=='1');self.shell.core.state(motion=not self.shell.reduced.get())
         inference=result['inference']
-        self.model_status.set('Isolated local runtime qualified. Select a model; generated answers remain unverified.' if inference.get('runtime_version') else 'Local AI unavailable: '+str(inference.get('reason','No worker selected.'))[:350])
+        self.model_status.set('Development Mode: isolated runtime started. Select any installed model for manual inference.' if inference.get('runtime_version') else 'Local runtime not started: '+str(inference.get('reason','No worker selected.'))[:1200])
         self.active_project=result['session']['project_id']
         self.project_status.set('Active project: '+str(self.active_project) if self.active_project else 'No active project. Global memory remains available.')
         configuration=result['generation'];self.model.set(configuration['model'])
@@ -332,7 +350,8 @@ class Desktop:
     def mode_status(self,result):
         from vector_core.model_routing import MODES
         self.mode_catalog=result;self.model_mode.set(MODES.get(result['mode'],'Choose model mode'));self.default_mode.set(MODES.get(result['default_mode'],'Choose model mode'))
-        self.shell.model_state.set(MODES.get(result['mode'],'Model not selected')+(' • offline runtime ready' if result.get('available') else ' • AI unavailable'))
+        self.shell.model_state.set(MODES.get(result['mode'],'Select a model')+(' • Development • runtime ready' if result.get('available') else ' • runtime stopped; see Local AI / memory'))
+        if not result.get('available'):self.model_status.set('Runtime diagnostic: '+str(result.get('reason','No qualified local runtime.'))[:1800])
         current=next((m for m in result['modes'] if m['id']==result['mode']),None)
         if current and current.get('resource_blocked'):self.shell.model_state.set(MODES[result['mode']]+' • resource blocked')
         if result.get('resources',{}).get('resource_notice'):self.model_status.set(result['resources']['resource_notice'])
@@ -344,6 +363,20 @@ class Desktop:
     def selected_mode_id(self,value):
         from vector_core.model_routing import MODES
         return next((key for key,label in MODES.items() if label==value),None)
+    def open_runtime_options(self):
+        self.shell.internal('Settings')
+        def shown(result):
+            settings=result.get('settings')
+            if settings:
+                self.experimental_memory.set(settings.get('experimental_memory',False));self.runtime_memory.delete(0,'end');self.runtime_memory.insert(0,str(settings['memory_bytes']//1048576))
+            self.runtime_notice.set(result.get('startup_error') or 'Startup options are applied only after close/reopen and fresh isolation qualification.')
+        self.call('runtime_options_get',{},shown)
+    def save_runtime_options(self):
+        try:memory=int(self.runtime_memory.get())
+        except ValueError:self.dialog.showerror('Memory cap','Enter an integer from256to2048MiB.');return
+        experimental=self.experimental_memory.get()
+        if experimental and not self.dialog.askyesno('Experimental memory','Allow attempts despite conservative memory estimates and pressure warnings? Crashes and resource exhaustion are possible. Kernel memory/pids/CPU limits, zero worker swap and offline isolation remain enforced. Close and reopen VECTOR to apply.'):return
+        self.call('runtime_options_set',{'memory_mib':memory,'experimental':experimental,'acknowledged':experimental},lambda result:self.runtime_notice.set(result['message']))
     def change_mode(self,event=None):
         mode=self.selected_mode_id(self.model_mode.get())
         if mode:self.call('model_mode_set',{'mode':mode},lambda result:self.call('model_modes',{},self.mode_status))
@@ -661,11 +694,20 @@ class Desktop:
         self.shell.close();self.client.close();self.root.destroy()
 
 
+def configure_startup(args):
+    if args.no_inference:
+        if args.models_directory or args.managed or args.runtime_profile:raise ValueError('Storage-only startup cannot also request a model runtime.')
+    elif not args.models_directory and not args.managed and not args.runtime_profile:
+        profile=Path.home()/'.config/vector/local-inference.json'
+        if profile.exists():args.runtime_profile=str(profile)
+    return args
+
+
 def main(argv=None):
-    parser=argparse.ArgumentParser(description='VECTOR offline desktop');parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--choose-models',action='store_true');parser.add_argument('--choose-data',action='store_true');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile')
+    parser=argparse.ArgumentParser(description='VECTOR offline development desktop');parser.add_argument('--data-dir');parser.add_argument('--models-directory');parser.add_argument('--choose-models',action='store_true');parser.add_argument('--choose-data',action='store_true');parser.add_argument('--managed',action='store_true');parser.add_argument('--runtime-profile');parser.add_argument('--no-inference',action='store_true',help='Explicit storage-only session.')
     args=parser.parse_args(argv)
     try:
-        root,client=bootstrap(args)
+        configure_startup(args);root,client=bootstrap(args)
         if root is None:return 0
         Desktop(root,client,managed=args.managed);root.mainloop();return 0
     except Exception as error:

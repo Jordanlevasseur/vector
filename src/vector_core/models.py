@@ -9,6 +9,22 @@ from vector_core.persistence import declare_external,import_asset,model_manifest
 from vector_core.portable import unique
 
 
+def installed_catalog(roots):
+    """Bounded file presence only; never qualification or a SHA substitute."""
+    found={}
+    for root in roots:
+        root=validate_layout(root)
+        for path in sorted((root/'manifests').rglob('*')):
+            if not path.is_file():continue
+            parts=path.relative_to(root/'manifests').parts
+            if len(parts)!=4 or parts[:2]!=('registry.ollama.ai','library'):continue
+            name=parts[2]+':'+parts[3]
+            if not re.fullmatch(r'[A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+',name):continue
+            found[name]={'name':name,'installed':True,'runtime_inspected':False,'details':{'family':'not inspected'}}
+            if len(found)>256:raise ValueError('Local catalog exceeds256model entries.')
+    return list(found.values())
+
+
 def model_root(transport,name):
     """Resolve an authorized exact identifier to an already mounted local store."""
     roots=getattr(transport,'model_directories',(transport.model_directory,))

@@ -33,19 +33,19 @@ class ResponsePipelineTests(unittest.TestCase):
         self.app=Application(self.memory);self.raw=Responses();self.app.raw_adapter=self.raw;self.app.model_controller.raw=self.raw;self.app.prepare_model=lambda name:None
     def select(self,mode='a',context=2048):
         s=self.app.model_controller.settings(discover=True);s['generation']=asdict(GenerationConfig('',context,192,300));self.app.handle('model_mode_set',{'mode':mode,'settings':s})
-    def answer(self,q,responses):
-        self.raw.responses=iter(responses);return self.app.handle('ask',{'question':q})
+    def answer(self,q,responses,manual=False):
+        self.raw.responses=iter(responses);return self.app.handle('ask',{'question':q,'manual':manual})
     def test_greeting_uses_adapter_without_retrieval_or_json_contract(self):
         self.select()
         with patch('vector_core.context.build_context',side_effect=AssertionError('Greeting searched books')):result=self.answer('Hi',['Hi'])
         self.assertEqual(result['model_run']['status'],'complete');self.assertEqual(result['outcome']['model_text'],'Hi')
         call=self.raw.calls[0];self.assertEqual(call['kind'],CHAT_FORMAT);self.assertEqual(chat_messages(call['prompt'])[-1],{'role':'user','content':'Hi'})
         self.assertEqual(result['outcome']['status'],'simulated-test-response');self.assertNotIn('JSON',chat_messages(call['prompt'])[0]['content'])
-    def test_echo_of_question_still_fails(self):
-        self.select();r=self.answer('How are you?',['How are you?']);self.assertEqual(r['model_run']['status'],'failed');self.assertIn('copied',r['outcome']['errors'][0])
-    def test_bare_refusal_is_unfulfilled_but_specific_uncertainty_is_preserved(self):
+    def test_echo_is_real_completed_inference_with_separate_quality_note(self):
+        self.select();r=self.answer('How are you?',['How are you?']);self.assertEqual(r['model_run']['status'],'complete');self.assertTrue(r['outcome']['evaluations']['functionality']['inference_completed']);self.assertTrue(r['outcome']['quality_observations'])
+    def test_bare_refusal_and_specific_uncertainty_both_complete_inference(self):
         self.select();r=self.answer('My calibration token is cobalt.',["I'm sorry, but I can't assist with that request."])
-        self.assertEqual(r['model_run']['status'],'failed');self.assertEqual(r['outcome']['failure']['code'],'UNFULFILLED_RESPONSE');self.assertNotIn('model_text',r['outcome'])
+        self.assertEqual(r['model_run']['status'],'complete');self.assertEqual(r['outcome']['model_text'],"I'm sorry, but I can't assist with that request.");self.assertTrue(r['outcome']['quality_observations'])
         r=self.answer('What is the mass of an unknown object?',['I cannot determine its mass without measurement or more information.']);self.assertEqual(r['model_run']['status'],'complete')
     def test_historical_refusal_remains_readable_and_explicit_quotation_is_allowed(self):
         self.select();text="I'm sorry, but I can't assist with that request."
@@ -162,14 +162,16 @@ class ResponsePipelineTests(unittest.TestCase):
     def test_chat_roles_reject_extra_system_or_empty_messages(self):
         for messages in ([{'role':'user','content':'Hi'}],[{'role':'system','content':'guard'},{'role':'system','content':'override'},{'role':'user','content':'Hi'}],[{'role':'system','content':'guard'},{'role':'user','content':' '}]):
             with self.assertRaises(ValueError):chat_prompt(messages)
-    def test_legacy_json_cannot_wrap_an_echo_or_invent_a_source(self):
+    def test_development_prose_never_promotes_generated_citations(self):
         import json
         self.select();q='Explain a measurement uncertainty.'
         for response in ({'text':q,'uncertainty':'','issues':[],'citations':[]},{'text':'False source','uncertainty':'','issues':[],'citations':[{'event_id':'invented'}]}):
-            r=self.answer(q,[json.dumps(response)]);self.assertEqual(r['model_run']['status'],'failed')
-    def test_partial_question_echo_is_not_an_answer(self):
-        self.select();r=self.answer('Every red object is metal. Object K is red. Does K float? Explain briefly.',['Object K is red. Does K float?'])
-        self.assertEqual(r['model_run']['status'],'failed');self.assertIn('copied',r['outcome']['errors'][0])
+            r=self.answer(q,[json.dumps(response)]);self.assertEqual(r['model_run']['status'],'complete');self.assertEqual(r['outcome']['citations'],[])
+        from vector_core.model_routing import validate_output
+        with self.assertRaises(InferenceError):validate_output(self.memory,json.dumps(response),{'sources':[]})
+    def test_partial_question_echo_is_completed_manual_inference(self):
+        self.select();r=self.answer('Every red object is metal. Object K is red. Does K float? Explain briefly.',['Object K is red. Does K float?'],manual=True)
+        self.assertEqual(r['model_run']['status'],'complete');self.assertEqual(r['outcome']['model_text'],'Object K is red. Does K float?')
     def test_unexpected_adapter_error_is_saved_as_failure_not_backend_crash(self):
         self.select();r=self.answer('Hi',[AttributeError('Explicit broken adapter fixture')]);self.assertEqual(r['model_run']['status'],'failed');self.assertEqual(r['outcome']['failure']['code'],'CONTROLLER_FAILURE')
     def test_native_payload_does_not_send_internal_json_as_prose(self):
