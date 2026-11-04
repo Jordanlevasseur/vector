@@ -13,14 +13,14 @@ Desktop Send defaults to a direct manual response. The existing optional staged
 reasoning and evidence/investigation workflows remain available. Both retains
 independent A/B responses, reciprocal review and synthesis. Model output remains
 unverified; literal-math discrepancies and other quality observations are recorded
-separately and do not stop subsequent requests. New native chat validatorversion3
-removes quality rejection. Historical validators1/2 remain replayable. Untrusted
+separately and do not stop subsequent requests. New native chat validator version 3
+removes quality rejection. Historical validators 1/2 remain replayable. Untrusted
 JSON/citations displayed as prose never become trusted source links or operations;
 structured evidence validators, hashes and authorization remain enforced.
 
 Local AI / memory opens the startup options. Experimental memory is unchecked
 until explicitly chosen by the user. Saving it requires a warning acknowledgment
-about crashes and resource exhaustion. The owner selects a bounded256–2048MiB
+about crashes and resource exhaustion. The owner selects a bounded 256–2048 MiB
 kernel memory ceiling. Apply saves only this choice and the experimental flag to
 the private, symlink-free owner profile, preserving authorized model directories,
 pids settings and file permissions. Close/reopen VECTOR to apply: core processes
@@ -32,9 +32,9 @@ PSI/swap-out stops. Explicit experimental mode allows actual attempts despite
 estimated size/available-memory mismatch; sustained PSI and host swap-out become
 recorded advisories. It does not disable kernel memory.max, zero worker swap,
 pids.max, CPU quota, namespace/user-namespace restrictions, seccomp, read-only
-mounts, SHA-256 checks or network denial. The hard384MiB observed host reserve,
+mounts, SHA-256 checks or network denial. The hard 384 MiB observed host reserve,
 host OOM-counter stop and monitor-failure stop remain. Private Ollama loading is
-bounded240seconds in experimental mode; request timeouts still apply. No guarantee
+bounded to 240 seconds in experimental mode; request timeouts still apply. No guarantee
 of successful loading or freedom from crashes is implied.
 
 The normal desktop entry point now loads the existing inference profile even
