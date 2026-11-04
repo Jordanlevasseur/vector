@@ -379,7 +379,9 @@ class Desktop:
         if adaptive:
             active=', '.join(adaptive.get('active_models',{}).values())
             self.shell.model_state.set(adaptive['label']+' • '+active+(' • protected runtime ready' if adaptive.get('runtime_qualified') else ' • starts when used'))
-            self.model_status.set(adaptive.get('reason') or 'Local model stores already approved. No internet permission. Protected inference qualifies on demand; model accuracy never blocks manual use.')
+            notice=(adaptive.get('plan') or {}).get('reason') if adaptive['selection']['mode']=='auto' else None
+            if adaptive.get('controller_alive') is False:self.shell.model_state.set(adaptive['label']+' • controller stopped; reopen VECTOR')
+            self.model_status.set(adaptive.get('reason') or notice or 'Local model stores already approved. No internet permission. Protected inference qualifies on demand; model accuracy never blocks manual use.')
         if result.get('resources',{}).get('resource_notice'):self.model_status.set(result['resources']['resource_notice'])
         settings=result['settings'];self.synthesis_role.set(settings['synthesis']);self.extra_reviews.set(settings['extra_reviews'])
         names=[row['name'] for row in result['models']]

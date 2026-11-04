@@ -111,6 +111,9 @@ def plan(models,host,*,context_required=2048,output_tokens=192,observations=(),e
         if estimate['estimated_bytes']>cap and model['name'] not in requested:
             rejected.append({'name':model['name'],'reason':'Conservative memory recommendation exceeds the safe automatic budget. Manual selection remains possible within enforced limits.','estimate':estimate});continue
         candidates.append((model,estimate))
+    pressure=(host.get('pressure') or {}).get('full',{}).get('avg10')
+    pressure_preference=not requested and isinstance(pressure,(int,float)) and pressure>=30
+    if pressure_preference:candidates.sort(key=lambda row:row[1]['estimated_bytes'])
     if requested:
         selected=[row for row in candidates if row[0]['name'] in requested]
         if {row[0]['name'] for row in selected}!=requested:raise RuntimeError('Selected exact model is unavailable or incompatible; no automatic substitution: '+json.dumps(rejected))
@@ -119,4 +122,5 @@ def plan(models,host,*,context_required=2048,output_tokens=192,observations=(),e
     # The registry/plan accepts more than two participants; the existing desktop
     # collaboration executor currently consumes A/B sequentially. No unqualified
     # parallel/GPU execution is silently enabled by this recommendation.
-    return {'version':1,'selection':'manual' if requested else 'auto','models':[m['name'] for m,e in selected],'participants':[{'model':m['name'],'digest':m.get('digest'),'estimate':e} for m,e in selected],'execution':'sequential','memory_bytes':cap,'host_reserve_bytes':reserve,'tasks':tasks,'cpu_threads':threads,'cpu_quota_percent':max(1,int(cores*100)),'context_tokens':context_required,'output_tokens':min(output_tokens,context_required//2),'experimental':experimental,'hardware_fingerprint':host['fingerprint'],'rejected':rejected,'reason':'Best-ranked installed candidate within the protected CPU budget; actual runtime compatibility remains a launch/inference gate. Accuracy scores never block inference.','gpu_enabled':False}
+    return {'version':1,'selection':'manual' if requested else 'auto','models':[m['name'] for m,e in selected],'participants':[{'model':m['name'],'digest':m.get('digest'),'estimate':e} for m,e in selected],'execution':'sequential','memory_bytes':cap,'host_reserve_bytes':reserve,'tasks':tasks,'cpu_threads':threads,'cpu_quota_percent':max(1,int(cores*100)),'context_tokens':context_required,'output_tokens':min(output_tokens,context_required//2),'experimental':experimental,'hardware_fingerprint':host['fingerprint'],'rejected':rejected,'reason':('Current full-memory pressure is high; AUTO prefers the lowest-memory viable installed model. Manual selection remains available.' if pressure_preference else 'Best-ranked installed candidate within the protected CPU budget; actual runtime compatibility remains a launch/inference gate. Accuracy scores never block inference.'),'gpu_enabled':False,'pressure_preference':pressure_preference,'observed_full_pressure_avg10':pressure}
+

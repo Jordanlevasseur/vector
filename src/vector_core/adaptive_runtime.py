@@ -14,7 +14,7 @@ class LocalAdapter:
     simulated=False
     def __init__(self,manager):self.manager=manager;self.transport=manager.proxy
     def discover(self):
-        return {'available':any(m.get('compatible') is not False for m in self.manager.models),'models':self.manager.models,'runtime_qualified':self.transport.qualified,'reason':'Approved local models discovered. Protected runtime starts when used; no model is loaded for browsing.'}
+        return {'available':self.manager.controller_alive() and any(m.get('compatible') is not False for m in self.manager.models),'models':self.manager.models,'runtime_qualified':self.transport.qualified,'reason':'Approved local models discovered. Protected runtime starts when used; no model is loaded for browsing.' if self.manager.controller_alive() else 'Protected controller exited; reopen VECTOR to start a fresh controller. Installed models and saved work are preserved.'}
     def generate(self,prompt,config,cancellation=None,*,response_kind=None):
         if not self.transport.qualified:raise InferenceError('Execution has not qualified the protected worker.',code='WORKER_CLOSED')
         return OllamaAdapter(self.transport).generate(prompt,config,cancellation,response_kind=response_kind)
@@ -24,6 +24,9 @@ class AdaptiveRuntime:
         self.app=app;self.proxy=proxy;self.models=proxy.boot['models'];self.host=proxy.boot['hardware'];self.active_plan=None;self.excluded=[];self.attempts=[]
         self.observations=self._observations();self.last_selection=None
         if app.preference('default_runtime_selection') is None:put(app.memory,'preferences','default_runtime_selection',{'mode':'auto'})
+    def controller_alive(self):
+        process=getattr(self.proxy,'process',None)
+        return process is None or process.poll() is None
     def _observations(self):
         import json
         rows=self.app.memory.db.execute("SELECT payload FROM persistent_records WHERE contract='capabilities' AND record_key LIKE 'local-runtime:%' ORDER BY rowid DESC LIMIT 64").fetchall()
@@ -109,6 +112,7 @@ class AdaptiveRuntime:
     def catalog(self):
         try:settings=self.app.model_controller.settings();reason=None
         except (RuntimeError,ValueError,OSError) as error:settings=None;reason=str(error)
+        if not self.controller_alive():reason=self.app.startup_error or 'Protected controller exited; reopen VECTOR to start a fresh controller.'
         s=self.selection();label=AUTO_LABEL if s['mode']=='auto' else 'Manual: '+(s.get('model') or s['mode'].upper())
         actual=settings['bindings'] if settings else {}
-        return {'selection':s,'default_selection':self.app.preference('default_runtime_selection'),'label':label,'active_models':actual,'hardware':self.host,'plan':self.last_selection if self.automatic() else self.active_plan,'reason':reason,'runtime_qualified':self.proxy.qualified,'automatic_fallback':'Maximum three distinct candidates, plus one restart for a transient worker failure; cancellation and accuracy never trigger fallback.','gpu':'Detected only; existing CPU-only security policy remains enforced.'}
+        return {'controller_alive':self.controller_alive(),'selection':s,'default_selection':self.app.preference('default_runtime_selection'),'label':label,'active_models':actual,'hardware':self.host,'plan':self.last_selection if self.automatic() else self.active_plan,'reason':reason,'runtime_qualified':self.proxy.qualified,'automatic_fallback':'Maximum three distinct candidates, plus one restart for a transient worker failure; cancellation and accuracy never trigger fallback.','gpu':'Detected only; existing CPU-only security policy remains enforced.'}

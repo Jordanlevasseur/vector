@@ -104,3 +104,9 @@ class SelectorIdentityTests(unittest.TestCase):
             self.assertEqual(read_runtime_profile(path)['memory_bytes'],8192*MIB)
             p=plan([{'name':'selected:local','weight_bytes':400*MIB}],host(4,2),manual_names=['selected:local'],manual_limit=8192*MIB)
             self.assertLess(p['memory_bytes'],host(4,2)['effective_available']);self.assertFalse(p['experimental'])
+
+    def test_current_pressure_prefers_smaller_viable_auto_but_manual_remains_exact(self):
+        m=[{'name':'small:local','weight_bytes':400*MIB,'parameter_count':500000000},{'name':'large:local','weight_bytes':1400*MIB,'parameter_count':2000000000}]
+        h=host(4,3);self.assertEqual(plan(m,h)['models'],['large:local'])
+        h['pressure']={'full':{'avg10':51.2}};p=plan(m,h);self.assertEqual(p['models'],['small:local']);self.assertTrue(p['pressure_preference'])
+        manual=plan(m,h,manual_names=['large:local']);self.assertEqual(manual['models'],['large:local']);self.assertFalse(manual['pressure_preference'])

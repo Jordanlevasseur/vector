@@ -116,3 +116,8 @@ class AdaptiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Invalid question'):self.app.handle('ask',{'question':question,'manual':True})
         self.assertEqual(fixture.calls,[])
         self.assertEqual(self.memory.db.execute("SELECT count(*) FROM persistent_records WHERE contract='conversations'").fetchone()[0],0)
+
+    def test_actual_controller_exit_is_unavailable_without_hiding_installed_models(self):
+        from unittest.mock import Mock
+        self.proxy.process=Mock();self.proxy.process.poll.return_value=2;self.app.startup_error='EXACT controller exit fixture'
+        catalog=self.app.handle('model_modes',{});self.assertFalse(catalog['available']);self.assertFalse(catalog['adaptive']['controller_alive']);self.assertEqual(catalog['adaptive']['reason'],'EXACT controller exit fixture');self.assertEqual({m['name'] for m in catalog['models']},{SMALL,LARGE});self.assertTrue(self.app.adaptive.automatic())

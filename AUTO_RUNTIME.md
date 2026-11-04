@@ -12,7 +12,7 @@ qualified backend. GPU detection does not authorize devices. Runtime limits are
 finite: memory after host reserve, zero worker swap, per-service pids/CPU caps,
 one loaded runner, task-sized context/output/time and live pressure/OOM monitoring.
 Previously measured peaks can raise estimates, never erase the weight floor.
-Functional evidence and task capabilities are distinct from accuracy evaluations.
+Functional evidence and task capabilities are distinct from accuracy evaluations. When current full-memory PSI reaches the existing30percent guard threshold, AUTO prefers the lowest-memory viable model; manual selections remain exact.
 Model size is only a provisional preference among otherwise comparable candidates;
 no claim of model quality is inferred from parameter count.
 
