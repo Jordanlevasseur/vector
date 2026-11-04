@@ -13,13 +13,17 @@ class Application:
     def generation(self):
         controller=getattr(self,'model_controller',None)
         if controller and controller.mode():
-            settings=controller.settings();role=settings['synthesis'] if controller.mode()=='both' else controller.mode()
+            try:settings=controller.settings()
+            except (RuntimeError,ValueError,OSError):
+                if not getattr(self,'adaptive',None):raise
+                return self._generation
+            role=settings['synthesis'] if controller.mode()=='both' else controller.mode()
             return replace(GenerationConfig(**settings['generation']),model=settings['bindings'].get(role,''))
         return self._generation
     @generation.setter
     def generation(self,value):self._generation=value.validate()
     def __init__(self,memory,transport=None,startup_error=None):
-        self.memory=memory;self.transport=transport;self.raw_adapter=OllamaAdapter(transport) if transport else UnavailableAdapter();self.adapter=self.raw_adapter
+        self.memory=memory;self.transport=transport;self.raw_adapter=OllamaAdapter(transport) if transport and transport.qualified else UnavailableAdapter();self.adapter=self.raw_adapter
         self.startup_error=startup_error
         self.runtime_profile=None
         self.installed_models=[]
@@ -30,12 +34,16 @@ class Application:
         self.model_controller=ModelController(self)
         if self.model_controller.mode():self.adapter=ModeAdapter(self.model_controller)
         self.prepared_models=set()
+        self.adaptive=None
+        if transport and hasattr(transport,'boot'):
+            from vector_core.adaptive_runtime import AdaptiveRuntime,LocalAdapter
+            self.adaptive=AdaptiveRuntime(self,transport);self.raw_adapter=LocalAdapter(self.adaptive);self.model_controller.raw=self.raw_adapter;self.adapter=ModeAdapter(self.model_controller);self.installed_models=self.adaptive.models
     def prepare_model(self,model):
         if model in self.prepared_models:return
         if not self.transport or not self.transport.qualified:raise ValueError(self.startup_error or 'No qualified local inference worker is available.')
         catalog=getattr(self.model_controller,'_request_catalog',None)
         known=next((m for m in (catalog or self.raw_adapter.discover()).get('models',[]) if m.get('name')==model),None)
-        if known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max'] and not self.transport.report.get('experimental_memory'):
+        if not getattr(self,'adaptive',None) and known and type(known.get('size')) is int and known['size']>=self.transport.report['memory_max'] and not self.transport.report.get('experimental_memory'):
             error=ValueError('RESOURCE_BLOCKED: selected model assets exceed the qualified worker memory ceiling. A larger qualified profile and sufficient host RAM are required; loading was not attempted.');error.code='RESOURCE_LIMIT';error.stage='resource-protection';raise error
         if getattr(self.transport,'managed',False):
             from vector_core.models import materialize,managed_catalog
@@ -70,6 +78,12 @@ class Application:
         if self.model_controller.mode():
             if not isinstance(self.adapter,ModeAdapter):self.adapter=ModeAdapter(self.model_controller)
         elif isinstance(self.adapter,ModeAdapter):self.adapter=self.raw_adapter
+        if operation=='runtime_stop':
+            if not self.adaptive:raise ValueError('Adaptive runtime controller unavailable.')
+            self.transport.close();return {'stopped':True,'cleanup_verified':True,'restart_on_next_request':True}
+        if operation=='runtime_selection_set':
+            if not self.adaptive:raise ValueError('Hardware-adaptive controller unavailable: '+str(self.startup_error))
+            return self.adaptive.select(p['mode'],p.get('scope','conversation'),p.get('model'))
         if operation=='model_modes':return self.model_controller.catalog()
         if operation=='model_mode_set':
             from vector_core.model_routing import ModeAdapter
@@ -78,7 +92,7 @@ class Application:
         if operation=='model_run':return self.model_controller.get(p['id'])
         if operation in {'model_resume','model_continue'}:
             if p.get('approved') is not True:raise PermissionError('Explicit continuation approval required.')
-            if self.transport and not self.transport.qualified:raise ValueError('The inference worker is closed. Restart VECTOR to qualify a new worker, reopen this conversation, then explicitly resume or continue. Completed work is preserved.')
+            if not self.adaptive and self.transport and not self.transport.qualified:raise ValueError('The inference worker is closed. Restart VECTOR to qualify a new worker, reopen this conversation, then explicitly resume or continue. Completed work is preserved.')
             from vector_core.model_routing import chat
             run=self.model_controller.get(p['id'])
             if run['conversation_id']!=self.session['conversation_id'] or run['project_id']!=self.session['project_id']:raise ValueError('Open the original conversation/project before continuing.')
@@ -169,6 +183,7 @@ class Application:
                     'inference':self.transport.report if self.transport and self.transport.qualified else {'available':False,'reason':self.startup_error or 'No isolated worker selected.'},
                     'session':self.session,'generation':asdict(self._generation),'effective_generation':asdict(self.generation),'model_mode':self.model_controller.mode(),'appearance':self.preference('appearance'),'build_mode':'development','evaluations':{'functionality':'Runtime and response delivery only; accuracy never gates manual use.','accuracy':'Recorded separately; unverified unless independently checked.','production':{'release_ready':False,'blocks_manual_operation':False}},'release_ready':False}
         if operation=='models':
+            if self.adaptive:return self.raw_adapter.discover()
             if self.transport and self.transport.qualified:return self.adapter.discover()
             return {'models':self.installed_models,'available':False,'reason':self.startup_error or 'Local runtime stopped. Close and reopen VECTOR to start it again; saved work remains available.'}
         if operation=='select_model':

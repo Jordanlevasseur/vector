@@ -42,7 +42,7 @@ def generation_payload(config,prompt,response_kind):
                       'proposal-text-v1':None}.get(response_kind,'json'),
             'keep_alive':0,'options':{'num_ctx':config.context_tokens,
                 'num_predict':config.output_tokens,'temperature':config.temperature,
-                'seed':config.seed,'num_thread':2,'num_batch':32,'use_mmap':True}}
+                'seed':config.seed,'num_thread':int(os.environ.get('VECTOR_CPU_THREADS','2')),'num_batch':32,'use_mmap':True}}
     if response_kind==CHAT_FORMAT:
         payload.pop('prompt');payload.pop('format')
         payload['messages']=chat_messages(prompt)
@@ -52,7 +52,7 @@ def generation_payload(config,prompt,response_kind):
     return payload
 
 
-def restrict():
+def restrict(*,socket_family=socket.AF_INET):
     libc=ctypes.CDLL('libc.so.6',use_errno=True);lib=ctypes.CDLL('libseccomp.so.2',use_errno=True)
     lib.seccomp_init.argtypes=[ctypes.c_uint32];lib.seccomp_init.restype=ctypes.c_void_p
     lib.seccomp_syscall_resolve_name.argtypes=[ctypes.c_char_p];lib.seccomp_syscall_resolve_name.restype=ctypes.c_int
@@ -66,7 +66,7 @@ def restrict():
         for name in ('socketpair','ptrace','process_vm_writev','process_vm_readv','pidfd_getfd','bpf','unshare','setns','mount','umount2','io_uring_setup','io_uring_enter','io_uring_register'):
             number=lib.seccomp_syscall_resolve_name(name.encode())
             if number<0 or lib.seccomp_rule_add_array(ctx,0x50000|errno.EPERM,number,0,None):raise RuntimeError('Worker filter rule failed: '+name)
-        comparison=Compare(0,1,socket.AF_INET,0)  # SCMP_CMP_NE: private IPv4 only.
+        comparison=Compare(0,1,socket_family,0)  # SCMP_CMP_NE: private IPv4 only.
         if lib.seccomp_rule_add_array(ctx,0x50000|errno.EPERM,lib.seccomp_syscall_resolve_name(b'socket'),1,ctypes.byref(comparison)) or lib.seccomp_load(ctx):
             raise RuntimeError('Worker socket filter failed.')
     finally:lib.seccomp_release(ctx)
@@ -205,6 +205,12 @@ def main():
                 elif operation=='discover':
                     phase='model-discovery'
                     result=local_api('/api/tags',timeout=55);result['available']=True;result['runtime_version']=version
+                elif operation=='inspect':
+                    name=request['model']
+                    if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z0-9_.:/-]{1,200}',name) or '..' in name:raise ValueError('Invalid model identity.')
+                    if name not in {m.get('name') for m in local_api('/api/tags').get('models',[])}:raise ValueError('Model not installed; no remote request allowed.')
+                    metadata=local_api('/api/show',{'model':name},timeout=30)
+                    result={'model':name,'capabilities':metadata.get('capabilities',[]),'model_info':{k:v for k,v in metadata.get('model_info',{}).items() if k.endswith(('.context_length','.architecture'))},'details':metadata.get('details',{}),'runtime_inspected':True}
                 elif operation=='generate':
                     config=GenerationConfig(**request['config']).validate()
                     if not re.fullmatch(r'[A-Za-z0-9_.:/-]{1,200}',config.model) or '..' in config.model:raise ValueError('Invalid selected model.')

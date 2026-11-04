@@ -182,8 +182,11 @@ class ModeAdapter:
 
 class ModelController:
     def __init__(self,app):self.app=app;self.memory=app.memory;self.raw=app.raw_adapter;self.progress=None;self.physical_calls=0
-    def mode(self):return self.app.preference('model_mode:'+self.app.session['conversation_id']) or self.app.preference('default_model_mode')
+    def mode(self):
+        if getattr(self.app,'adaptive',None):return self.app.adaptive.execution_mode()
+        return self.app.preference('model_mode:'+self.app.session['conversation_id']) or self.app.preference('default_model_mode')
     def discovery(self):
+        if getattr(self.app,'adaptive',None):return self.raw.discover()
         if self.app.transport is not None and not self.app.transport.qualified:
             return {'available':False,'models':getattr(self.app,'installed_models',[]),'reason':self.app.startup_error or 'Local runtime stopped after a loading/inference failure. Close and reopen VECTOR; use Local AI / memory for startup options.'}
         result=self.raw.discover()
@@ -197,6 +200,7 @@ class ModelController:
     def settings(self,discover=False,models=None):
         saved=self.app.preference('model_collaboration')
         settings=validate_settings(saved) if saved else {'bindings':{},'synthesis':'b','extra_reviews':0,'generation':asdict(GenerationConfig('',2048,192,300))}
+        if getattr(self.app,'adaptive',None):return self.app.adaptive.settings(settings)
         if models is not None or discover and set(settings['bindings'])!={'a','b'}:
             for row in models if models is not None else self.discovery().get('models',[]):
                 name=row.get('name','');details=row.get('details',{});family=details.get('family','')
@@ -204,13 +208,21 @@ class ModelController:
                 if 'b' not in settings['bindings'] and name=='vector-qwen35-local:2b-q4_k_m' and (family in {'qwen35','qwen3_5'} or row.get('managed') or row.get('installed')):settings['bindings']['b']=name
         return settings
     def catalog(self):
-        discovered=self.discovery();settings=self.settings(models=discovered.get('models',[]));names={r['name'] for r in discovered.get('models',[])}
+        discovered=self.discovery()
+        try:settings=self.settings(models=discovered.get('models',[]))
+        except (RuntimeError,ValueError,OSError) as error:
+            if not getattr(self.app,'adaptive',None):raise
+            settings=validate_settings(self.app.preference('model_collaboration')) if self.app.preference('model_collaboration') else {'bindings':{},'synthesis':'a','extra_reviews':0,'generation':asdict(GenerationConfig('',2048,192,300))}
+            discovered={**discovered,'available':False,'reason':str(error)}
+        names={r['name'] for r in discovered.get('models',[])}
+        manual_settings=self.app.adaptive.manual_settings(validate_settings(self.app.preference('model_collaboration')) if self.app.preference('model_collaboration') else {'bindings':{},'synthesis':'b','extra_reviews':0,'generation':asdict(GenerationConfig('',2048,192,300))}) if getattr(self.app,'adaptive',None) else settings
         resources=getattr(self.app.transport,'report',{}) if self.app.transport else {}
-        blocked={r['name'] for r in discovered.get('models',[]) if type(r.get('size')) is int and r['size']>=resources.get('memory_max',2**63) and not resources.get('experimental_memory')}
-        return {'mode':self.mode(),'default_mode':self.app.preference('default_model_mode'),'settings':settings,'models':discovered.get('models',[]),'available':discovered.get('available',False),'reason':discovered.get('reason',self.app.startup_error),
-                'resources':resources,'modes':[{'id':m,'label':label,'available':all(settings['bindings'].get(role) in names-blocked for role in (('a','b') if m=='both' else (m,))),'resource_blocked':any(settings['bindings'].get(role) in blocked for role in (('a','b') if m=='both' else (m,)))} for m,label in MODES.items()]}
+        blocked=set() if getattr(self.app,'adaptive',None) else {r['name'] for r in discovered.get('models',[]) if type(r.get('size')) is int and r['size']>=resources.get('memory_max',2**63) and not resources.get('experimental_memory')}
+        return {'manual_settings':manual_settings,'adaptive':self.app.adaptive.catalog() if getattr(self.app,'adaptive',None) else None,'mode':self.mode(),'default_mode':self.app.preference('default_model_mode'),'settings':settings,'models':discovered.get('models',[]),'available':discovered.get('available',False),'reason':discovered.get('reason',self.app.startup_error),
+                'resources':resources,'modes':[{'id':m,'label':label,'available':all(manual_settings['bindings'].get(role) in names-blocked for role in (('a','b') if m=='both' else (m,))),'resource_blocked':any(manual_settings['bindings'].get(role) in blocked for role in (('a','b') if m=='both' else (m,)))} for m,label in MODES.items()]}
     def select(self,mode,*,scope='conversation',settings=None):
         if mode not in MODES or scope not in {'conversation','default'}:raise ValueError('Select a supported model mode and preference scope.')
+        if getattr(self.app,'adaptive',None):self.app.adaptive.select(mode,scope)
         settings=validate_settings(settings or self.settings(discover=True))
         put(self.memory,'preferences','model_collaboration',settings)
         put(self.memory,'preferences','default_model_mode' if scope=='default' else 'model_mode:'+self.app.session['conversation_id'],mode)
@@ -313,7 +325,33 @@ class ModelController:
                 p=decode(s['generation']['text'])
                 result.extend(p['issues']);result.extend([p['uncertainty']] if p['uncertainty'] else [])
         return list(dict.fromkeys(result))
-    def execute(self,prompt,config,*,mode=None,response_kind=None,context=None,turn_id=None,cancellation=None,resume=None,parent=None,deadline=None,settings_snapshot=None,workflow='direct'):
+    def execute(self,prompt,config,**options):
+        manager=getattr(self.app,'adaptive',None)
+        if not manager or not manager.automatic() or options.get('resume') or options.get('parent'):
+            return self._execute_once(prompt,config,**options)
+        manager.excluded=[];attempted=[];restarted=False
+        try:
+            while True:
+                run=self._execute_once(prompt,config,**options)
+                attempted.extend(run['settings']['bindings'].values())
+                code=run.get('failure',{}).get('code')
+                recoverable={'RESOURCE_LIMIT','KERNEL_MEMORY_LIMIT','INFERENCE_TIMEOUT','WORKER_CLOSED','WORKER_CRASH'}
+                if run['status']!='failed' or code not in recoverable:return run
+                if self.app.transport:self.app.transport.close()
+                if code in {'WORKER_CLOSED','WORKER_CRASH'} and not restarted:
+                    restarted=True
+                    if self.progress:self.progress({'phase':'recovering','label':'Transient local runtime failure; qualifying one fresh worker'})
+                else:
+                    manager.excluded=list(set(attempted))
+                    if len(manager.excluded)>=3:return run
+                    try:settings=self.settings(discover=True)
+                    except (RuntimeError,ValueError,OSError):return run
+                    options['settings_snapshot']=settings;options['mode']='a'
+                    if self.progress:self.progress({'phase':'fallback','label':'AUTO: previous runtime attempt failed; trying '+settings['bindings']['a']+' with the same complete request'})
+                options['parent']=run['id'];options['turn_id']=run['turn_id']
+        finally:manager.excluded=[]
+
+    def _execute_once(self,prompt,config,*,mode=None,response_kind=None,context=None,turn_id=None,cancellation=None,resume=None,parent=None,deadline=None,settings_snapshot=None,workflow='direct'):
         if resume:
             run=self.get(resume)
             if run['conversation_id']!=self.app.session['conversation_id'] or run['project_id']!=self.app.session['project_id']:raise ValueError('Resume the original conversation/project first.')
@@ -333,6 +371,9 @@ class ModelController:
         run['status']='running';run['error']='';self._save(run)
         planned=execution_phases(run)
         try:
+            if getattr(self.app,'adaptive',None):
+                names=[run['settings']['bindings'][r] for r in (('a','b') if run['mode']=='both' else (run['mode'],))]
+                self.app.adaptive.prepare(names,config,self.progress)
             if self.app.transport and getattr(self.app.transport,'managed',False) and self.app.transport.qualified:
                 for role in (('a','b') if run['mode']=='both' else (run['mode'],)):
                     model=run['settings']['bindings'].get(role)
@@ -406,6 +447,7 @@ class ModelController:
             if run['status']=='cancelled' and getattr(self.raw,'transport',None):self.raw.transport.close()
         self._request_catalog=None
         self._save(run)
+        if getattr(self.app,'adaptive',None):self.app.adaptive.observe(run)
         if self.progress:self.progress({'run_id':run['id'],'phase':run['status'],'label':'Complete' if run['status']=='complete' else 'Model execution '+run['status']})
         return run
 

@@ -172,10 +172,10 @@ class Desktop:
             ttk.Label(bar,text=key.title()).pack(side='left',padx=4);entry=ttk.Entry(bar,width=7);entry.insert(0,str(default));entry.pack(side='left');self.model_limits[key]=entry
         self.select_button=ttk.Button(bar,text='Select model',command=self.select_model,state='disabled');self.select_button.pack(side='left',padx=5)
         ttk.Button(tab,text='Import selected local model into portable storage',command=self.import_model).pack(anchor='w')
-        ttk.Label(tab,text='To configure inference, launch “VECTOR — Local Models” or “VECTOR — Managed Models” from the application menu.\nModel output is unverified inference; exact citations do not certify its conclusions.',wraplength=950).pack(anchor='w',pady=8)
+        ttk.Label(tab,text='AUTO discovers approved local models and starts protected inference when used. Manual selection is optional.\nModel output is unverified inference; exact citations do not certify its conclusions.',wraplength=950).pack(anchor='w',pady=8)
         from vector_core.model_routing import MODES
         modes=ttk.LabelFrame(tab,text='Conversation models',padding=8);modes.pack(fill='x',pady=8)
-        self.default_mode=tk.StringVar(value='Choose model mode');ttk.Combobox(modes,textvariable=self.default_mode,values=tuple(MODES.values()),state='readonly',width=28).grid(row=0,column=0,sticky='w')
+        self.default_mode=tk.StringVar(value='Choose model mode');self.default_mode_box=ttk.Combobox(modes,textvariable=self.default_mode,values=tuple(MODES.values()),state='readonly',width=28);self.default_mode_box.grid(row=0,column=0,sticky='w')
         ttk.Button(modes,text='Save default mode',command=self.save_default_mode).grid(row=0,column=1,padx=8)
         self.synthesis_role=tk.StringVar(value='b');ttk.Label(modes,text='Synthesis role').grid(row=1,column=0,sticky='w')
         ttk.Combobox(modes,textvariable=self.synthesis_role,values=('a','b'),state='readonly',width=5).grid(row=1,column=1,sticky='w')
@@ -233,7 +233,7 @@ class Desktop:
             if warnings:self.show_chat('Experimental memory warning: '+'; '.join(warnings))
             if record.get('checked'):self.show_chat('Independent calculation check:\n'+self.shell.document_text(record['checked']))
             failure=outcome.get('failure') or {}
-            if failure.get('restart_required'):self.show_chat('The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
+            if failure.get('restart_required'):self.show_chat('The protected worker stopped. The next request will qualify a fresh worker; saved work is preserved.' if getattr(self,'mode_catalog',{}).get('adaptive') else 'The isolated worker stopped. Restart VECTOR before another model request; saved work is preserved.')
             selection=(record.get('context') or {}).get('context',{}).get('history_selection',{})
             if selection.get('omitted_for_context'):self.show_chat('This reply used a bounded selection of earlier messages; the full conversation remains saved.')
             if outcome.get('uncertainty'):self.show_chat('Uncertainty: '+outcome['uncertainty'])
@@ -248,6 +248,7 @@ class Desktop:
             if record['model_run']['can_continue']:self.show_chat('Completed work is saved. Open Model work to resume this run or explicitly continue with one model.')
             if (record.get('context') or {}).get('context',{}).get('truncated'):self.show_chat('Limitations: retrieval was bounded; some candidate evidence was omitted. The selected evidence package was identical for both models.')
             if self.model_work_open:self.load_model_work()
+            if getattr(self,'mode_catalog',{}).get('adaptive'):self.call('model_modes',{},self.mode_status)
             return
         if record.get('planning') is not None:
             self.active_response=None
@@ -355,20 +356,38 @@ class Desktop:
         self.call('model_modes',{},self.mode_status)
     def mode_status(self,result):
         from vector_core.model_routing import MODES
-        self.mode_catalog=result;self.model_mode.set(MODES.get(result['mode'],'Choose model mode'));self.default_mode.set(MODES.get(result['default_mode'],'Choose model mode'))
+        self.mode_catalog=result;adaptive=result.get('adaptive')
+        self.mode_choices={label:key for key,label in MODES.items()}
+        if adaptive:
+            from vector_core.adaptive_runtime import AUTO_LABEL
+            self.mode_choices={AUTO_LABEL:'auto'}
+            for role,label in MODES.items():
+                name=(result.get('manual_settings') or result['settings'])['bindings'].get(role)
+                self.mode_choices[(role.upper()+' — '+name) if name and role!='both' else label]=role
+            for row in result['models']:self.mode_choices['Model — '+row['name']]='model:'+row['name']
+            labels={value:key for key,value in self.mode_choices.items()}
+            selected=adaptive['selection'];value='model:'+selected['model'] if selected['mode']=='model' else selected['mode']
+            self.model_mode.set(labels.get(value,AUTO_LABEL))
+            default=adaptive.get('default_selection') or {'mode':'auto'};key='model:'+default['model'] if default['mode']=='model' else default['mode']
+            self.default_mode.set(labels.get(key,AUTO_LABEL));self.mode_box['values']=tuple(self.mode_choices);self.default_mode_box['values']=tuple(self.mode_choices)
+        else:self.model_mode.set(MODES.get(result['mode'],'Choose model mode'));self.default_mode.set(MODES.get(result['default_mode'],'Choose model mode'))
         self.shell.model_state.set(MODES.get(result['mode'],'Select a model')+(' • Development • runtime ready' if result.get('available') else ' • runtime stopped; see Local AI / memory'))
         if not result.get('available'):self.model_status.set('Runtime diagnostic: '+str(result.get('reason','No qualified local runtime.'))[:1800])
         current=next((m for m in result['modes'] if m['id']==result['mode']),None)
         if current and current.get('resource_blocked'):self.shell.model_state.set(MODES[result['mode']]+' • resource blocked')
+        if adaptive:
+            active=', '.join(adaptive.get('active_models',{}).values())
+            self.shell.model_state.set(adaptive['label']+' • '+active+(' • protected runtime ready' if adaptive.get('runtime_qualified') else ' • starts when used'))
+            self.model_status.set(adaptive.get('reason') or 'Local model stores already approved. No internet permission. Protected inference qualifies on demand; model accuracy never blocks manual use.')
         if result.get('resources',{}).get('resource_notice'):self.model_status.set(result['resources']['resource_notice'])
         settings=result['settings'];self.synthesis_role.set(settings['synthesis']);self.extra_reviews.set(settings['extra_reviews'])
         names=[row['name'] for row in result['models']]
-        for role,box in self.role_boxes.items():box['values']=names;self.role_names[role].set(settings['bindings'].get(role,''))
+        for role,box in self.role_boxes.items():box['values']=names;self.role_names[role].set((result.get('manual_settings') or settings)['bindings'].get(role,''))
         if result['mode']:
             for key,field in [('context','context_tokens'),('output','output_tokens'),('timeout','timeout_seconds')]:self.model_limits[key].delete(0,'end');self.model_limits[key].insert(0,str(settings['generation'][field]))
     def selected_mode_id(self,value):
         from vector_core.model_routing import MODES
-        return next((key for key,label in MODES.items() if label==value),None)
+        return getattr(self,'mode_choices',{}).get(value) or next((key for key,label in MODES.items() if label==value),None)
     def open_runtime_options(self):
         self.shell.internal('Settings')
         def shown(result):
@@ -385,16 +404,26 @@ class Desktop:
         self.call('runtime_options_set',{'memory_mib':memory,'experimental':experimental,'acknowledged':experimental},lambda result:self.runtime_notice.set(result['message']))
     def change_mode(self,event=None):
         mode=self.selected_mode_id(self.model_mode.get())
-        if mode:self.call('model_mode_set',{'mode':mode},lambda result:self.call('model_modes',{},self.mode_status))
+        if mode:
+            adaptive=bool(getattr(self,'mode_catalog',{}).get('adaptive'))
+            parameters={'mode':'model','model':mode[6:]} if mode.startswith('model:') else {'mode':mode}
+            self.call('runtime_selection_set' if adaptive else 'model_mode_set',parameters,lambda result:self.call('model_modes',{},self.mode_status))
     def save_default_mode(self):
         mode=self.selected_mode_id(self.default_mode.get())
-        if mode:self.call('model_mode_set',{'mode':mode,'scope':'default'},lambda result:self.call('model_modes',{},self.mode_status))
+        if mode:
+            adaptive=bool(getattr(self,'mode_catalog',{}).get('adaptive'))
+            parameters={'mode':'model','model':mode[6:],'scope':'default'} if mode.startswith('model:') else {'mode':mode,'scope':'default'}
+            self.call('runtime_selection_set' if adaptive else 'model_mode_set',parameters,lambda result:self.call('model_modes',{},self.mode_status))
     def save_model_settings(self):
         mode=self.selected_mode_id(self.model_mode.get()) or self.selected_mode_id(self.default_mode.get())
+        if mode=='auto':self.dialog.showinfo('AUTO resource settings','AUTO adapts its own budgets. Select a manual model or Both to save custom generation settings.');return
+        exact=mode[6:] if mode and mode.startswith('model:') else None
+        if exact:mode='a'
         if not mode:self.dialog.showinfo('Choose a model mode','Choose a conversation model mode first.');return
         try:
             settings={'bindings':{k:v.get() for k,v in self.role_names.items() if v.get()},'synthesis':self.synthesis_role.get(),'extra_reviews':self.extra_reviews.get(),'generation':{'model':'','context_tokens':int(self.model_limits['context'].get()),'output_tokens':int(self.model_limits['output'].get()),'timeout_seconds':float(self.model_limits['timeout'].get()),'temperature':0,'seed':0}}
         except ValueError:self.dialog.showerror('Invalid model settings','Enter numeric context, output, timeout and review limits.');return
+        if exact:settings['bindings']={'a':exact}
         self.call('model_mode_set',{'mode':mode,'settings':settings},lambda result:self.call('model_modes',{},self.mode_status))
     def toggle_model_work(self):
         self.model_work_open=not self.model_work_open
@@ -425,6 +454,8 @@ class Desktop:
     def select_model(self):
         try:config={'model':self.model.get(),'context_tokens':int(self.model_limits['context'].get()),'output_tokens':int(self.model_limits['output'].get()),'timeout_seconds':float(self.model_limits['timeout'].get()),'temperature':0,'seed':0}
         except ValueError:self.dialog.showerror('Invalid limits','Enter numeric generation limits.');return
+        if getattr(self,'mode_catalog',{}).get('adaptive'):
+            self.call('runtime_selection_set',{'mode':'model','model':config['model']},lambda result:self.call('model_modes',{},self.mode_status));return
         if not self.managed and not self.dialog.askyesno('External model dependency','Use these external local weights? Complete exports will fail until the required weights are imported into managed storage.'):return
         self.call('select_model',{'configuration':config,'authorize_external':True},lambda result:(self.shell.model_state.set('Model selected'),self.show_result(result)))
     def import_model(self):

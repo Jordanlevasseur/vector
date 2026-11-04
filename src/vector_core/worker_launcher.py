@@ -25,6 +25,16 @@ class WorkerTransport:
     def retained_fds(self):return (self.process.stdin.fileno(),self.process.stdout.fileno())
     def close(self):
         self.qualified=False
+        if getattr(self,'service_unit',None):
+            # The service belongs to the user manager, not to the pipe client.
+            # Terminate its entire cgroup and verify cleanup before reuse.
+            stopped=subprocess.run(['/usr/bin/systemctl','--user','stop',self.service_unit],capture_output=True,timeout=10,env=self.service_environment)
+            if stopped.returncode and 'not loaded' not in stopped.stderr.decode('utf-8','replace') and 'not found' not in stopped.stderr.decode('utf-8','replace'):raise InferenceError('Worker service stop failed; cleanup unverified.',code='RUNNER_CLEANUP_FAILED')
+            cg=Path(self.report.get('cgroup','/nonexistent'))
+            if cg.exists() and (cg/'cgroup.events').exists() and 'populated 1' in (cg/'cgroup.events').read_text():
+                subprocess.run(['/usr/bin/systemctl','--user','kill','--signal=KILL',self.service_unit],capture_output=True,timeout=5,env=self.service_environment)
+                if cg.exists() and 'populated 1' in (cg/'cgroup.events').read_text():raise InferenceError('Worker service cleanup could not be verified; restart refused.',code='RUNNER_CLEANUP_FAILED')
+            self.service_unit=None
         if self.process.poll() is None:
             self.process.terminate()
             try:self.process.wait(timeout=3)
@@ -55,7 +65,7 @@ class WorkerTransport:
                 self._check(end,cancellation)
                 if select.select([self.process.stdout],[],[],.05)[0]:
                     chunk=os.read(self.process.stdout.fileno(),65536)
-                    if not chunk:raise InferenceError('Inference worker crashed or closed its channel.')
+                    if not chunk:raise InferenceError('Inference worker crashed or closed its channel.',code='WORKER_CRASH',stage='runtime-transport')
                     self.buffer+=chunk
                     if len(self.buffer)>MAX_FRAME:raise InferenceError('Excessive worker response.')
             raw,self.buffer=self.buffer.split(b'\n',1)
@@ -92,9 +102,10 @@ class WorkerTransport:
             if failure is error:raise
             raise failure from error
     def _check(self,end,cancellation):
+        if getattr(self,'extra_check',None):self.extra_check()
         if cancellation and cancellation.cancelled:raise InferenceError('Cancelled; isolated worker terminated.')
         if time.monotonic()>end:raise InferenceError('Inference timeout; isolated worker terminated.',code='INFERENCE_TIMEOUT',stage='transport')
-        if self.process.poll() is not None:raise InferenceError('Inference worker crashed.')
+        if self.process.poll() is not None:raise InferenceError('Inference worker crashed.',code='WORKER_CRASH',stage='runtime-transport')
         watch=getattr(self,'resource_watch',None)
         if watch and time.monotonic()>=watch['next']:
             watch['next']=time.monotonic()+.5
@@ -126,7 +137,7 @@ class WorkerTransport:
             except (OSError,ValueError,StopIteration,KeyError) as error:raise InferenceError('RESOURCE_BLOCKED: memory monitor failed closed: '+str(error),code='RESOURCE_MONITOR_FAILED',stage='resource-protection') from error
 
 
-def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=(),experimental=False):
+def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_model_directories=(),experimental=False,service_mode=False,supervisor_unit=None,selected_models=None,host_network_namespace=None,source_package=None,cpu_threads=2,cpu_quota_percent=100,extra_check=None,trusted_executables=None):
     """Called only by trusted startup before the main strict filter. Fail closed."""
     model_root=safe_path(models_directory)
     if not model_root.is_dir() or not all((model_root/name).is_dir() for name in ('blobs','manifests')):raise InferenceError('Explicit model directory must contain blobs and manifests.')
@@ -134,45 +145,61 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     validate_layout(model_root)
     if not isinstance(additional_model_directories,(list,tuple)) or len(additional_model_directories)>7:raise InferenceError('Select at most eight explicit local stores.')
     model_roots=tuple(dict.fromkeys([model_root,*[validate_layout(p) for p in additional_model_directories]]))
-    if type(memory_bytes) is not int or not 256*1024*1024<=memory_bytes<=2*1024**3 or type(tasks) is not int or not 16<=tasks<=128:
+    if type(memory_bytes) is not int or not 256*1024*1024<=memory_bytes<=(1024**4 if service_mode else 2*1024**3) or type(tasks) is not int or not 16<=tasks<=128:
         raise InferenceError('Invalid worker resource limits.')
+    if type(cpu_threads) is not int or not 1<=cpu_threads<=8 or type(cpu_quota_percent) is not int or not 1<=cpu_quota_percent<=65536:raise InferenceError('Invalid CPU resource limits.')
     if type(experimental) is not bool:raise InferenceError('Experimental memory selection must be a boolean.')
     available=int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:')))*1024
     if available<384*1024*1024 or not experimental and available<memory_bytes+384*1024*1024:raise InferenceError('RESOURCE_BLOCKED: insufficient available RAM plus 384 MiB host reserve.')
     executables={}
     for executable in ('bwrap','systemd-run','systemctl','ollama'):
-        located=shutil.which(executable)
+        located=trusted_executables.get(executable,{}).get('path') if trusted_executables is not None else shutil.which(executable)
         if not located:raise InferenceError('Required offline runtime unavailable: '+executable)
         path=Path(located).resolve()
-        if not str(path).startswith(('/usr/bin/','/usr/local/bin/')) or path.stat().st_uid!=0 or path.stat().st_mode&0o022:
-            raise InferenceError('Untrusted installed executable: '+executable)
+        if trusted_executables is None:
+            if not str(path).startswith(('/usr/bin/','/usr/local/bin/')) or path.stat().st_uid!=0 or path.stat().st_mode&0o022:
+                raise InferenceError('Untrusted installed executable: '+executable)
+        else:
+            # The outer controller user namespace cannot represent host root.
+            # Verify the host-root-owned executable fingerprint captured before
+            # entry; never accept this mapping over the desktop/model RPC.
+            import hashlib
+            expected=trusted_executables.get(executable,{})
+            digest=hashlib.sha256()
+            with path.open('rb') as source:
+                while chunk:=source.read(1024*1024):digest.update(chunk)
+            if expected!={'path':str(path),'sha256':digest.hexdigest()} or path.stat().st_mode&0o022:raise InferenceError('Trusted startup executable changed: '+executable)
         executables[executable]=str(path)
     binary=Path(executables['ollama'])
     runtime_directory='/run/user/'+str(os.getuid())
     local_environment={'PATH':'/usr/bin:/bin','HOME':str(Path.home()),'XDG_RUNTIME_DIR':runtime_directory,
-                       'DBUS_SESSION_BUS_ADDRESS':'unix:path='+runtime_directory+'/bus','LC_ALL':'C.UTF-8'}
+                       'DBUS_SESSION_BUS_ADDRESS':'unix:path='+runtime_directory+'/bus','LC_ALL':'C.UTF-8','SYSTEMD_IGNORE_CHROOT':'1'}
     unit='vector-inference-'+uuid4().hex
-    package=Path(__file__).resolve().parent
+    package=Path(source_package) if source_package else Path(__file__).resolve().parent
     command=[executables['systemd-run'],'--user','--scope','--quiet','--unit='+unit,'--property=MemoryMax='+str(memory_bytes),
-             '--property=TasksMax='+str(tasks),'--property=CPUQuota=100%','--property=MemorySwapMax=0',
+             '--property=TasksMax='+str(tasks),'--property=CPUQuota='+str(cpu_quota_percent)+'%','--property=MemorySwapMax=0',
              executables['bwrap'],'--unshare-all','--unshare-user','--disable-userns','--assert-userns-disabled','--die-with-parent','--new-session',
              '--cap-drop','ALL','--clearenv','--setenv','PATH','/usr/bin:/runtime','--setenv','HOME','/tmp/home',
              '--setenv','OLLAMA_HOST','127.0.0.1:11434','--setenv','OLLAMA_MODELS','/models','--setenv','OLLAMA_NUM_PARALLEL','1',
-             '--setenv','OLLAMA_MAX_LOADED_MODELS','1','--setenv','OLLAMA_LLM_LIBRARY','cpu','--setenv','OLLAMA_VULKAN','false','--setenv','CUDA_VISIBLE_DEVICES','-1','--setenv','HIP_VISIBLE_DEVICES','-1','--setenv','ROCR_VISIBLE_DEVICES','-1','--setenv','GGML_VK_VISIBLE_DEVICES','-1','--setenv','GOMAXPROCS','2','--setenv','OMP_NUM_THREADS','2','--setenv','OPENBLAS_NUM_THREADS','2','--setenv','OLLAMA_NO_CLOUD','1','--setenv','OLLAMA_NOPRUNE','1','--setenv','OLLAMA_NOHISTORY','1','--setenv','OLLAMA_MAX_QUEUE','1','--setenv','OLLAMA_LOAD_TIMEOUT','120s',
+             '--setenv','OLLAMA_MAX_LOADED_MODELS','1','--setenv','OLLAMA_LLM_LIBRARY','cpu','--setenv','OLLAMA_VULKAN','false','--setenv','CUDA_VISIBLE_DEVICES','-1','--setenv','HIP_VISIBLE_DEVICES','-1','--setenv','ROCR_VISIBLE_DEVICES','-1','--setenv','GGML_VK_VISIBLE_DEVICES','-1','--setenv','GOMAXPROCS',str(cpu_threads),'--setenv','OMP_NUM_THREADS',str(cpu_threads),'--setenv','OPENBLAS_NUM_THREADS',str(cpu_threads),'--setenv','VECTOR_CPU_THREADS',str(cpu_threads),'--setenv','OLLAMA_NO_CLOUD','1','--setenv','OLLAMA_NOPRUNE','1','--setenv','OLLAMA_NOHISTORY','1','--setenv','OLLAMA_MAX_QUEUE','1','--setenv','OLLAMA_LOAD_TIMEOUT','120s',
              '--ro-bind','/usr','/usr','--ro-bind','/lib','/lib','--ro-bind','/lib64','/lib64','--proc','/proc','--dev','/dev',
              '--size','67108864','--tmpfs','/tmp','--dir','/tmp/home','--setenv','VECTOR_OLLAMA_BINARY',str(binary),
              '--size','67108864','--tmpfs','/models','--ro-bind',str(model_root/'blobs'),'/models/blobs',
              '--ro-bind',str(model_root/'manifests'),'/models/manifests','--dir','/models/manifests-v2',
              '--ro-bind',str(package),'/application/vector_core',
              '--setenv','PYTHONPATH','/application','--chdir','/tmp','/usr/bin/python3','-m','vector_core.inference_worker']
+    if service_mode:
+        command.remove('--scope');command[2:2]=['--pipe','--wait','--collect']
+        if not isinstance(supervisor_unit,str) or not __import__('re').fullmatch(r'vector-supervisor-[a-f0-9]{32}\.service',supervisor_unit):raise InferenceError('Fixed supervisor unit required.')
+        at=command.index(executables['bwrap']);command[at:at]=['--property=BindsTo='+supervisor_unit,'--property=After='+supervisor_unit,'--property=KillMode=control-group','--property=TimeoutStopSec=5']
     if experimental:command[command.index('OLLAMA_LOAD_TIMEOUT')+1]='240s'
     if (model_root/'manifests-v2').is_dir():
         at=command.index('--chdir');command[at:at]=['--ro-bind',str(model_root/'manifests-v2'),'/models/manifests-v2']
-    if len(model_roots)>1:
+    if len(model_roots)>1 or selected_models is not None:
         # Compose local stores inside the private tmpfs namespace. No copied
         # weights, host symlinks, shared daemon, or writable source mounts.
         from vector_core.models import runtime_files
-        mounts=runtime_files(model_roots)
+        mounts=runtime_files(model_roots,selected_models)
         for source,target in ((str(model_root/'blobs'),'/models/blobs'),(str(model_root/'manifests'),'/models/manifests'),(str(model_root/'manifests-v2'),'/models/manifests-v2')):
             for i in range(len(command)-2,-1,-1):
                 if command[i:i+3]==['--ro-bind',source,target]:del command[i:i+3]
@@ -190,26 +217,29 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     diagnostic=tempfile.TemporaryFile()
     process=subprocess.Popen(command,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=diagnostic,bufsize=0,start_new_session=True,env=local_environment)
     transport=WorkerTransport(process,{'runtime_version':'unqualified'})
+    if service_mode:transport.service_unit=unit+'.service';transport.service_environment=local_environment
+    transport.extra_check=extra_check
     transport.qualified=True  # Private object; not returned until independent parent checks finish.
     try:
         report=transport.request({'operation':'qualify'},75)
-        host_net=str(Path('/proc/self/ns/net').readlink())
+        host_net=host_network_namespace or str(Path('/proc/self/ns/net').readlink())
         if (not isinstance(report,dict) or report.get('network_namespace')==host_net or report.get('routes') is not False
             or report.get('external_denied') is not True or report.get('nested_userns_denied') is not True
             or report.get('host_home_absent') is not True or report.get('model_blobs_readonly') is not True
             or report.get('shared_model_home_hidden') is not True or report.get('cpu_only') is not True
             or report.get('transparent_hugepages_disabled') is not True):
             raise InferenceError('Worker namespace/egress qualification failed.')
-        details=subprocess.run([executables['systemctl'],'--user','show',unit+'.scope','--property=ControlGroup','--property=MemoryMax','--property=TasksMax'],
+        details=subprocess.run([executables['systemctl'],'--user','show',unit+('.service' if service_mode else '.scope'),'--property=ControlGroup','--property=MemoryMax','--property=TasksMax'],
                                capture_output=True,text=True,timeout=5,check=True,env=local_environment)
         properties=dict(line.split('=',1) for line in details.stdout.splitlines() if '=' in line)
+        if not properties.get('ControlGroup'):raise InferenceError('User manager did not report an enforced worker cgroup: '+details.stdout[:500]+' '+details.stderr[:500])
         cgroup=Path('/sys/fs/cgroup')/properties['ControlGroup'].lstrip('/')
         if int((cgroup/'memory.max').read_text())!=memory_bytes or int((cgroup/'pids.max').read_text())!=tasks:
             raise InferenceError('Per-worker memory/pids controls were not enforced.')
         if int((cgroup/'memory.swap.max').read_text())!=0:raise InferenceError('Zero worker swap was not enforced.')
         quota,period=(cgroup/'cpu.max').read_text().split()
-        if quota=='max' or int(quota)>int(period):raise InferenceError('Per-worker CPU quota was not enforced.')
-        report.update(cpu_max=(cgroup/'cpu.max').read_text().strip(),memory_max=memory_bytes,memory_swap_max=0,pids_max=tasks,cgroup=str(cgroup),unit=unit)
+        if quota=='max' or int(quota)*100>int(period)*cpu_quota_percent:raise InferenceError('Per-worker CPU quota was not enforced.')
+        report.update(cpu_threads=cpu_threads,supervisor_bound=service_mode,cpu_max=(cgroup/'cpu.max').read_text().strip(),memory_max=memory_bytes,memory_swap_max=0,pids_max=tasks,cgroup=str(cgroup),unit=unit)
         report['experimental_memory']=experimental
         if experimental:report['resource_notice']='Experimental memory: estimates, sustained PSI and host swap-out are advisory. Crashes/resource exhaustion are possible. Kernel memory, zero-worker-swap, CPU/pids, isolation, host reserve and OOM stops remain enforced.'
         transport.report=report;transport.runtime_version=report['runtime_version'];transport.model_directory=model_root
@@ -218,7 +248,7 @@ def launch(models_directory,*,memory_bytes=768*1024*1024,tasks=64,additional_mod
     except Exception as error:
         diagnostic.seek(0);details=diagnostic.read(4096).decode('utf-8','replace')
         transport.close()
-        raise InferenceError(str(error)+((': '+details) if details else '')) from error
+        raise InferenceError(str(error)+((': '+details) if details else ''),code=getattr(error,'code','QUALIFICATION_FAILED'),stage=getattr(error,'stage','runtime-qualification')) from error
     finally:diagnostic.close()
 
 

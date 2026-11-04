@@ -26,7 +26,7 @@ def main():
     except (RuntimeError,ValueError,OSError) as error:reader_error=str(error)
     signal.signal(signal.SIGUSR1,cancel)
     if not args.no_inference and (args.models_directory or args.managed or args.runtime_profile or args.data_dir is None):
-        print(json.dumps({'startup_progress':'Starting local AI: verifying model files and qualifying isolation. This can take minutes on this disk; accuracy scores do not affect startup.'}),flush=True)
+        print(json.dumps({'startup_progress':'Discovering approved local AI models. Protected inference will start automatically when Chat is used.'}),flush=True)
     if args.no_inference:startup_error='Storage-only session explicitly requested (--no-inference).'
     elif args.models_directory or args.managed:
         busy=True
@@ -38,8 +38,8 @@ def main():
     elif args.runtime_profile or args.data_dir is None:
         busy=True
         try:
-            from vector_core.worker_launcher import desktop_runtime
-            transport=desktop_runtime(args.runtime_profile)
+            from vector_core.runtime_supervisor import create
+            transport=create(profile=args.runtime_profile)
         except (RuntimeError,ValueError,OSError) as error:startup_error=str(error)
         finally:busy=False
     from vector_core.security import activate
@@ -98,7 +98,9 @@ def main():
     finally:
         if application and hasattr(application,'resources'):application.resources.close()
         elif reader:reader.close()
-        if transport:transport.close()
+        if transport:
+            if hasattr(transport,'shutdown'):transport.shutdown()
+            else:transport.close()
         if application:application.memory.close()
 
 if __name__=='__main__':
