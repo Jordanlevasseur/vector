@@ -20,7 +20,8 @@ from vector_core.projects import append,identity,latest
 from vector_core.storage import object_chunks,object_path,input_file,safe_path
 
 CONTRACTS={'library_collections','library_memberships','library_reading','library_bookmarks','library_manuals'}
-CATEGORIES=('Books','Science','Mathematics','Extracted text','Rights & references','Other documents','Attachments','Retained objects')
+SCIENTIFIC_COLLECTIONS=('Mathematics','Physics','Chemistry','Engineering','Materials Science')
+CATEGORIES=('Books','Science',*SCIENTIFIC_COLLECTIONS,'Extracted text','Rights & references','Other documents','Attachments','Retained objects')
 TEXT_FORMATS={'Text','Markdown','HTML','XML','JSON','NCBI ASN.1'}
 READ_OPERATIONS={'resource_list','resource_detail','resource_inventory','resource_search','resource_passage','resource_reference','resource_read','resource_outline','resource_find','resource_compare','resource_collections','resource_bookmarks'}
 
@@ -111,7 +112,11 @@ class Resources:
         for row in rows:
             p=dict(row);p['extraction_status']='FTS text representation exists' if p['id'] in indexed else 'No direct FTS text; original retained';meta=json.loads(p['metadata']);edition=books.get(p['id']) or science.get(p['id']);m=edition['metadata'] if edition else {}
             category='Books' if p['id'] in books else 'Science' if p['id'] in science else 'Extracted text' if meta.get('resource_type')=='scientific-extracted-text' else 'Rights & references' if 'rights' in p['submission_name'].casefold() or p['media_type']=='application/rdf+xml' else 'Other documents'
-            if p['id'] in science and 'collection:Mathematics' in m.get('subjects',[]):category='Mathematics'
+            if p['id'] in science:
+                collections=[name for name in SCIENTIFIC_COLLECTIONS if 'collection:'+name in m.get('subjects',[])]
+                # Ambiguous or unknown labels remain in Science; only original
+                # scientific edition records receive a discipline destination.
+                if len(collections)==1:category=collections[0]
             title=m.get('title') or p['submission_name'];subjects=m.get('subjects',[]);subjects=subjects if isinstance(subjects,list) else [subjects] if subjects else []
             fmt=format_name(p['media_type'],p['submission_name']);reason=''
             if not p['blob_digest']:reason='Original blob identity is missing.'

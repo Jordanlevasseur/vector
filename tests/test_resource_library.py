@@ -26,6 +26,23 @@ class ResourceLibraryTests(unittest.TestCase):
         self.memory=Memory(Config.load(data_dir=str(self.root/'data')));self.addCleanup(self.memory.close);self.r=Resources(self.memory);self.addCleanup(self.r.close)
     def ingest(self,raw=b'Original text',name='Sample.txt',media='text/plain'):
         return self.memory.ingest(Submission(raw,name,media))['event_id']
+    def test_scientific_destinations_cover_only_unambiguous_original_editions(self):
+        from vector_core.science import ScientificLibrary
+        ScientificLibrary(self.memory)._register()
+        for name in ('Mathematics','Physics','Chemistry','Engineering','Materials Science'):
+            key=self.ingest(name.encode(),name+'.txt')
+            payload={'id':key,'original_event_id':key,'metadata':{'title':name,'subjects':['collection:'+name]}}
+            self.memory.db.execute("INSERT INTO persistent_records(contract,record_key,payload,created) VALUES(?,?,?,?)",('scientific_editions',key,json.dumps(payload),'2026-11-04'))
+            self.memory.db.commit()
+            self.assertEqual(self.r.detail(key)['category'],name)
+            self.assertEqual(self.r.list(category=name)['total'],1)
+        key=self.ingest(b'derived','derived.txt')
+        self.assertEqual(self.r.detail(key)['category'],'Other documents')
+        key=self.ingest(b'ambiguous','ambiguous.txt')
+        payload={'id':key,'original_event_id':key,'metadata':{'title':'ambiguous','subjects':['collection:Physics','collection:Chemistry']}}
+        self.memory.db.execute("INSERT INTO persistent_records(contract,record_key,payload,created) VALUES(?,?,?,?)",('scientific_editions',key,json.dumps(payload),'2026-11-04'))
+        self.memory.db.commit()
+        self.assertEqual(self.r.detail(key)['category'],'Science')
     def test_all_events_duplicates_and_distinct_originals_are_separate_counts(self):
         a=self.ingest();b=self.ingest();c=self.ingest(b'other','Other.txt')
         inventory=self.r.inventory();self.assertEqual(inventory['catalogue_entries'],3);self.assertEqual(inventory['unique_original_contents'],2);self.assertEqual(inventory['duplicate_records'],1)
