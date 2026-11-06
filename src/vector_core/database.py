@@ -169,3 +169,14 @@ CREATE TABLE literary_pronunciations(word TEXT NOT NULL,variant TEXT NOT NULL,ph
 CREATE INDEX literary_word ON literary_pronunciations(word);
 CREATE INDEX records_language ON persistent_records(contract,json_extract(payload,'$.language'));
 ''')
+
+# Botanical state uses the same append-only, portable record store and originals.
+MIGRATIONS.append("""
+INSERT INTO persistence_contracts VALUES
+ ('botanical_records',1,'Source-attested botanical concepts, evidence, formulas, assets and rights'),
+ ('botanical_batches',1,'Atomic botanical publication and non-destructive rollback history');
+CREATE INDEX botanical_subject ON persistent_records(contract,json_extract(payload,'$.record.data.subject_id'));
+CREATE INDEX botanical_batch ON persistent_records(contract,json_extract(payload,'$.batch_id'));
+CREATE INDEX external_original_object ON external_originals(object_digest);
+CREATE INDEX managed_ref_digest ON managed_refs(digest);
+""")

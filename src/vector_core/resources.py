@@ -117,6 +117,8 @@ class Resources:
                 # Ambiguous or unknown labels remain in Science; only original
                 # scientific edition records receive a discipline destination.
                 if len(collections)==1:category=collections[0]
+            if str(meta.get('resource_type','')).startswith('botanical-'):
+                m=meta;category='Botanical sources' if meta.get('botanical_role')=='original' else 'Botanical rights & extracted data'
             title=m.get('title') or p['submission_name'];subjects=m.get('subjects',[]);subjects=subjects if isinstance(subjects,list) else [subjects] if subjects else []
             fmt=format_name(p['media_type'],p['submission_name']);reason=''
             if not p['blob_digest']:reason='Original blob identity is missing.'

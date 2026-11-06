@@ -36,6 +36,9 @@ def validate_model(db,payload):
 
 
 def validate_preference(key,payload):
+    if key=='botanical_research':
+        from vector_core.botany import validate_preferences
+        validate_preferences(payload)
     if key=='model_collaboration':
         from vector_core.model_routing import validate_settings
         validate_settings(payload)

@@ -27,6 +27,9 @@ def latest(memory,contract,key):
     return {**json.loads(row['payload']),'revision':row['id']}
 
 def validate_record(db,contract,key,p):
+    if contract in {'botanical_records','botanical_batches'}:
+        from vector_core.botany import validate_record as validate_botanical
+        return validate_botanical(db,contract,key,p)
     if contract.startswith('library_'):
         from vector_core.resources import CONTRACTS,validate_record as validate_library
         if contract in CONTRACTS:return validate_library(db,contract,key,p)

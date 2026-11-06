@@ -68,6 +68,9 @@ class Application:
         if not isinstance(operation,str) or len(operation)>100:raise ValueError('Operation must be bounded text.')
         if not isinstance(p,dict):raise ValueError('Parameters must be an object.')
         memory=self.memory
+        if operation.startswith('botany_'):
+            from vector_core.botany import dispatch
+            return dispatch(self,operation,p)
         if operation=='runtime_options_get':
             from vector_core.worker_launcher import read_runtime_profile
             return {'settings':read_runtime_profile(self.runtime_profile),'active':self.transport.report if self.transport else None,'startup_error':self.startup_error,'restart_required':False}

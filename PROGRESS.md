@@ -444,3 +444,23 @@ measurements and limitations are recorded in STAGE6B_REPORT.md and STAGE6B_AUDIT
 ## Biology and Medicine Library dataset — November 2026
 
 The existing original-preserving scientific Library now includes 20 new Biology and 20 new Medicine & Anatomy complete references, with all requested primary-subtopic counts. All 1,144 prior editions, old raw/physical originals, literary index, memory, preferences and protected configuration passed preservation checks; 1,184 accepted/previous references plus one retained excluded scan, 1,185 stored edition records. All 40 actual installed original readers, source-linked searches, bookmarks and positions passed; real Chat/AUTO inference produced a genuine response. Source and installed regressions each: 411 passed, one optional cryptography skip, zero failures/errors. No schema, dependency, model, inference or network-permission changes. See BIOLOGY_MEDICINE_LIBRARY_REPORT.md for exact scope, historical/specialist-source limitations, rights, resource measurements and recovery evidence.
+
+## Botanical Library infrastructure — 2026-11-06
+
+Read-only baseline and independent recovery checkpoint established at79b41bd before
+changes (schema8;1185 edition records). Additive schema9, botanical source/evidence/
+taxon/geography/formula/asset records, atomic reviewed local publication, durable
+rollback, portable verification and the embedded native Library workspace implemented.
+The existing protected image/original readers, FTS and local model adapter are reused.
+No HELIX, models, laws, runtime profile or existing documents changed.
+
+Real isolated corpus trial qualified49 taxon concepts,164 regional distributions,
+37 cited evidence interpretations,2 photographs and9 source-linked text references;
+these are not49 medically verified plant profiles or9 newly acquired complete books.
+Full source regression:429 run,428 passed,1 optional cryptography skip,0 failures/errors;
+source hashes unchanged throughout. The earlier isolated desktop timeout passed on
+an unchanged rerun and in this complete final run. Installed acceptance and the final
+content/preservation report are recorded separately in the task evidence directory.
+
+See BOTANICAL_LIBRARY.md for domain boundaries, typed source rights, historical-text
+limitations, research preferences, local-only imports and recovery semantics.

@@ -68,6 +68,11 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
     results=[]
     for row in memory.db.execute(sql,parameters+[limit]):
         result=dict(row)
+        if str(result.get('resource_type','')).startswith('botanical-'):
+            from vector_core.botany import provenance
+            qualified=provenance(memory,result['event_id'])
+            if qualified is None:continue  # staged/rolled-back sources are retained, not AI evidence
+            result['botanical_provenance']=qualified
         original=memory.original(result['event_id']).decode('utf-8')
         derived=memory.db.execute('SELECT text FROM texts WHERE event_id=?',(result['event_id'],)).fetchone()[0]
         if derived!=original:

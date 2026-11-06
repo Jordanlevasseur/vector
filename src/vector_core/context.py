@@ -13,6 +13,9 @@ def display_notices(memory,event_ids):
     notices=[]
     from vector_core.literature import PG_NOTICE
     for event_id in event_ids:
+        from vector_core.botany import provenance as botanical_provenance
+        botanical=botanical_provenance(memory,event_id)
+        if botanical:notices.append({'event_id':event_id,'notice':'Botanical source: '+botanical['title']+' • '+botanical['temporal_status']+'. '+botanical['uncertainty'],'botanical_provenance':botanical})
         row=memory.db.execute("SELECT json_extract(payload,'$.metadata.rights.status') AS status,json_extract(payload,'$.rights_event_id') AS evidence FROM persistent_records WHERE contract='literary_editions' AND json_extract(payload,'$.event_id')=? LIMIT 1",(event_id,)).fetchone()
         if row and row['status']=='provider-unrestricted-us':notices.append({'event_id':event_id,'notice':PG_NOTICE,'rights_event_id':row['evidence']})
     return notices
@@ -141,6 +144,7 @@ def build_context(memory,question,*,budget_bytes=8192,limit=8,scope=None,project
         source={'event_id':row['event_id'],'source_id':row['source_id'],'sha256':row['sha256'],
                 'start':row.get('start',0),'end':row.get('end',len(excerpt)),'quote':excerpt,'name':row['name'],'occurred':row.get('occurred')}
         if row.get('scientific_provenance'):source['scientific_provenance']=row['scientific_provenance']
+        if row.get('botanical_provenance'):source['botanical_provenance']=row['botanical_provenance']
         context['sources'].append(source)
         if len(canonical(context).encode())>budget_bytes:
             match=re.search('|'.join(re.escape(term) for term in terms),excerpt,re.IGNORECASE) if terms else None

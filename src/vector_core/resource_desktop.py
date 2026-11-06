@@ -10,6 +10,8 @@ class ResourceDesktop:
         self.catalog=self.ttk.Frame(parent);self.catalog.pack(fill='both',expand=True);self.reader=self.ttk.Frame(parent)
         heading=self.ttk.Frame(self.catalog);heading.pack(fill='x');self.ttk.Label(heading,text='LIBRARY',style='Brand.TLabel').pack(side='left')
         for label,command in [('New manual',self.edit_manual),('New collection',self.new_collection),('Coverage',lambda:self.call('resource_inventory',{},app.show_result))]:self.ttk.Button(heading,text=label,command=command).pack(side='right',padx=3)
+        self.botanical=None
+        self.ttk.Button(heading,text='Botanical research',style='Accent.TButton',command=self.open_botanical).pack(side='left',padx=8)
         search=self.ttk.Frame(self.catalog);search.pack(fill='x',pady=(10,5));self.query=self.ttk.Entry(search);self.query.pack(side='left',fill='x',expand=True);self.query.bind('<Return>',lambda e:self.search())
         self.search_mode=self.tk.StringVar(value='Titles / metadata');self.ttk.Combobox(search,textvariable=self.search_mode,values=('Titles / metadata','Indexed content'),state='readonly',width=19).pack(side='left',padx=5)
         self.search_button=self.ttk.Button(search,text='Search',style='Accent.TButton',command=self.search);self.search_button.pack(side='left')
@@ -56,6 +58,12 @@ class ResourceDesktop:
         for event,delta in [('<Button-4>',-3),('<Button-5>',3)]:self.canvas.bind(event,lambda e,d=delta:self.canvas.yview_scroll(d,'units'))
         self.member_list=self.tk.Listbox(self.body,background=C['surface'],foreground=C['text'],selectbackground=C['selection'],font=('DejaVu Sans',12));self.member_list.bind('<Double-1>',lambda e:self.open_member());self.member_list.bind('<Return>',lambda e:self.open_member())
         self.member_actions=self.ttk.Frame(self.reader);self.ttk.Button(self.member_actions,text='Open selected file',command=self.open_member).pack(side='left');self.ttk.Button(self.member_actions,text='Next files',command=self.more_members).pack(side='left',padx=4);self.ttk.Button(self.member_actions,text='Export original package',command=self.export).pack(side='left',padx=4)
+    def open_botanical(self):
+        if self.botanical is None:
+            from vector_core.botany_desktop import BotanicalDesktop
+            self.botanical=BotanicalDesktop(self)
+        self.botanical.show()
+
     def call(self,op,p,callback=None):
         if len(self.queue)>=16:self.notice.set('Wait for the current Library operation.');return
         self.queue.append((op,p,callback));self.pump()

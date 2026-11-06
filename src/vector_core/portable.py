@@ -69,6 +69,16 @@ def validate_database(db,data_root=None,deadline=None):
     from vector_core.memory import verify_connection
     integrity=verify_connection(db,data_root,deadline)
     if not integrity['passed']:raise ValueError('Database/original integrity failed: '+str(integrity['errors'][:3]))
+    if version>=9:
+        if data_root is None and db.execute("SELECT 1 FROM persistent_records WHERE contract='botanical_records' LIMIT 1").fetchone():raise ValueError('Original root needed for botanical evidence verification.')
+        if data_root is not None:
+            from types import SimpleNamespace
+            from vector_core.memory import Memory
+            from vector_core.botany import verify_state
+            reader=Memory.__new__(Memory);reader.db=db;reader.config=SimpleNamespace(data_dir=data_root)
+            previous_factory=db.row_factory;db.row_factory=sqlite3.Row
+            try:verify_state(reader,deadline)
+            finally:db.row_factory=previous_factory
     if version>=5:
         for contract,version in db.execute('SELECT name,version FROM persistence_contracts'):
             if version!=1:raise ValueError('Unsupported persistence contract version: '+contract)
