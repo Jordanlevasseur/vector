@@ -22,3 +22,7 @@ Validation: complete source regression and actual-host Library/reader isolation 
 are required; installation is bound to the built module hashes. Retain the matching
 baseline wheel, database snapshot and independently verified original-object copy for
 rollback. No pre-existing resource, model, memory, conversation or original is replaced.
+
+## Verified installed dataset
+
+Exactly 20 Biology and 20 Medicine & Anatomy accepted references are installed, preserving all 1,144 previous editions. Stored edition records total 1,185: 1,184 accepted/previous references plus one additional reader-limited scan retained separately and excluded from the acquisition target. The full requested primary-subtopic balance is met. All 40 originals passed actual installed reading/navigation/search/bookmark tests and independent complete-file integrity checks. All supplied 10,616 accepted-reference page-text segments (11,120 including the retained failed scan) were processed; scientific notation, existing OCR and figure semantics retain explicit limitations. Source and installed regressions each recorded 411 passes and one optional cryptography skip; no failures/errors. Real Chat/AUTO inference remains functional. See BIOLOGY_MEDICINE_LIBRARY_REPORT.md and the corresponding resource catalogue/manifest for rights, scope, evidence, measurements and rollback. No production-readiness or current-clinical-guidance claim is made.

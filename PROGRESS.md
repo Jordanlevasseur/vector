@@ -439,3 +439,8 @@ checkpoint resumed correctly; explicit known-source selection avoids an unrelate
 corpus search. No default-model, law, owner-override or HELIX change. Experimental
 mode remains off by default. Full preservation evidence, failures, resource
 measurements and limitations are recorded in STAGE6B_REPORT.md and STAGE6B_AUDIT.md.
+
+
+## Biology and Medicine Library dataset — November 2026
+
+The existing original-preserving scientific Library now includes 20 new Biology and 20 new Medicine & Anatomy complete references, with all requested primary-subtopic counts. All 1,144 prior editions, old raw/physical originals, literary index, memory, preferences and protected configuration passed preservation checks; 1,184 accepted/previous references plus one retained excluded scan, 1,185 stored edition records. All 40 actual installed original readers, source-linked searches, bookmarks and positions passed; real Chat/AUTO inference produced a genuine response. Source and installed regressions each: 411 passed, one optional cryptography skip, zero failures/errors. No schema, dependency, model, inference or network-permission changes. See BIOLOGY_MEDICINE_LIBRARY_REPORT.md for exact scope, historical/specialist-source limitations, rights, resource measurements and recovery evidence.
