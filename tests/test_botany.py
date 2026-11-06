@@ -191,6 +191,35 @@ class BotanicalTests(unittest.TestCase):
         saved=json.loads(self.m.db.execute("SELECT payload FROM persistent_records WHERE contract='conversations' ORDER BY rowid DESC LIMIT 1").fetchone()[0])
         self.assertEqual(saved['question'],'What is known?');self.assertEqual(saved['outcome']['status'],'failed')
         self.assertIn('context allowance',saved['outcome']['errors'][0])
+    def test_runtime_and_repeated_answer_failures_are_not_evidence_only(self):
+        from types import SimpleNamespace
+        from vector_core.assistant import ask
+        from vector_core.inference import GenerationConfig,UnavailableAdapter
+        self.seed();built=self.b.context('fixture-taxon','Explicit failure fixture',12000);config=GenerationConfig(context_tokens=16384)
+        class TimedOut:
+            transport=SimpleNamespace(qualified=False)
+            def generate(self,*args,**kwargs):raise TimeoutError('Explicit fixture: runtime timed out')
+        result=ask(self.m,'Explicit failure fixture',adapter=TimedOut(),config=config,_prepared_context=built)
+        self.assertEqual(result['outcome']['status'],'failed');self.assertIn('timed out',result['outcome']['errors'][0])
+        class Repeated:
+            transport=None
+            def generate(self,*args,**kwargs):return {'text':'Explicit invalid repeated JSON fixture','simulated':True,'model_version':'EXPLICIT TEST FIXTURE'}
+        result=ask(self.m,'Explicit failure fixture',adapter=Repeated(),config=config,_prepared_context=built)
+        self.assertEqual(result['outcome']['status'],'failed');self.assertIn('Repeated identical',result['outcome']['errors'][-1])
+        fallback=ask(self.m,'Explicit source-only fixture',adapter=UnavailableAdapter(),config=config,_prepared_context=built)
+        self.assertEqual(fallback['outcome']['status'],'evidence-only')
+    def test_answer_citations_authorize_each_window_but_not_intervening_gaps(self):
+        from vector_core.assistant import validate_answer
+        from vector_core.inference import InferenceError
+        windows=[dict(self.c,start=0,end=21),dict(self.c,start=80,end=len(self.body))]
+        context={'sources':windows}
+        def answer(start,end,**changes):
+            cite=dict(self.c,start=start,end=end,quote=self.body[start:end]);cite.update(changes)
+            return canonical({'statements':[{'text':cite['quote'],'kind':'source','citations':[cite]}],'uncertainty':'Explicit fixture','insufficient':False})
+        for start,end in ((0,21),(80,len(self.body)),(82,90)):
+            self.assertEqual(len(validate_answer(self.m,answer(start,end),context)['statements']),1)
+        for start,end,changes in ((20,81,{}),(30,40,{}),(0,21,{'sha256':'0'*64}),(0,21,{'event_id':'invented'}),(0,21,{'quote':'Fabricated fixture'})):
+            with self.assertRaises(InferenceError):validate_answer(self.m,answer(start,end,**changes),context)
     def test_desktop_service_cannot_publish_or_fetch(self):
         from vector_core.service import Application
         app=Application(self.m)

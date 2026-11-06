@@ -470,3 +470,11 @@ skip,0 failures/errors, with unchanged source hashes. Added active-reference che
 for rights/safety updates, byte-bounded metadata pages, durable context-failure input,
 accurate low-context diagnostics, registered main-Library categories and bounded
 EXIF orientation on display derivatives. Original image bytes remain unchanged.
+
+Botanical grounded-output correction: preserve all authorized disjoint windows from
+the same source, without authorizing intervening unseen text. Runtime/answer-format
+failures are visibly failed instead of mislabeled source-only results. Twenty-three
+botanical regression tests passed, including first/last window authorization, gap,
+false hash, unknown source and fabricated quote rejection. Full final verification
+and genuine model results are retained in the task acceptance report separately;
+manual conversation is not gated on medical accuracy or strict-answer success.

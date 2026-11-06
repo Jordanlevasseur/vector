@@ -22,7 +22,9 @@ def validate_answer(memory,text,context):
         or not isinstance(answer['statements'],list) or len(answer['statements'])>20
         or not isinstance(answer['uncertainty'],str) or len(answer['uncertainty'])>2000 or type(answer['insufficient']) is not bool):
         raise InferenceError('Invalid answer structure.')
-    allowed={source['event_id']:source for source in context['sources']}
+    allowed={}
+    for source in context['sources']:
+        allowed.setdefault(source['event_id'],[]).append(source)
     if not answer['statements'] and not answer['insufficient']:raise InferenceError('Empty answer must report insufficient information.')
     for statement in answer['statements']:
         if (not isinstance(statement,dict) or set(statement)!={'text','kind','citations'} or statement['kind'] not in ('source','inference')
@@ -31,9 +33,12 @@ def validate_answer(memory,text,context):
         for cite in statement['citations']:
             if not isinstance(cite,dict) or set(cite)!={'event_id','sha256','start','end','quote'}:raise InferenceError('Invalid citation.')
             if not isinstance(cite['event_id'],str) or cite['event_id'] not in allowed:raise InferenceError('Invented or out-of-context source.')
-            source=allowed[cite['event_id']]
-            if (cite['sha256']!=source['sha256'] or type(cite['start']) is not int or type(cite['end']) is not int
-                or not source['start']<=cite['start']<cite['end']<=source['end'] or not isinstance(cite['quote'],str)):
+            # A document may contribute several disjoint evidence windows. Each
+            # citation must fit one supplied window; their intervening gaps are
+            # never authorized merely because the document identity matches.
+            if (type(cite['start']) is not int or type(cite['end']) is not int or not isinstance(cite['quote'],str)
+                or not any(cite['sha256']==source['sha256'] and source['start']<=cite['start']<cite['end']<=source['end']
+                           for source in allowed[cite['event_id']])):
                 raise InferenceError('Citation hash/span mismatch.')
             if memory.read_text_span(cite['event_id'],cite['start'],cite['end'])!=cite['quote']:raise InferenceError('Fabricated source quote.')
         if statement['kind']=='source' and not any(statement['text']==c['quote'] for c in statement['citations']):
@@ -99,6 +104,10 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
                     trace.append({'stage':'partial-generation-rejected','attempt':attempt+1,'text':partial[:8192],
                         'sha256':hashlib.sha256(partial.encode()).hexdigest(),'truncated':len(partial)>8192,'simulated':getattr(adapter,'simulated',False)})
                 outcome['errors'].append(str(error)[:1000]);trace.append({'stage':'generation','attempt':attempt+1,'error':str(error)[:500]})
+                # Retained source material is not a completed grounded answer.
+                # Preserve intentional storage-only fallback; actual adapter or
+                # answer-validation failures must remain visibly failed.
+                if not isinstance(adapter,UnavailableAdapter):outcome['status']='failed'
                 if getattr(adapter,'transport',None) and not adapter.transport.qualified:break
                 if isinstance(adapter,UnavailableAdapter) or 'Repeated identical' in str(error) or 'Cancelled' in str(error):break
                 # Feedback is fixed, bounded error data. Never interpret model/error text as actions.

@@ -103,3 +103,11 @@ Commons or another registry hosts it. NIH purchased photographs and unqualified
 third-party assets are excluded. Conditional CC BY-SA texts retain attribution,
 source revisions, modification notices and their licence; they do not become
 unrestricted content or change VECTOR's software licence.
+
+Grounded output validation permits multiple separately supplied excerpt windows from
+one immutable source. Each citation must fit entirely within one window and match
+its SHA-256 and original quote; gaps between windows remain unauthorized. Failed
+runtime or malformed/repeated grounded answers are recorded as failed, independently
+of successful manual conversation. Intentional no-model source viewing remains
+available. A sufficiently large context and bounded timeout may be required for the
+full safety bundle; the default small context is not silently expanded or stripped.
