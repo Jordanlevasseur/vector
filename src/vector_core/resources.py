@@ -21,7 +21,7 @@ from vector_core.storage import object_chunks,object_path,input_file,safe_path
 
 CONTRACTS={'library_collections','library_memberships','library_reading','library_bookmarks','library_manuals'}
 SCIENTIFIC_COLLECTIONS=('Mathematics','Physics','Chemistry','Engineering','Materials Science','Biology','Medicine & Anatomy')
-CATEGORIES=('Books','Science',*SCIENTIFIC_COLLECTIONS,'Extracted text','Rights & references','Other documents','Attachments','Retained objects')
+CATEGORIES=('Books','Science',*SCIENTIFIC_COLLECTIONS,'Extracted text','Rights & references','Other documents','Attachments','Retained objects','Botanical sources','Botanical rights & extracted data')
 TEXT_FORMATS={'Text','Markdown','HTML','XML','JSON','NCBI ASN.1'}
 READ_OPERATIONS={'resource_list','resource_detail','resource_inventory','resource_search','resource_passage','resource_reference','resource_read','resource_outline','resource_find','resource_compare','resource_collections','resource_bookmarks'}
 

@@ -61,7 +61,11 @@ def ask(memory,question,*,adapter=None,config=None,conversation_id=None,project_
     # Evidence-only display has no neural context window. Keep full qualified
     # bundles visible; an unavailable adapter cannot later dispatch this prompt.
     if (evidence_only and retrieval_query is not None) or (semantic and isinstance(adapter,UnavailableAdapter)):budget=max(8192,budget)
-    try:built=_prepared_context or build_context(memory,question,budget_bytes=budget,scope=scope,project_id=project_id,conversation_id=conversation_id,semantic=semantic,semantic_selector=semantic_selector,investigation_id=investigation_id,retrieval_query=retrieval_query,strict_query=strict_query,content_only=content_only)
+    try:
+        # Trusted domain builders run after the complete question is durable, so
+        # budget/provenance failures are retained like ordinary retrieval failures.
+        prepared=_prepared_context(budget) if callable(_prepared_context) else _prepared_context
+        built=prepared or build_context(memory,question,budget_bytes=budget,scope=scope,project_id=project_id,conversation_id=conversation_id,semantic=semantic,semantic_selector=semantic_selector,investigation_id=investigation_id,retrieval_query=retrieval_query,strict_query=strict_query,content_only=content_only)
     except Exception as error:
         pending['outcome'].update(status='failed',errors=[str(error)[:1000]])
         put(memory,'conversations',key,pending)

@@ -84,7 +84,7 @@ class BotanicalDesktop:
             lines.append('')
         render(r)
         for item in d['related']:render(item)
-        if d['related_truncated']:lines.append('More than 200 related records. Narrow the query; model synthesis is blocked until essential safety material can be included.')
+        if d['related_truncated']:lines.append('Related records exceed this bounded view. Narrow the query; model synthesis is blocked until essential safety material can be included.')
         self.body.configure(state='normal');self.body.delete('1.0','end');self.body.insert('1.0','\n'.join(lines));self.body.configure(state='disabled')
         for widget in self.sources.winfo_children():widget.destroy()
         events=[]

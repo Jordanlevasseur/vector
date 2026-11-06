@@ -146,12 +146,51 @@ class BotanicalTests(unittest.TestCase):
         from vector_core.retrieval import search
         self.assertFalse(any(r['event_id']!=self.event for r in search(self.m,'FIXTURE')))
         value=import_pack(self.m,folder,digest);self.assertEqual(value['publication']['count'],2)
+        from vector_core.resources import Resources
+        resources=Resources(self.m)
+        try:
+            self.assertEqual(resources.list(category='Botanical sources')['total'],1)
+            self.assertIn('Botanical rights & extracted data',resources.list()['categories'])
+        finally:resources.close()
         self.assertEqual(self.m.db.execute('SELECT count(*) FROM events').fetchone()[0],count+1)
         self.assertTrue(import_pack(self.m,folder,digest)['publication']['resumed'])
         from vector_core.botany import provenance
         self.assertIsNotNone(provenance(self.m,value['assets']['source-text']))
         self.b.rollback('local-fixture','Explicit test rollback')
         self.assertIsNone(provenance(self.m,value['assets']['source-text']))
+    def test_source_update_cannot_invalidate_existing_licensed_records(self):
+        self.seed();withdrawn=copy.deepcopy(self.source);withdrawn['data'].update(status='excluded',asset_events=[],commercial=False,modification=False,indexing=False)
+        with self.assertRaises(ValueError):self.publish('withdrawn-source',[withdrawn])
+        self.assertEqual(self.b.get('fixture-source')['data']['status'],'approved')
+    def test_scope_update_cannot_leave_existing_food_claims_active(self):
+        self.seed();self.publish('food-fixture',[self.evidence('food',EVIDENCE[7],'edibility')])
+        restricted=copy.deepcopy(self.taxon);restricted['data']['use_scope']='identification-and-safety-only'
+        with self.assertRaises(ValueError):self.publish('restricted-update',[restricted])
+        self.assertEqual(self.b.get('fixture-taxon')['data']['use_scope'],'general-research')
+    def test_metadata_pages_are_byte_bounded_without_omitting_records(self):
+        self.seed();records=[]
+        for i in range(6):
+            r=copy.deepcopy(self.taxon);r['id']='large'+str(i);r['data']['scientific_name']='Fixture species'+str(i);r['data']['names']=[{'name':str(j)+'-'+'a'*400,'language':'la','type':'synonym'} for j in range(180)];records.append(r)
+        self.publish('large-fixture',records);cursor=0;seen=[]
+        while True:
+            page=self.b.list(kind='taxon',after=cursor,limit=100);self.assertLess(len(canonical(page).encode()),512*1024);seen.extend(r['id'] for r in page['items'])
+            if page['next_cursor'] is None:break
+            self.assertGreater(page['next_cursor'],cursor);cursor=page['next_cursor']
+        self.assertEqual(set(seen),{'fixture-taxon',*(r['id'] for r in records)});self.assertEqual(len(seen),7)
+    def test_small_model_budget_reports_complete_instruction_limit(self):
+        self.seed()
+        with self.assertRaisesRegex(ValueError,'Complete botanical instructions'):
+            self.b.context('fixture-taxon','Question',128)
+        from vector_core.service import Application
+        app=Application(self.m)
+        class Forbidden:
+            def generate(self,*args,**kwargs):raise AssertionError('Incomplete instructions must never reach a model')
+        app.adapter=Forbidden()
+        with self.assertRaisesRegex(ValueError,'context allowance'):
+            app.handle('botany_research',{'id':'fixture-taxon','question':'What is known?','evidence_only':False})
+        saved=json.loads(self.m.db.execute("SELECT payload FROM persistent_records WHERE contract='conversations' ORDER BY rowid DESC LIMIT 1").fetchone()[0])
+        self.assertEqual(saved['question'],'What is known?');self.assertEqual(saved['outcome']['status'],'failed')
+        self.assertIn('context allowance',saved['outcome']['errors'][0])
     def test_desktop_service_cannot_publish_or_fetch(self):
         from vector_core.service import Application
         app=Application(self.m)

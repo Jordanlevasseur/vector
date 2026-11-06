@@ -464,3 +464,9 @@ content/preservation report are recorded separately in the task evidence directo
 
 See BOTANICAL_LIBRARY.md for domain boundaries, typed source rights, historical-text
 limitations, research preferences, local-only imports and recovery semantics.
+
+Final botanical maintenance batch: source433 run,432 passed,1 optional cryptography
+skip,0 failures/errors, with unchanged source hashes. Added active-reference checks
+for rights/safety updates, byte-bounded metadata pages, durable context-failure input,
+accurate low-context diagnostics, registered main-Library categories and bounded
+EXIF orientation on display derivatives. Original image bytes remain unchanged.

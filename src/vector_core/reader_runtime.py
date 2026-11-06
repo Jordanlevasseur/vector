@@ -31,6 +31,7 @@ class PDF:
         signature(self.c,'cairo_create',ptr,[ptr]);signature(self.c,'cairo_set_source_rgb',None,[ptr,double,double,double]);signature(self.c,'cairo_paint',None,[ptr]);signature(self.c,'cairo_scale',None,[ptr,double,double]);signature(self.c,'cairo_destroy',None,[ptr]);signature(self.c,'cairo_surface_destroy',None,[ptr]);signature(self.c,'cairo_surface_write_to_png',integer,[ptr,C.c_char_p])
         self.image=C.CDLL('libgdk_pixbuf-2.0.so.0')
         signature(self.image,'gdk_pixbuf_new_from_file_at_scale',ptr,[C.c_char_p,integer,integer,integer,C.POINTER(ptr)])
+        signature(self.image,'gdk_pixbuf_apply_embedded_orientation',ptr,[ptr])
         signature(self.image,'gdk_pixbuf_savev',integer,[ptr,C.c_char_p,C.c_char_p,ptr,ptr,C.POINTER(ptr)])
         signature(self.image,'gdk_pixbuf_get_width',integer,[ptr]);signature(self.image,'gdk_pixbuf_get_height',integer,[ptr])
         self.doc=None;self.token=None;self.count=0
@@ -129,6 +130,11 @@ class PDF:
             if error:self.glib.g_error_free(error)
             raise ValueError('Image format is unsupported or damaged.')
         try:
+            # Apply camera orientation to the already bounded display bitmap,
+            # never to the preserved image and never at original resolution.
+            oriented=self.image.gdk_pixbuf_apply_embedded_orientation(pix)
+            if not oriented:raise ValueError('Embedded image orientation could not be applied.')
+            self.g.g_object_unref(pix);pix=oriented
             output=Path('/outputs')/(token+'-1-'+str(width)+'.png')
             if not self.image.gdk_pixbuf_savev(pix,str(output).encode(),b'png',None,None,C.byref(error)):
                 if error:self.glib.g_error_free(error)
@@ -137,7 +143,7 @@ class PDF:
             if output.stat().st_size>16*1024*1024:output.unlink();raise ValueError('Image exceeds output budget.')
             for old in sorted(Path('/outputs').glob('*.png'),key=lambda p:p.stat().st_mtime_ns)[:-3]:old.unlink()
             with output.open('rb') as h:digest=hashlib.file_digest(h,'sha256').hexdigest()
-            return {'kind':'image','page':1,'pages':1,'width':self.image.gdk_pixbuf_get_width(pix),'height':self.image.gdk_pixbuf_get_height(pix),'image':output.name,'sha256':digest,'bytes':output.stat().st_size}
+            return {'kind':'image','display_orientation':'embedded-orientation-applied','page':1,'pages':1,'width':self.image.gdk_pixbuf_get_width(pix),'height':self.image.gdk_pixbuf_get_height(pix),'image':output.name,'sha256':digest,'bytes':output.stat().st_size}
         finally:self.g.g_object_unref(pix)
 
 def worker():

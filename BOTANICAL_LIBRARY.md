@@ -12,7 +12,7 @@ VECTOR's existing append-only persistent store. Two record lookup indexes and tw
 previously missing original-object lookup indexes are additive. Existing source
 bytes, scientific/literary indexes and edition records are not rewritten.
 
-`vector_core.botany.Botany` lists bounded pages, searches literal names/synonyms and
+`vector_core.botany.Botany` lists count- and byte-bounded pages, searches literal names/synonyms and
 metadata, exposes source citations and geographic filters, publishes reviewed local
 manifests, and rolls back publication without deleting originals or history.
 Portable snapshot validation verifies complete manifest hashes/counts, active
@@ -22,7 +22,7 @@ records is rejected; roll back dependent batches first.
 
 Asset intake precedes publication: it is recoverable staging, not a nested atomic
 SQL transaction. A crash may leave preserved, inactive originals. Final publication
-of 1–1000 records is one transaction. Restart reuses the exact pack/assets; a changed
+of 1–1000 records is one transaction. Updates are checked against all currently active source/subject references before commit; changing rights or safety scope cannot silently invalidate dependent records. Restart reuses the exact pack/assets; a changed
 or rolled-back batch identity cannot silently reactivate or reimport. There is no
 1000-record limit on total collection size. Larger collections use reviewed slices.
 
