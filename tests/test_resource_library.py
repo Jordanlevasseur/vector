@@ -29,7 +29,7 @@ class ResourceLibraryTests(unittest.TestCase):
     def test_scientific_destinations_cover_only_unambiguous_original_editions(self):
         from vector_core.science import ScientificLibrary
         ScientificLibrary(self.memory)._register()
-        for name in ('Mathematics','Physics','Chemistry','Engineering','Materials Science'):
+        for name in ('Mathematics','Physics','Chemistry','Engineering','Materials Science','Biology','Medicine & Anatomy'):
             key=self.ingest(name.encode(),name+'.txt')
             payload={'id':key,'original_event_id':key,'metadata':{'title':name,'subjects':['collection:'+name]}}
             self.memory.db.execute("INSERT INTO persistent_records(contract,record_key,payload,created) VALUES(?,?,?,?)",('scientific_editions',key,json.dumps(payload),'2026-11-04'))
