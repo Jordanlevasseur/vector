@@ -478,3 +478,5 @@ botanical regression tests passed, including first/last window authorization, ga
 false hash, unknown source and fabricated quote rejection. Full final verification
 and genuine model results are retained in the task acceptance report separately;
 manual conversation is not gated on medical accuracy or strict-answer success.
+
+Existing Library bookshelf repair: automatic All Books, continuous bounded scrolling, real category counts, five sorts and preserved original readers. Source regression: 441 run, 440 passed, 1 optional skip; no failures/errors, source unchanged. Additive migration10 indexes original-parent lookup after verified recovery checkpoint. Actual installed acceptance is recorded separately in outputs/vector-bookshelf-repair-20261109. No books, indexes, botanical records or model defaults replaced.

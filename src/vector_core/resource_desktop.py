@@ -8,29 +8,32 @@ class ResourceDesktop:
         self.app=app;self.tk=app.tk;self.ttk=app.ttk;self.parent=parent;self.loaded=False;self.rows={};self.cursor=0;self.previous=[];self.next_cursor=None;self.collection_ids={'All collections':''};self.queue=deque();self.timer=None
         self.key=None;self.member='';self.kind=None;self.offset=0;self.page=1;self.pages=1;self.next_offset=None;self.font_size=12;self.scroll=0.;self.width=850;self.epoch=0;self.find_after=0;self.find_page=1;self.last_query='';self.save_timer=None;self.image=None
         self.catalog=self.ttk.Frame(parent);self.catalog.pack(fill='both',expand=True);self.reader=self.ttk.Frame(parent)
-        heading=self.ttk.Frame(self.catalog);heading.pack(fill='x');self.ttk.Label(heading,text='LIBRARY',style='Brand.TLabel').pack(side='left')
-        for label,command in [('New manual',self.edit_manual),('New collection',self.new_collection),('Coverage',lambda:self.call('resource_inventory',{},app.show_result))]:self.ttk.Button(heading,text=label,command=command).pack(side='right',padx=3)
-        self.botanical=None
-        self.ttk.Button(heading,text='Botanical research',style='Accent.TButton',command=self.open_botanical).pack(side='left',padx=8)
-        search=self.ttk.Frame(self.catalog);search.pack(fill='x',pady=(10,5));self.query=self.ttk.Entry(search);self.query.pack(side='left',fill='x',expand=True);self.query.bind('<Return>',lambda e:self.search())
-        self.search_mode=self.tk.StringVar(value='Titles / metadata');self.ttk.Combobox(search,textvariable=self.search_mode,values=('Titles / metadata','Indexed content'),state='readonly',width=19).pack(side='left',padx=5)
-        self.search_button=self.ttk.Button(search,text='Search',style='Accent.TButton',command=self.search);self.search_button.pack(side='left')
-        filters=self.ttk.Frame(self.catalog);filters.pack(fill='x',pady=5);self.filters={}
-        for name,values,width in [('category',('All categories',),23),('format',('All formats',),13),('collection',('All collections',),24),('sort',('title','author','format','newest'),10)]:
+        self.loading=False;self.catalog_epoch=0;self.search_timer=None;self.scroll_timer=None;self.window_start=0;self.window_limit=200;self.total=0;self.browse_y=0.;self.restoring=False;self.category_choices={};self.shelf_view='bookshelf';self.shelf_pages=[];self.page_history={}
+        heading=self.ttk.Frame(self.catalog);heading.pack(fill='x',pady=(4,10));self.ttk.Label(heading,text='Library',style='Heading.TLabel').pack(side='left')
+        self.count=self.tk.StringVar(value='Your downloaded books and documents');self.ttk.Label(heading,textvariable=self.count,style='Muted.TLabel').pack(side='left',padx=14)
+        self.botanical=None;self.more=self.ttk.Menubutton(heading,text='More ▾');self.more.pack(side='right');menu=self.tk.Menu(self.more,tearoff=False);self.more.configure(menu=menu)
+        for label,command in [('Botanical research',self.open_botanical),('New manual',self.edit_manual),('New collection',self.new_collection),('Details',self.details),('Edit manual',self.edit_selected_manual),('Export original',self.export),('Add to collection',self.add_collection),('Remove from collection',self.remove_collection),('Advanced filters',self.toggle_advanced),('All stored records',lambda:self.change_view('all')),('Bookshelf',lambda:self.change_view('bookshelf')),('Coverage',lambda:self.call('resource_inventory',{},app.show_result)),('Refresh',self.search)]:menu.add_command(label=label,command=command)
+        filters=self.ttk.Frame(self.catalog);filters.pack(fill='x',pady=(0,8));self.ttk.Label(filters,text='Search',style='Muted.TLabel').pack(side='left',padx=(0,7));self.query_value=self.tk.StringVar();self.query=self.ttk.Entry(filters,textvariable=self.query_value);self.query.pack(side='left',fill='x',expand=True,padx=(0,10));self.query.bind('<Return>',lambda e:self.search());self.query_value.trace_add('write',lambda *args:self.defer_search())
+        self.filters={}
+        for name,values,width in [('category',('All Books',),27),('sort',('Title A–Z','Title Z–A','Author','Recently added','Recently opened'),18)]:
             var=self.tk.StringVar(value=values[0]);box=self.ttk.Combobox(filters,textvariable=var,values=values,state='readonly',width=width);box.pack(side='left',padx=(0,5));box.bind('<<ComboboxSelected>>',lambda e:self.search());self.filters[name]=(var,box)
-        self.notice=self.tk.StringVar(value='Complete originals, without loading an AI model.');self.ttk.Label(self.catalog,textvariable=self.notice,style='Muted.TLabel',wraplength=940).pack(anchor='w',pady=4)
+        self.advanced=self.ttk.Frame(self.catalog)
+        self.search_mode=self.tk.StringVar(value='Titles / metadata');self.ttk.Combobox(self.advanced,textvariable=self.search_mode,values=('Titles / metadata','Indexed content'),state='readonly',width=20).pack(side='left')
+        for name,values,width in [('format',('All formats',),13),('collection',('All collections',),28)]:
+            var=self.tk.StringVar(value=values[0]);box=self.ttk.Combobox(self.advanced,textvariable=var,values=values,state='readonly',width=width);box.pack(side='left',padx=5);box.bind('<<ComboboxSelected>>',lambda e:self.search());self.filters[name]=(var,box)
+        self.search_button=self.ttk.Button(self.advanced,text='Search',command=self.search);self.search_button.pack(side='left')
+        self.notice=self.tk.StringVar(value='Books load automatically. Search is optional.');self.notice_label=self.ttk.Label(self.catalog,textvariable=self.notice,style='Muted.TLabel',wraplength=940);self.notice_label.pack(anchor='w',pady=4)
+        self.retry_button=self.ttk.Button(self.catalog,text='Retry loading Library',command=self.search)
         table=self.ttk.Frame(self.catalog);table.pack(fill='both',expand=True)
-        self.listing=self.ttk.Treeview(table,columns=('title','author','format','category'),show='headings',selectmode='browse')
-        for name,width in [('title',410),('author',170),('format',80),('category',150)]:self.listing.heading(name,text=name.title());self.listing.column(name,width=width,minwidth=60)
-        self.listing.pack(side='left',fill='both',expand=True);bar=self.ttk.Scrollbar(table,command=self.listing.yview);bar.pack(side='right',fill='y');self.listing.configure(yscrollcommand=bar.set)
-        self.listing.bind('<Double-1>',lambda e:self.open_selected());self.listing.bind('<Return>',lambda e:self.open_selected())
-        self.listing.bind('<<TreeviewSelect>>',lambda e:self.selection_notice())
-        actions=self.ttk.Frame(self.catalog);actions.pack(fill='x',pady=8)
-        self.open_button=self.ttk.Button(actions,text='Open / Read original',style='Accent.TButton',command=self.open_selected);self.open_button.pack(side='left')
-        for label,command in [('Details',self.details),('Edit manual',self.edit_selected_manual),('Export original',self.export)]:self.ttk.Button(actions,text=label,command=command).pack(side='left',padx=3)
-        self.ttk.Button(actions,text='Next →',command=self.next).pack(side='right');self.ttk.Button(actions,text='← Previous',command=self.prev).pack(side='right',padx=3)
-        organization=self.ttk.Frame(self.catalog);organization.pack(fill='x',pady=(0,5))
-        for label,command in [('Add to collection',self.add_collection),('Remove from collection',self.remove_collection),('Refresh catalogue',self.search)]:self.ttk.Button(organization,text=label,command=command).pack(side='left',padx=3)
+        self.book_icon=self.tk.PhotoImage(width=20,height=26);self.book_icon.put('#19a9b5',to=(2,1,18,25));self.book_icon.put('#17313c',to=(5,3,17,23));self.book_icon.put('#b3d9df',to=(8,6,15,7));self.book_icon.put('#b3d9df',to=(8,10,15,11))
+        style=self.ttk.Style();style.configure('Bookshelf.Treeview',rowheight=40)
+        self.listing=self.ttk.Treeview(table,columns=('title','author','category','format','reading'),show='tree headings',style='Bookshelf.Treeview',selectmode='browse');self.listing.column('#0',width=32,minwidth=32,stretch=False);self.listing.heading('#0',text='')
+        for name,width,label in [('title',290,'Title'),('author',135,'Author'),('category',135,'Collection'),('format',60,'Format'),('reading',90,'Reading')]:self.listing.heading(name,text=label);self.listing.column(name,width=width,minwidth=50,stretch=name=='title')
+        self.listing.pack(side='left',fill='both',expand=True);self.scrollbar=self.ttk.Scrollbar(table,command=self.listing.yview);self.scrollbar.pack(side='right',fill='y');self.listing.configure(yscrollcommand=self.scrolled)
+        self.listing.bind('<ButtonRelease-1>',self.click_book);self.listing.bind('<Return>',lambda e:self.open_selected());self.listing.bind('<<TreeviewSelect>>',lambda e:self.selection_notice())
+        # Preserve the original command for keyboard/accessibility and callers;
+        # ordinary browsing opens a real original with a single click.
+        self.open_button=self.ttk.Button(self.catalog,text='Read original',command=self.open_selected)
         top=self.ttk.Frame(self.reader);top.pack(fill='x');self.back_button=self.ttk.Button(top,text='← Library',command=self.back);self.back_button.pack(side='left')
         self.title=self.tk.StringVar();self.ttk.Label(top,textvariable=self.title,style='Heading.TLabel',wraplength=450).pack(side='left',fill='x',expand=True,padx=10)
         self.ttk.Button(top,text='Source details',command=lambda:self.call('resource_detail',{'id':self.key},app.show_result) if self.key else None).pack(side='right')
@@ -64,59 +67,129 @@ class ResourceDesktop:
             self.botanical=BotanicalDesktop(self)
         self.botanical.show()
 
-    def call(self,op,p,callback=None):
-        if len(self.queue)>=16:self.notice.set('Wait for the current Library operation.');return
-        self.queue.append((op,p,callback));self.pump()
+    def call(self,op,p,callback=None,on_error=None):
+        if len(self.queue)>=16:
+            if on_error:on_error('Wait for the current Library operation, then retry.')
+            else:self.notice.set('Wait for the current Library operation.')
+            return
+        self.queue.append((op,p,callback,on_error));self.pump()
     def pump(self):
         if self.timer is not None:return
         def step():
             self.timer=None
             if not self.parent.winfo_exists():return
             if not self.app.client.pending and self.queue:
-                op,p,callback=self.queue.popleft();self.app.call(op,p,callback)
+                op,p,callback,on_error=self.queue.popleft();self.app.call(op,p,callback,on_error=on_error)
             if self.queue:self.timer=self.app.root.after(80,step)
         step()
+    def toggle_advanced(self):
+        if self.advanced.winfo_manager():self.advanced.pack_forget()
+        else:self.advanced.pack(fill='x',before=self.notice_label,pady=5)
+    def change_view(self,view):
+        self.shelf_view=view;self.filters['category'][0].set('All Books');self.search_mode.set('Titles / metadata');self.search()
+    def defer_search(self):
+        if self.search_timer is not None:self.app.root.after_cancel(self.search_timer)
+        self.search_timer=self.app.root.after(250,self.search)
     def enter(self):
-        if not self.loaded:self.loaded=True;self.search()
-    def search(self):self.cursor=0;self.previous=[];self.load()
-    def load(self):
-        if self.search_mode.get()=='Indexed content':
-            if not self.query.get().strip():self.notice.set('Enter words to search existing indexed content.');return
-            self.call('resource_search',{'query':self.query.get()},self.content_rows);return
-        p={'query':self.query.get(),'after':self.cursor,'sort':self.filters['sort'][0].get()}
-        for key,default in [('category','All categories'),('format','All formats')]:
-            value=self.filters[key][0].get()
-            if value!=default:p[key]=value
+        if not self.loaded and not self.loading:self.search()
+    def search(self):
+        if self.search_timer is not None:self.app.root.after_cancel(self.search_timer);self.search_timer=None
+        if getattr(self.app,'backend_error',None):self.catalog_failed(self.app.backend_error);return
+        self.catalog_epoch+=1;self.cursor=0;self.previous=[];self.next_cursor=None;self.window_start=0;self.shelf_pages=[];self.page_history={};self.rows={};self.listing.delete(*self.listing.get_children());self.retry_button.pack_forget()
+        self.notice.set('Loading your Library…');self.count.set('Loading books and documents…')
+        if not self.loading:self.load()
+    def catalog_failed(self,error,token=None):
+        self.loading=False;self.loaded=False
+        if token is not None and token!=self.catalog_epoch:self.load();return
+        self.notice.set('Could not load Library: '+str(error)[:400]+'. Retry, or restart VECTOR if the application is unavailable.');self.count.set('Library unavailable');self.retry_button.pack(anchor='w',before=self.notice_label,pady=4)
+    def load(self,after=0,direction='replace'):
+        if self.loading:return
+        self.loading=True;token=self.catalog_epoch
+        if self.search_mode.get()=='Indexed content' and self.query.get().strip():
+            self.call('resource_search',{'query':self.query.get()},lambda r:self.content_rows(r,token),lambda error:self.catalog_failed(error,token));return
+        order={'Title A–Z':'title','Title Z–A':'title_desc','Author':'author','Recently added':'newest','Recently opened':'recent'}
+        p={'query':self.query.get(),'after':after,'limit':40,'sort':order.get(self.filters['sort'][0].get(),self.filters['sort'][0].get()),'view':self.shelf_view}
+        category=self.filters['category'][0].get();choice=self.category_choices.get(category)
+        if choice:
+            p.update(choice)
+        elif category not in ('All Books','All categories'):p['category']=category
+        value=self.filters['format'][0].get()
+        if value!='All formats':p['format']=value
         collection=self.filters['collection'][0].get()
         if self.collection_ids.get(collection):p['collection']=self.collection_ids[collection]
-        self.call('resource_list',p,self.catalog_rows)
-    def catalog_rows(self,r):
-        self.next_cursor=r['next_cursor'];self.rows={};self.listing.delete(*self.listing.get_children())
-        for i,row in enumerate(r['items']):
-            key=str(i);self.rows[key]=row;self.listing.insert('', 'end',iid=key,values=(row['title'],'; '.join(row['authors']),row['format'],row['category']))
-        self.notice.set(str(r['total'])+' catalogue entries • '+str(self.cursor+1 if r['total'] else 0)+'–'+str(min(r['total'],self.cursor+len(r['items'])))+' • originals retained; integrity checked on open')
-        self.filters['category'][1].configure(values=('All categories',*r['categories']));self.filters['format'][1].configure(values=('All formats',*r['formats']))
+        self.call('resource_list',p,lambda r:self.catalog_rows(r,token,after,direction),lambda error:self.catalog_failed(error,token))
+    def catalog_rows(self,r,token=None,after=0,direction='replace'):
+        self.loading=False
+        if token is not None and token!=self.catalog_epoch:self.load();return
+        self.loaded=True;self.total=r['total'];self.retry_button.pack_forget();old=list(self.listing.get_children());fraction=float(self.listing.yview()[0]) if old else 0.;anchor=old[min(len(old)-1,int(fraction*len(old)))] if old else None
+        selected=self.listing.selection()
+        if direction=='replace':self.shelf_pages=[]
+        if direction=='backward':self.shelf_pages.insert(0,(after,r['items'],r['next_cursor']))
+        else:self.shelf_pages.append((after,r['items'],r['next_cursor']))
+        if r['next_cursor'] is not None:self.page_history[r['next_cursor']]=after
+        if len(self.shelf_pages)>5:self.shelf_pages.pop(-1 if direction=='backward' else 0)
+        self.rows={};self.listing.delete(*old)
+        for page_start,items,next_page in self.shelf_pages:
+            for i,row in enumerate(items):
+                key=str(page_start+i);state=row.get('reading');progress=('Page '+str(state['page']) if row['format']=='PDF' else 'In progress' if state.get('offset') or state.get('scroll') else 'Opened') if state else ''
+                self.rows[key]=row;self.listing.insert('', 'end',iid=key,image=self.book_icon,values=(row['title'],'; '.join(row['authors']),self.category_label(row['category']),row['format'],progress))
+        children=list(self.listing.get_children());self.window_start=self.shelf_pages[0][0];self.next_cursor=self.shelf_pages[-1][2]
+        if selected and selected[0] in self.rows:self.listing.selection_set(selected[0])
+        self.restoring=True
+        if anchor in children:self.listing.yview_moveto(children.index(anchor)/max(1,len(children)))
+        elif direction=='replace':self.listing.yview_moveto(0)
+        self.app.root.after_idle(lambda:setattr(self,'restoring',False))
+        self.count.set(str(r.get('catalogue_total',r['total']))+' books and documents' if self.shelf_view=='bookshelf' else str(r.get('catalogue_total',r['total']))+' stored records')
+        self.notice.set(('No matching books. Clear the search or choose All Books.' if not self.total else str(self.total)+' matching books and documents · Scroll to browse · Click to read the original') if self.query.get().strip() or self.filters['category'][0].get() not in ('All Books','All categories') else 'All Books · '+str(self.total)+' books and documents · Entirely local')
+        categories=r.get('category_counts',{c:0 for c in r['categories']});collections=r.get('collection_counts',{});self.category_choices={}
+        labels=['All Books']
+        for category,count in sorted(categories.items(),key=lambda item:self.category_label(item[0])):
+            label=self.category_label(category)+' ('+str(count)+')';labels.append(label);self.category_choices[label]={'category':category}
+        for collection in r['collections']:
+            count=collections.get(collection['id'],0)
+            if count:
+                label=collection['name']+' ('+str(count)+')'
+                if label in self.category_choices:label+=' · collection'
+                labels.append(label);self.category_choices[label]={'collection':collection['id']}
+        self.filters['category'][1].configure(values=tuple(labels));self.filters['format'][1].configure(values=('All formats',*r['formats']))
         self.collection_ids={'All collections':''};self.collection_ids.update({c['name']+' ['+c['id'][:6]+']':c['id'] for c in r['collections']});self.filters['collection'][1].configure(values=tuple(self.collection_ids))
-    def content_rows(self,r):
-        self.next_cursor=None;self.rows={};self.listing.delete(*self.listing.get_children())
+    @staticmethod
+    def category_label(value):return {'Books':'Literature','Botanical sources':'Natural Medicine'}.get(value,value)
+    def content_rows(self,r,token=None):
+        self.loading=False
+        if token is not None and token!=self.catalog_epoch:self.load();return
+        self.count.set(str(len(r['items']))+' indexed matches')
+        self.loaded=True;self.next_cursor=None;self.rows={};self.listing.delete(*self.listing.get_children())
         for i,row in enumerate(r['items']):
-            key=str(i);self.rows[key]={**row,'id':row['resource_id'],'content_hit':True};self.listing.insert('', 'end',iid=key,values=(row['title'],row['excerpt'][:100].replace('\n',' '),'passage','Indexed content'))
-        self.notice.set(str(len(r['items']))+' bounded indexed hits. Unindexed originals remain in the catalogue.')
+            key=str(i);self.rows[key]={**row,'id':row['resource_id'],'content_hit':True};self.listing.insert('', 'end',iid=key,image=self.book_icon,values=(row['title'],'','Indexed content','',''))
+        self.notice.set(str(len(r['items']))+' indexed matches. Clear the search to return to your books.')
+    def scrolled(self,first,last):
+        self.scrollbar.set(first,last)
+        if self.restoring or self.loading or self.search_timer is not None or self.search_mode.get()=='Indexed content' and self.query.get().strip():return
+        if self.scroll_timer is not None:self.app.root.after_cancel(self.scroll_timer);self.scroll_timer=None
+        if float(last)>=.96 and self.next_cursor is not None:self.scroll_timer=self.app.root.after(60,lambda:self.scroll_load('forward'))
+        elif float(first)<=.02 and self.window_start>0:self.scroll_timer=self.app.root.after(60,lambda:self.scroll_load('backward'))
+    def scroll_load(self,direction):
+        self.scroll_timer=None
+        if self.loading or not self.catalog.winfo_ismapped():return
+        if direction=='forward' and self.next_cursor is not None:self.load(self.next_cursor,direction)
+        elif direction=='backward' and self.window_start>0:self.load(self.page_history.get(self.window_start,max(0,self.window_start-40)),direction)
+    def click_book(self,event):
+        if self.listing.identify_region(event.x,event.y) in ('tree','cell') and self.listing.identify_row(event.y):self.open_selected()
     def selected(self):
         selected=self.listing.selection();return self.rows.get(selected[0]) if selected else None
     def selection_notice(self):
         row=self.selected()
         if row:self.notice.set(row.get('reason') or ' • '.join(v for v in (row.get('description'),', '.join(row.get('subjects',[])),str(row.get('bytes',''))+' original bytes',str(row.get('duplicate_count',0))+' other records with the same bytes') if v))
-    def next(self):
-        if self.next_cursor is not None:self.previous.append(self.cursor);self.cursor=self.next_cursor;self.load()
-    def prev(self):
-        if self.previous:self.cursor=self.previous.pop();self.load()
+    def next(self):self.scroll_load('forward')
+    def prev(self):self.scroll_load('backward')
     def details(self):
         row=self.selected()
         if row:self.call('resource_detail',{'id':row['id']},self.app.show_result)
     def open_selected(self):
         row=self.selected()
         if not row:return
+        self.browse_y=float(self.listing.yview()[0])
         if row.get('content_hit'):
             self.call('resource_reference',{'event_id':row['id'],'start':row['start']},lambda ref:self.open(ref['resource_id'],location=ref))
         else:self.open(row['id'])
@@ -189,7 +262,7 @@ class ResourceDesktop:
         self.save_timer=self.app.root.after(600,self.saved_scroll)
     def saved_scroll(self):self.save_timer=None;self.save_position()
     def back(self):
-        self.save_position();self.epoch+=1;self.reader.pack_forget();self.catalog.pack(fill='both',expand=True)
+        self.save_position();self.epoch+=1;self.reader.pack_forget();self.catalog.pack(fill='both',expand=True);self.restoring=True;self.listing.yview_moveto(self.browse_y);self.app.root.after_idle(lambda:setattr(self,'restoring',False))
     def find(self):
         query=self.find_entry.get()
         if not query or self.kind not in {'text','pdf'}:return

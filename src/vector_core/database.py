@@ -180,3 +180,6 @@ CREATE INDEX botanical_batch ON persistent_records(contract,json_extract(payload
 CREATE INDEX external_original_object ON external_originals(object_digest);
 CREATE INDEX managed_ref_digest ON managed_refs(digest);
 """)
+
+# Browse original roots without scanning every derived scientific page.
+MIGRATIONS.append("CREATE INDEX events_parent ON events(parent_id);")

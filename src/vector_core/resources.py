@@ -92,25 +92,29 @@ class Resources:
         self.temporary=None
         if renderer:self.cache=Path(renderer.cache)
         else:self.temporary=tempfile.TemporaryDirectory(prefix='vector_library_');self.cache=Path(self.temporary.name);(self.cache/'inputs').mkdir(mode=0o700);(self.cache/'outputs').mkdir(mode=0o700)
-        self.cached={};self.catalog=[];self.fingerprint=None;self.text_cache={};self.member_cache={}
+        self.cached={};self.catalog=[];self.fingerprint=None;self.catalog_view='all';self.list_snapshot=None;self.text_cache={};self.member_cache={}
     def close(self):
         if self.renderer:self.renderer.close();self.renderer=None
         if self.temporary:self.temporary.cleanup();self.temporary=None
     def _records(self,contract):
         return [json.loads(r[0]) for r in self.db.execute("SELECT payload FROM persistent_records r WHERE contract=? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract=r.contract AND record_key=r.record_key) ORDER BY rowid",(contract,))]
-    def _refresh(self):
-        fingerprint=(self.db.execute('SELECT count(*),max(rowid) FROM events').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_refs').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_objects').fetchone()[:],tuple(self.db.execute("SELECT max(rowid) FROM persistent_records WHERE contract IN ('literary_editions','scientific_editions','library_manuals')").fetchone()))
+    def _refresh(self,view=None):
+        view=view or self.catalog_view
+        if view not in {'all','bookshelf'}:raise ValueError('Unknown catalogue view.')
+        fingerprint=(view,self.db.execute('SELECT count(*),max(rowid) FROM events').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_refs').fetchone()[:],self.db.execute('SELECT count(*),max(rowid) FROM managed_objects').fetchone()[:],tuple(self.db.execute("SELECT max(rowid) FROM persistent_records WHERE contract IN ('literary_editions','scientific_editions','library_manuals')").fetchone()))
         if fingerprint==self.fingerprint:return
         books={p['event_id']:p for p in self._records('literary_editions')};science={p['original_event_id']:p for p in self._records('scientific_editions')};manuals={p['event_id']:p for p in self._records('library_manuals')}
         # Do not read texts.status here: it follows a potentially huge TEXT field
         # in the SQLite record and can force overflow-page reads just to list titles.
         # FTS row identities establish index presence; search itself retains its
         # original status/hash/span verification unchanged.
-        indexed={r[0] for r in self.db.execute('SELECT t.event_id FROM text_search f JOIN texts t ON t.rowid=f.rowid')}
-        rows=self.db.execute('SELECT e.*,COALESCE(o.raw_bytes,b.byte_count) AS bytes,o.stored_bytes,o.codec,x.object_digest,b.sha256 AS blob_digest,(SELECT count(*) FROM claims c WHERE c.event_id=e.id) AS claims_count FROM events e LEFT JOIN blobs b ON b.sha256=e.sha256 LEFT JOIN external_originals x ON x.digest=e.sha256 LEFT JOIN managed_objects o ON o.digest=x.object_digest ORDER BY e.rowid')
+        indexed={r[0] for r in self.db.execute('SELECT t.event_id FROM text_search f JOIN texts t ON t.rowid=f.rowid')} if view=='all' else set()
+        primary=set(books)|set(science)|set(manuals)
+        where=(' WHERE e.parent_id IS NULL'+(' OR e.id IN ('+','.join('?' for _ in primary)+')' if primary else '')) if view=='bookshelf' else ''
+        rows=self.db.execute('SELECT e.*,COALESCE(o.raw_bytes,b.byte_count) AS bytes,o.stored_bytes,o.codec,x.object_digest,b.sha256 AS blob_digest,(SELECT count(*) FROM claims c WHERE c.event_id=e.id) AS claims_count FROM events e LEFT JOIN blobs b ON b.sha256=e.sha256 LEFT JOIN external_originals x ON x.digest=e.sha256 LEFT JOIN managed_objects o ON o.digest=x.object_digest '+where+' ORDER BY e.rowid',tuple(primary) if view=='bookshelf' else ())
         result=[]
         for row in rows:
-            p=dict(row);p['extraction_status']='FTS text representation exists' if p['id'] in indexed else 'No direct FTS text; original retained';meta=json.loads(p['metadata']);edition=books.get(p['id']) or science.get(p['id']);m=edition['metadata'] if edition else {}
+            p=dict(row);p['extraction_status']=('Index status not checked for bookshelf browsing; existing search remains available' if view=='bookshelf' else 'FTS text representation exists' if p['id'] in indexed else 'No direct FTS text; original retained');meta=json.loads(p['metadata']);edition=books.get(p['id']) or science.get(p['id']);m=edition['metadata'] if edition else {}
             category='Books' if p['id'] in books else 'Science' if p['id'] in science else 'Extracted text' if meta.get('resource_type')=='scientific-extracted-text' else 'Rights & references' if 'rights' in p['submission_name'].casefold() or p['media_type']=='application/rdf+xml' else 'Other documents'
             if p['id'] in science:
                 collections=[name for name in SCIENTIFIC_COLLECTIONS if 'collection:'+name in m.get('subjects',[])]
@@ -119,10 +123,11 @@ class Resources:
                 if len(collections)==1:category=collections[0]
             if str(meta.get('resource_type','')).startswith('botanical-'):
                 m=meta;category='Botanical sources' if meta.get('botanical_role')=='original' else 'Botanical rights & extracted data'
+            if view=='bookshelf' and not (edition or p['id'] in manuals or category=='Botanical sources' or (p['parent_id'] is None and category=='Other documents' and not meta.get('resource_type') and not re.search(r'\b(?:licen[cs]e|rights)\b',p['submission_name'],re.I))):continue
             title=m.get('title') or p['submission_name'];subjects=m.get('subjects',[]);subjects=subjects if isinstance(subjects,list) else [subjects] if subjects else []
             fmt=format_name(p['media_type'],p['submission_name']);reason=''
             if not p['blob_digest']:reason='Original blob identity is missing.'
-            elif p['object_digest']:
+            elif p['object_digest'] and view=='all':
                 try:
                     path=object_path(self.memory.config.data_dir,p['object_digest']);info=path.stat()
                     if not stat.S_ISREG(info.st_mode) or info.st_size!=p['stored_bytes']:reason='Managed original file length/type does not match its descriptor.'
@@ -135,37 +140,58 @@ class Resources:
         # Registered attachments and retained unacknowledged objects remain accounted for.
         for row in self.db.execute('SELECT r.*,o.raw_bytes FROM managed_refs r JOIN managed_objects o ON o.digest=r.digest WHERE r.purpose NOT IN (\'model-weight\',\'adapter\',\'extension\',\'capability\')'):
             p=dict(row);result.append(dict(id='asset:'+p['id'],event_id=None,source_id=None,sha256=p['digest'],title=p['logical_name'],name=p['logical_name'],authors=[],subjects=[],description=p['purpose'],category='Attachments',format=format_name('',p['logical_name']),bytes=p['raw_bytes'],media_type='application/octet-stream',created=p['created'],parent_id=None,original_event_id=None,locator=None,available=True,reason='',reader='unsupported',claims_count=0,extraction_status='not indexed'))
-        for row in self.db.execute('SELECT * FROM managed_objects o WHERE NOT EXISTS (SELECT 1 FROM external_originals x WHERE x.object_digest=o.digest) AND NOT EXISTS (SELECT 1 FROM managed_refs r WHERE r.digest=o.digest)'):
+        for row in (self.db.execute('SELECT * FROM managed_objects o WHERE NOT EXISTS (SELECT 1 FROM external_originals x WHERE x.object_digest=o.digest) AND NOT EXISTS (SELECT 1 FROM managed_refs r WHERE r.digest=o.digest)') if view=='all' else ()):
             result.append(dict(id='object:'+row['digest'],event_id=None,source_id=None,sha256=row['digest'],title='Retained object '+row['digest'][:16],name=row['digest'],authors=[],subjects=[],description='Retained content without an acknowledged source event',category='Retained objects',format='Unrecognized',bytes=row['raw_bytes'],media_type='application/octet-stream',created='',parent_id=None,original_event_id=None,locator=None,available=True,reason='',reader='unsupported',claims_count=0,extraction_status='not indexed'))
         duplicates={}
         for p in result:duplicates[p['sha256']]=duplicates.get(p['sha256'],0)+1
         for p in result:p['duplicate_count']=duplicates[p['sha256']]-1
-        self.catalog=result;self.by_id={p['id']:p for p in result};self.fingerprint=fingerprint
+        self.catalog=result;self.by_id={p['id']:p for p in result};self.fingerprint=fingerprint;self.catalog_view=view
     def detail(self,key):
         self._refresh();resource_id(key)
+        if key not in self.by_id and self.catalog_view!='all':self._refresh('all')
         if key not in self.by_id:raise KeyError('Resource not found.')
         item=dict(self.by_id[key])
-        descriptor=self.db.execute('SELECT * FROM managed_objects WHERE digest=?',(item['sha256'],)).fetchone()
+        descriptor=self.db.execute('SELECT o.* FROM external_originals x JOIN managed_objects o ON o.digest=x.object_digest WHERE x.digest=?',(item['sha256'],)).fetchone() or self.db.execute('SELECT * FROM managed_objects WHERE digest=?',(item['sha256'],)).fetchone()
         if descriptor:
             try:
-                info=object_path(self.memory.config.data_dir,item['sha256']).stat()
+                info=object_path(self.memory.config.data_dir,descriptor['digest']).stat()
                 if not stat.S_ISREG(info.st_mode) or info.st_size!=descriptor['stored_bytes']:item.update(available=False,reason='Original file size/type differs from its immutable descriptor.')
             except (OSError,ValueError) as error:item.update(available=False,reason='Original inaccessible: '+str(error))
         item['reading']=self.state(key);return item
-    def list(self,query='',*,category='',format='',collection='',sort='title',after=0,limit=40):
+    def list(self,query='',*,category='',format='',collection='',sort='title',after=0,limit=40,view='all'):
         if not isinstance(query,str) or len(query)>512 or type(after) is not int or after<0 or type(limit) is not int or not 1<=limit<=100:raise ValueError('Invalid catalogue page/query.')
         if category and category not in CATEGORIES:raise ValueError('Unknown category.')
-        if sort not in {'title','author','format','newest'}:raise ValueError('Unknown sort.')
-        self._refresh();members=None
+        if sort not in {'title','title_desc','author','format','newest','recent'}:raise ValueError('Unknown sort.')
+        self._refresh(view);members=None
+        reading={p['resource_id']:p for p in self._records('library_reading')}
+        categories={};memberships=self._records('library_memberships');collection_counts={}
+        catalogue_ids={p['id'] for p in self.catalog}
+        for p in self.catalog:categories[p['category']]=categories.get(p['category'],0)+1
+        for p in memberships:
+            if p['included'] and p['resource_id'] in catalogue_ids:collection_counts[p['collection_id']]=collection_counts.get(p['collection_id'],0)+1
         if collection:
-            identity(collection);members={p['resource_id'] for p in self._records('library_memberships') if p['collection_id']==collection and p['included']}
+            identity(collection);members={p['resource_id'] for p in memberships if p['collection_id']==collection and p['included']}
         terms=query.casefold().split();rows=[]
         for item in self.catalog:
             if category and item['category']!=category or format and item['format']!=format or members is not None and item['id'] not in members:continue
             hay=' '.join([item['title'],item['name'],item.get('file_name',''),item['format'],item['category'],*item['authors'],*item['subjects']]).casefold()
             if all(t in hay for t in terms):rows.append(item)
-        rows.sort(key=lambda p:(p['created'] if sort=='newest' else ' '.join(p['authors']).casefold() if sort=='author' else p['format'] if sort=='format' else p['title'].casefold(),p['id']),reverse=sort=='newest')
-        return {'items':rows[after:after+limit],'total':len(rows),'next_cursor':after+limit if after+limit<len(rows) else None,'categories':list(CATEGORIES),'formats':sorted({p['format'] for p in self.catalog}),'collections':self.collections()}
+        rows.sort(key=lambda p:(reading.get(p['id'],{}).get('updated','') if sort=='recent' else p['created'] if sort=='newest' else ' '.join(p['authors']).casefold() if sort=='author' else p['format'] if sort=='format' else p['title'].casefold(),p['id']),reverse=sort in {'newest','recent','title_desc'})
+        # Opening a book updates reading history. Keep this browse sequence
+        # stable until an explicit new search, so recent-order pagination cannot
+        # repeat or omit a book when it moves to the front during reading.
+        signature=(self.fingerprint,query,category,format,collection,sort)
+        if after and self.list_snapshot and self.list_snapshot[0]==signature:rows=self.list_snapshot[1]
+        else:self.list_snapshot=(signature,rows)
+        page=[];used=0
+        for p in rows[after:after+limit]:
+            state=reading.get(p['id']);item={**p,'reading':state}
+            size=len(canonical(item).encode())
+            if used+size>384*1024:
+                if not page:raise ValueError('Catalogue metadata exceeds one bounded page; original remains preserved.')
+                break
+            page.append(item);used+=size
+        return {'items':page,'catalogue_total':len(self.catalog),'category_counts':categories,'collection_counts':collection_counts,'total':len(rows),'next_cursor':after+len(page) if after+len(page)<len(rows) else None,'categories':list(CATEGORIES),'formats':sorted({p['format'] for p in self.catalog}),'collections':self.collections()}
     def collections(self):return self._records('library_collections')
     def _append(self,contract,key,p,**options):
         from vector_core.persistence import register
@@ -225,7 +251,7 @@ class Resources:
         # Small legacy originals are inexpensive to verify before reusing a cache.
         return hashlib.sha256(b''.join(self.chunks(p['id']))).hexdigest()
     def inventory(self):
-        self.fingerprint=None;self._refresh();by_format={};by_category={};unavailable=[];unsupported=[];hashes={}
+        self.fingerprint=None;self._refresh('all');by_format={};by_category={};unavailable=[];unsupported=[];hashes={}
         for p in self.catalog:
             by_format[p['format']]=by_format.get(p['format'],0)+1;by_category[p['category']]=by_category.get(p['category'],0)+1;hashes[p['sha256']]=hashes.get(p['sha256'],0)+1
             if not p['available']:unavailable.append({'id':p['id'],'title':p['title'],'reason':p['reason']})

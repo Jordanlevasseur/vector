@@ -194,7 +194,7 @@ class Desktop:
         from vector_core.resource_desktop import ResourceDesktop
         self.library=ResourceDesktop(self,self.shell.library_parent)
         self.root.protocol('WM_DELETE_WINDOW',self.close);root.deiconify();root.after(30,self.poll);self.call('health',{},self.health)
-    def call(self,operation,parameters,callback=None):
+    def call(self,operation,parameters,callback=None,on_error=None):
         try:
             self.status.set('Working locally…')
             def done(response):
@@ -206,12 +206,17 @@ class Desktop:
                         if self.mode_catalog is not None:self.mode_catalog['mode']=mode
                         self.shell.model_state.set(MODES.get(mode,'Model not selected'))
                     if callback:callback(response['result'])
+                elif on_error:on_error(response['result'])
                 else:self.dialog.showerror('VECTOR operation blocked',response['result'],parent=self.root)
             self.client.start(operation,parameters,done);self.shell.pending()
-        except (ValueError,RuntimeError,OSError) as error:self.dialog.showerror('VECTOR',str(error),parent=self.root)
+        except (ValueError,RuntimeError,OSError) as error:
+            if on_error:on_error(str(error))
+            else:self.dialog.showerror('VECTOR',str(error),parent=self.root)
     def poll(self):
         try:self.client.poll()
         except (RuntimeError,OSError,ValueError) as error:
+            self.backend_error=str(error)
+            if getattr(self,'library',None) and self.library.loading:self.library.catalog_failed(str(error))
             self.status.set('Backend unavailable — restart VECTOR');self.shell.model_state.set('Backend unavailable');self.shell.core.state(busy=False,motion=False);self.shell.send.configure(state='disabled');self.shell.cancel.configure(state='disabled');return
         self.root.after(30 if self.client.pending else 100,self.poll)
     def show_chat(self,text):self.shell.append(text,'user' if text.startswith('You:') else 'system' if text.startswith(('Saved question:','Uncertainty:','Limitations:')) else None)
