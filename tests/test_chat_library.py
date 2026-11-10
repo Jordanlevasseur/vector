@@ -57,9 +57,11 @@ class ChatLibraryTests(unittest.TestCase):
   with self.assertRaisesRegex(ValueError,'mismatch'):self.app.model_controller._replay(run)
  def test_lookup_error_preserves_question_and_has_specific_failure(self):
   self.select();q='What is amber independence?'
+  from types import SimpleNamespace
+  self.app.transport=SimpleNamespace(qualified=False)
   with patch('vector_core.chat_library.retrieve',side_effect=InferenceError('Original missing',code='LIBRARY_MISSING_ORIGINAL',stage='library-retrieval')):
    r=self.app.handle('ask',{'question':q,'manual':True})
-  self.assertEqual(r['question'],q);self.assertEqual(r['outcome']['failure']['code'],'LIBRARY_MISSING_ORIGINAL');self.assertEqual(self.adapter.calls,[])
+  self.assertEqual(r['question'],q);self.assertEqual(r['outcome']['failure']['code'],'LIBRARY_MISSING_ORIGINAL');self.assertEqual(self.adapter.calls,[]);self.assertFalse(r['outcome']['failure']['restart_required'])
  def test_deadline_is_bounded_and_handler_restored(self):
   with self.assertRaises(InferenceError) as caught:retrieve(self.m,'Explain amber independence',timeout=-1)
   self.assertEqual(caught.exception.code,'LIBRARY_TIMEOUT');self.assertEqual(self.m.db.execute('SELECT 1').fetchone()[0],1)
@@ -92,3 +94,48 @@ class ChatLibraryTests(unittest.TestCase):
  def test_self_contained_premises_and_creative_requests_do_not_search(self):
   for q in ('Explain whether these premises entail a contradiction.','Brainstorm three names for my new project.'):
    self.assertFalse(needed(q),q)
+
+ def test_generic_taxonomy_review_words_do_not_select_a_plant(self):
+  import test_botany as fixtures
+  helper=fixtures.BotanicalTests();helper.setUp()
+  try:
+   helper.taxon['data']['taxonomy_status']='Independent taxonomic review is pending.';helper.seed()
+   note=helper.m.ingest(Submission(b'Linearly independent vectors have only the trivial zero combination.','Vector note'))
+   l,s=retrieve(helper.m,'What are independent vectors?');self.assertIsNone(l['botanical']);self.assertEqual(s[0]['event_id'],note['event_id'])
+  finally:helper.doCleanups()
+ def test_late_all_term_window_replaces_an_unrelated_prefix(self):
+  text='Amber is mentioned in the unrelated heading. '+('Background prose. '*60)+'Amber independence means only a trivial zero combination.'
+  self.m.ingest(Submission(text.encode(),'Late definition'))
+  l,s=retrieve(self.m,'What is amber independence?');self.assertTrue(s);self.assertGreater(s[0]['start'],500);self.assertIn('Amber independence means',s[0]['quote']);validate(self.m,l,s)
+ def test_ordinary_quotation_is_not_a_nonexistent_book_scope(self):
+  self.book();l,s=retrieve(self.m,'What does "amber independence" mean?');self.assertEqual(l['status'],'retrieved');self.assertTrue(s)
+ def test_pronoun_followup_preserves_original_source_subject(self):
+  self.book();l,s=retrieve(self.m,'What about it?',previous_question='What is amber independence?');self.assertEqual(l['status'],'retrieved');self.assertTrue(s)
+ def test_v1_payload_replay_is_preserved_and_v2_omits_only_duplicate_metadata(self):
+  from vector_core.model_routing import digest
+  from vector_core.inference import CHAT_FORMAT,chat_prompt
+  self.book();r=self.ask('What is amber independence?',['A bounded answer [S1].']);run=self.app.model_controller.get(r['model_run_ref']);context=copy.deepcopy(run['context']);context['library']['version']=1
+  messages=chat_messages(run['prompt']);messages[-2]['content']=message(context['library'],context['sources']);self.adapter.responses=iter(['Old framing [S1].'])
+  old=self.app.model_controller.execute(chat_prompt(messages),GenerationConfig(**run['configuration']),mode='a',response_kind=CHAT_FORMAT,context=context,workflow='direct')
+  self.assertEqual(self.app.model_controller.get(old['id'])['status'],'complete')
+  inventory,sources=retrieve(self.m,'Which books do you have?');self.assertIn('catalogue',message(inventory,sources))
+
+ def test_compacting_botanical_windows_preserves_every_original_risk_quote(self):
+  import test_botany as fixtures
+  helper=fixtures.BotanicalTests();helper.setUp()
+  try:
+   helper.seed();risk=helper.evidence();risk['citations'][0].update(start=20,end=80,quote=helper.body[20:80]);helper.publish('risk-subwindow',[risk])
+   l,s=retrieve(helper.m,'What is the evidence for Fixture species?');self.assertEqual(len(s),1);self.assertIn('fixture-risk',l['botanical']['scope']['mandatory_evidence']);validate(helper.m,l,s)
+   broken=copy.deepcopy(s);broken[0].update(start=0,end=10,quote=helper.body[:10])
+   with self.assertRaisesRegex(ValueError,'missing'):validate(helper.m,l,broken)
+  finally:helper.doCleanups()
+
+ def test_bounded_adjacent_pair_fallback_avoids_a_lone_common_word(self):
+  note=self.m.ingest(Submission(b'Beta gamma is the relevant complete phrase in this original.','Pair note'))
+  l,s=retrieve(self.m,'Discuss alpha beta gamma.');self.assertEqual(l['status'],'retrieved');self.assertTrue(any(x['event_id']==note['event_id'] for x in s));self.assertTrue(all(len(query.split())>=2 for query in l['queries']))
+
+ def test_descriptive_evidence_heading_does_not_select_an_unrelated_practice(self):
+  candidate={'id':'practice-acupuncture','kind':'practice','title':'Acupuncture — evidence and safety reference','data':{}}
+  with patch('vector_core.botany.Botany.list',return_value={'items':[candidate]}),patch('vector_core.botany.Botany.context',side_effect=AssertionError('Unrelated subject selected')):
+   l,s=retrieve(self.m,'What is the evidence for licorice and what are its risks?')
+  self.assertIsNone(l['botanical'])

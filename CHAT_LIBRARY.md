@@ -50,3 +50,29 @@ available in Library but are not automatically indexed by this Chat route. Small
 Whole-book summaries are not inferred from snippets. Existing complete-body
 summary acceptance and routing remain intact for explicit whole-document summaries.
 No output is promoted to verified knowledge or a release qualification.
+
+Real-data follow-up: taxonomy review prose (the word “independent”) must not
+select a plant during a mathematics question. Botanical resolution now checks
+actual names/titles and runs before unrelated generic FTS. Scientific collection
+and named scientific-book searches avoid unnecessary literary lookups. Existing
+all-term window selection replaces unrelated source prefixes. Ordinary quoted
+phrases remain content queries; explicitly quoted document titles remain scopes.
+Lookup failures do not falsely require restarting an otherwise healthy model
+controller. The original 30-second lookup bound and all OS controls remain.
+
+Library data message version2 retains the complete selected passages, source
+titles/locations, authors, status, coverage and botanical safety bundle. It omits
+duplicate catalogue records and search-query diagnostics from model input when
+passages are supplied; the complete metadata/diagnostics remain frozen for audit.
+Catalogue-only searches still supply C labels. This reduces avoidable context
+allocation without shortening instructions, questions, safety evidence or peer
+handoffs. Version1 messages remain exactly reconstructible for durable replay.
+The initial real 2B sourced trial hit the existing memory-pressure guard at a
+2560-token context; that guard was preserved. Actual subsequent acceptance is
+recorded separately from fixture tests and hardware estimates.
+
+For botanical bundles, a complete retained body can contain individual risk
+quotation windows. Only wholly contained duplicates are removed. Every original
+record citation must still be covered byte-for-byte by a supplied window; missing
+coverage rejects the context. The eight-window and per-answer citation bounds
+remain unchanged, with all safety/negative record classifications preserved.

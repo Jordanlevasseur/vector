@@ -763,7 +763,7 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None,m
             run=controller.execute(prompt,config,mode=selected_mode,response_kind=CHAT_FORMAT,context=context,turn_id=turn,parent=parent,settings_snapshot=settings,workflow='direct' if context.get('manual_operation') else context['processing']['workflow'])
         result=conversation_view(memory,record,run)
     except Exception as error:
-        record['outcome']={'status':'model-failed','answer':None,'generation':None,'errors':[(str(error) or type(error).__name__+' in request preparation')[:1000]],'message':'The local model response could not be completed.','failure':{'code':getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','request-preparation'),'restart_required':bool(app.transport and not app.transport.qualified)}}
+        record['outcome']={'status':'model-failed','answer':None,'generation':None,'errors':[(str(error) or type(error).__name__+' in request preparation')[:1000]],'message':'The local model response could not be completed.','failure':{'code':getattr(error,'code','CONTROLLER_FAILURE'),'stage':getattr(error,'stage','request-preparation'),'restart_required':bool(getattr(error,'stage',None)!='library-retrieval' and app.transport and not app.transport.qualified)}}
         result=record
     result['seconds']=time.monotonic()-tick
     put(memory,'conversations',key,{k:v for k,v in result.items() if k not in {'model_run','checked'}})
