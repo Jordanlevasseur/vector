@@ -91,6 +91,17 @@ def conversational_output(memory,text,context):
     Older models/history may still emit the previous four fields. This is an
     optional compatibility path, never a JSON requirement or an action decoder.
     """
+    if (context or {}).get('response_validation_version')==4:
+        from vector_core.chat_library import output
+        legacy=None
+        try:
+            p=decode(text)
+            if isinstance(p,dict) and set(p)=={'text','uncertainty','issues','citations'} and p['citations']==[]:
+                legacy=validate_output(memory,text,context);text=legacy['text']
+        except (ValueError,TypeError,InferenceError):pass
+        result=output(memory,text,context)
+        if legacy:result.update(uncertainty=legacy['uncertainty'],issues=legacy['issues'])
+        return result
     if (context or {}).get('response_validation_version')==3:
         # Manual development output is inert prose. Never promote a generated
         # citation, operation or quality assessment into trusted authority.
@@ -240,8 +251,8 @@ class ModelController:
             if not isinstance(body,str) or not body.strip() or len(body.encode())>16000:raise InferenceError('Empty or excessive conversational response.',code='INVALID_OUTPUT',stage='response-validation')
             question=(run.get('context') or {}).get('question','')
             validation=(run.get('context') or {}).get('response_validation_version',1)
-            if type(validation) is not int or validation not in (1,2,3):raise InferenceError('Unknown conversational validation version.')
-            if validation==3:return body
+            if type(validation) is not int or validation not in (1,2,3,4):raise InferenceError('Unknown conversational validation version.')
+            if validation in (3,4):return body
             normalized=lambda s:' '.join(s.casefold().split()).rstrip(' .!?')
             from vector_core.reasoning import processing
             greeting=bool(re.fullmatch(r'(?:hi|hello|hey|greetings|good\s+(?:morning|afternoon|evening))[.!?\s]*',question,re.I))
@@ -372,6 +383,9 @@ class ModelController:
         run['status']='running';run['error']='';self._save(run)
         planned=execution_phases(run)
         try:
+            if (run.get('context') or {}).get('library'):
+                from vector_core.chat_library import check_live
+                check_live(self.memory,run['context'])
             if getattr(self.app,'adaptive',None):
                 names=[run['settings']['bindings'][r] for r in (('a','b') if run['mode']=='both' else (run['mode'],))]
                 self.app.adaptive.prepare(names,config,self.progress)
@@ -462,15 +476,26 @@ def conversation_view(memory,record,run):
         stage=completed[-1]
         output=(conversational_output(memory,stage['generation']['text'],run.get('context')) if run['response_kind']==CHAT_FORMAT else validate_output(memory,stage['generation']['text'],run.get('context')))
         outcome.update(status='simulated-test-response' if any(s['generation']['simulated'] for s in completed) else 'model-inference-unverified',generation=stage['generation'],model_text=output['text'],uncertainty=output['uncertainty'],issues=controller.issues(run),citations=output['citations'],message=' + '.join(dict.fromkeys(s['model'] for s in completed))+' — unverified model response.')
-        if (record.get('routing') or {}).get('kind')=='summarize' and (not (run.get('context') or {}).get('document',{}).get('complete_body_supplied') or not output['citations'] or output['text'] in [s['quote'] for s in run['context']['sources']]):
+        if (record.get('routing') or {}).get('kind')=='summarize' and not (run.get('context') or {}).get('library') and (not (run.get('context') or {}).get('document',{}).get('complete_body_supplied') or not output['citations'] or output['text'] in [s['quote'] for s in run['context']['sources']]):
             outcome.update(status='summary-unfulfilled',model_text=None,message='No usable cited model summary was produced. The recorded output remains unverified.')
     if record.get('context') is None and run.get('context'):
         from vector_core.context import display_notices
         record={**record,'context':{'context':run['context'],'sha256':digest(canonical(run['context'])),'display_notices':display_notices(memory,[s['event_id'] for s in run['context']['sources']])}}
     if run.get('failure'):outcome['failure']=run['failure']
-    if run['response_kind']==CHAT_FORMAT and (run.get('context') or {}).get('response_validation_version')==3:
+    if run['response_kind']==CHAT_FORMAT and (run.get('context') or {}).get('response_validation_version') in (3,4):
         outcome['evaluations']={'functionality':{'inference_completed':run['status']=='complete','status':'passed' if run['status']=='complete' else 'failed','blocks_future_requests':False},'accuracy':{'status':'unverified','operational_gate':False},'production':{'release_ready':False,'operational_gate':False}}
         outcome['quality_observations']=[]
+        if (run.get('context') or {}).get('library'):
+            library=run['context']['library'];outcome['library_status']=library['status'];outcome['library_notice']=library['coverage'] if library['status']!='not-needed' else ''
+            outcome['retrieved_sources']=run['context']['sources']
+            if library['status']=='no-match':outcome['message']='No matching Library evidence. Any following model response is unverified general output, not a Library finding.'
+            if run['status']=='complete':
+                outcome['citation_status']=output.get('citation_status','not-applicable');outcome['metadata_references']=output.get('metadata_references',[])
+                if outcome['citation_status']=='invalid-label' or library['status'] in ('retrieved','metadata-only') and outcome['citation_status'] not in ('resolved-provenance-only','resolved-metadata-only'):
+                    outcome['unaccepted_model_text']=outcome.get('model_text');outcome['model_text']=None
+                    outcome['quality_observations'].append('Inference completed, but no grounded answer was accepted: the lookup found no evidence or the response lacked valid supplied labels. Inspect retains the raw response; available originals remain linked.')
+                outcome['evaluations']['accuracy']['citation_status']=outcome['citation_status']
+
         if outcome.get('model_text'):
             if outcome['model_text'].strip().casefold().rstrip('.!?')==record['question'].strip().casefold().rstrip('.!?'):outcome['quality_observations'].append('Response repeats the input; real inference still completed.')
             if re.search(r"\b(?:cannot|can't) (?:assist|help)\b",outcome['model_text'],re.I):outcome['quality_observations'].append('Model declined the request; real inference still completed.')
@@ -610,13 +635,17 @@ def _verify_history(memory,run):
     if 'instruction_version' in context:expected_keys.add('instruction_version')
     if 'response_validation_version' in context:expected_keys.add('response_validation_version')
     if 'manual_operation' in context:expected_keys.add('manual_operation')
-    if (set(context)!=expected_keys or context['sources']!=[] or context['claims']!=[] or context['conflicts']!=[]
+    library=context.get('instruction_version')==3
+    if library:
+        from vector_core.chat_library import validate,message
+        expected_keys.add('library');validate(memory,context['library'],context['sources'])
+    if (set(context)!=expected_keys or (not library and context['sources']!=[]) or context['claims']!=[] or context['conflicts']!=[]
         or context['policy']!=POLICY or not isinstance(context['processing'],dict)
         or context['processing']!=processing(context['question'],version=context['processing'].get('version'))):raise ValueError('Frozen chat context differs from the actual shared prompt or request authority boundary.')
     if 'manual_operation' in context and type(context['manual_operation']) is not bool:raise ValueError('Invalid frozen manual-operation selection.')
     if run.get('workflow','direct')!=('direct' if run['mode']=='both' or context.get('manual_operation') else context['processing']['workflow']):raise ValueError('Model workflow differs from its frozen processing hint.')
     validation=context.get('response_validation_version',1)
-    if type(validation) is not int or validation not in (1,2,3):raise ValueError('Unknown frozen conversational validation version.')
+    if type(validation) is not int or validation not in (1,2,3,4):raise ValueError('Unknown frozen conversational validation version.')
     if not isinstance(refs,list) or len(refs)>64:raise ValueError('Invalid frozen conversation history.')
     for ref in refs:
         if not isinstance(ref,dict) or set(ref)!={'record','run_record','message_sha256'}:raise ValueError('Invalid historical record reference.')
@@ -629,8 +658,13 @@ def _verify_history(memory,run):
         actual.extend(messages)
     messages=chat_messages(run['prompt'])
     version=context.get('instruction_version',1)
-    if version not in (1,2):raise ValueError('Unknown frozen chat instruction version.')
+    if version not in (1,2,3):raise ValueError('Unknown frozen chat instruction version.')
     system=CHAT_SYSTEM if version==1 else CHAT_SYSTEM_V2
+    if library:
+        from vector_core.chat_library import SYSTEM
+        system=SYSTEM
+        if context['response_validation_version']!=4:raise ValueError('Library chat requires citation validation v4.')
+        if context['library']['status']!='not-needed':actual.append({'role':'user','content':message(context['library'],context['sources'])})
     if messages[0]!={'role':'system','content':system} or messages[1:-1]!=actual:raise ValueError('Frozen messages differ from their historical evidence.')
     selection=context['history_selection']
     if not isinstance(selection,dict) or selection.get('included')!=len(refs) or selection.get('candidate_limit')!=64 or type(selection.get('omitted_for_context')) is not int or selection['omitted_for_context']<0:raise ValueError('Invalid scoped-history declaration.')
@@ -688,12 +722,23 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None,m
             if selected_mode is None:
                 selected_mode='b' if settings['bindings'].get('b')==config.model else 'a'
                 settings={**settings,'bindings':dict(settings['bindings'],**{selected_mode:config.model})}
-            messages=[{'role':'system','content':CHAT_SYSTEM_V2},{'role':'user','content':question}];refs=[]
+            from vector_core.chat_library import retrieve,message,SYSTEM
+            prior=memory.db.execute("SELECT payload FROM persistent_records WHERE contract='conversations' AND substr(record_key,1,32)=? AND record_key!=? ORDER BY rowid DESC LIMIT 1",(app.session['conversation_id'],key)).fetchone()
+            library,sources=retrieve(memory,question,previous_question=decode(prior[0])['question'] if prior else None)
+            messages=[{'role':'system','content':CHAT_SYSTEM_V2 if library['status']=='not-needed' else SYSTEM}]
+            if library['status']!='not-needed':messages.append({'role':'user','content':message(library,sources)})
+            messages.append({'role':'user','content':question});refs=[]
             required=generation_prompt_bytes(chat_prompt(messages),CHAT_FORMAT)
+            if selected_mode=='both':required+=config.output_tokens*16+1024
             if required>config.prompt_bytes and getattr(app,'adaptive',None) and app.adaptive.automatic():
                 tokens=max(2048,((required+config.output_tokens+256+511)//512)*512)
                 if tokens>32768:raise InferenceError('The complete request and required instructions exceed the trusted maximum context; nothing was truncated.',code='CONTEXT_BUDGET',stage='prompt-preparation')
                 settings=controller.settings(discover=True,context_required=tokens);config=GenerationConfig(**settings['generation'])
+            if required>config.prompt_bytes and (library['status'] in ('retrieved','metadata-only') or selected_mode=='both'):
+                tokens=((required+config.output_tokens+256+511)//512)*512
+                if tokens<=32768:
+                    config=replace(config,context_tokens=tokens).validate()
+                    settings={**settings,'generation':asdict(replace(config,model=''))}
             if required>config.prompt_bytes:raise InferenceError('The complete request and required instructions do not fit this model context.',code='CONTEXT_BUDGET',stage='prompt-preparation')
             candidates=memory.db.execute("SELECT id,payload FROM persistent_records r WHERE contract='conversations' AND substr(record_key,1,32)=? AND record_key!=? AND rowid=(SELECT max(rowid) FROM persistent_records WHERE contract='conversations' AND record_key=r.record_key) ORDER BY rowid DESC LIMIT 64",(app.session['conversation_id'],key)).fetchall()
             selected=[];omitted=0
@@ -705,7 +750,9 @@ def text_chat(app,question,*,request_id=None,resume=None,mode=None,parent=None,m
                 if generation_prompt_bytes(chat_prompt(trial),CHAT_FORMAT)>config.prompt_bytes:omitted+=1;continue
                 messages=trial;selected.insert(0,{'record':old['id'],'run_record':revision,'message_sha256':[digest(m['content']) for m in group]})
             if type(manual) is not bool:raise ValueError('Manual operation must be an explicit boolean.')
-            context={'question':question,'sources':[],'claims':[],'conflicts':[],'policy':POLICY,'chat_history':selected,'processing':schedule,'instruction_version':2,'response_validation_version':3,'manual_operation':manual,'history_selection':{'candidate_limit':64,'included':len(selected),'omitted_for_context':omitted,'method':'Recent complete input/output messages; full originals remain in persistent history. No current instruction, request or peer handoff was shortened.'}}
+            context={'question':question,'sources':sources,'library':library,'claims':[],'conflicts':[],'policy':POLICY,'chat_history':selected,'processing':schedule,'instruction_version':3,'response_validation_version':4,'manual_operation':manual,'history_selection':{'candidate_limit':64,'included':len(selected),'omitted_for_context':omitted,'method':'Recent complete input/output messages; full originals remain in persistent history. No current instruction, request or peer handoff was shortened.'}}
+            if library['status']=='not-needed':
+                context.pop('library');context.update(instruction_version=2,response_validation_version=3)
             record['context']={'context':context,'sha256':digest(canonical(context)),'display_notices':[],'bytes':len(canonical(context).encode())};record['trace'].append({'stage':'understand','processing':schedule})
             put(memory,'conversations',key,record)
             prompt=chat_prompt(messages)

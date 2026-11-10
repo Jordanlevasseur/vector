@@ -12,7 +12,7 @@ def timestamp(value):
     return moment.astimezone(timezone.utc).isoformat(timespec='microseconds')
 
 
-def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None,project_id=None,category=None,omit_literary=False):
+def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata=None,project_id=None,category=None,omit_literary=False,root_text_only=False):
     if not isinstance(query,str) or len(query)>512:
         raise ValueError('Query must be text up to 512 characters.')
     if type(limit) is not int or not 1<=limit<=100: raise ValueError('Result limit must be 1-100.')
@@ -31,6 +31,9 @@ def search(memory,query,*,limit=20,source_id=None,since=None,until=None,metadata
         conditions.append("EXISTS (SELECT 1 FROM claims c WHERE c.event_id=e.id"+(" AND (c.kind='procedure' OR c.predicate='procedure')" if category=='procedural' else '')+")")
     if type(omit_literary) is not bool:raise ValueError('Invalid literary retrieval flag.')
     if omit_literary:conditions.append('NOT EXISTS (SELECT 1 FROM literary_units u WHERE u.event_id=e.id)')
+    if type(root_text_only) is not bool:raise ValueError('Invalid original-text filter.')
+    if root_text_only:
+        conditions.extend(["e.parent_id IS NULL","json_type(e.metadata,'$.resource_type') IS NULL","e.media_type IN ('text/plain','text/markdown')","length(CAST(t.text AS BLOB))<=262144"])
     ranked=bool(tokens)
     if ranked:
         conditions.append('text_search MATCH ?')

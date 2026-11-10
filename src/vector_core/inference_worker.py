@@ -229,6 +229,8 @@ def main():
                     payload=generation_payload(config,prompt,response_kind)
                     phase='model-generation'
                     result=stream_generation(payload,max(.05,config.timeout_seconds-1),path='/api/chat' if response_kind==CHAT_FORMAT else '/api/generate')
+                    import hashlib
+                    result['input_sha256']=hashlib.sha256(json.dumps(payload.get('messages',payload.get('prompt')),sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
                     result['execution_options']=payload['options']
                     result['model_digest']=selected.get('digest','unknown')
                     phase='runner-cleanup';unload_deadline=time.monotonic()+5

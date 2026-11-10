@@ -149,7 +149,7 @@ class OllamaAdapter:
             error=InferenceError('Incomplete/truncated model generation.',code='OUTPUT_TRUNCATED',stage='response-validation')
             error.raw_generation=response.get('response') if isinstance(response,dict) else None
             if isinstance(response,dict):
-                error.metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes')}
+                error.metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes','input_sha256')}
                 error.resources=response.get('resources')
                 error.completion={'done':response.get('done'),'done_reason':response.get('done_reason')}
             raise error
@@ -157,7 +157,7 @@ class OllamaAdapter:
             raise InferenceError('Actual prompt token count exceeds the accepted context budget.',code='CONTEXT_BUDGET',stage='response-validation')
         if response.get('model') is not None and response['model']!=config.model:raise InferenceError('Runtime returned a different model identity.')
         result=checked_result(response.get('response'),config,runtime=self.transport.runtime_version,
-                              model_version=response.get('model_digest','unknown'),metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes')})
+                              model_version=response.get('model_digest','unknown'),metrics={k:response.get(k) for k in ('prompt_eval_count','eval_count','total_duration','load_duration','prompt_eval_duration','eval_duration','thinking_bytes','input_sha256')})
         result['response_format']=response_kind or 'json'
         if response.get('execution_options') is not None:result['execution_options']=response['execution_options']
         if response.get('resources') is not None:result['resources']=response['resources']

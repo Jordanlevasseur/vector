@@ -244,7 +244,13 @@ class Desktop:
             if selection.get('omitted_for_context'):self.show_chat('This reply used a bounded selection of earlier messages; the full conversation remains saved.')
             if outcome.get('uncertainty'):self.show_chat('Uncertainty: '+outcome['uncertainty'])
             for issue in outcome.get('issues',[]):self.show_chat('Unresolved: '+issue)
-            for cite in outcome.get('citations',[]):self.source_link(cite['event_id'])
+            if outcome.get('library_notice'):self.show_chat('Library: '+outcome['library_notice'])
+            for ref in outcome.get('metadata_references',[]):self.source_link(ref['event_id'],0,'Catalogue metadata: '+ref['title'])
+            cited={(c['event_id'],c['start']) for c in outcome.get('citations',[])}
+            for cite in outcome.get('retrieved_sources',outcome.get('citations',[])):
+                p=cite.get('scientific_provenance') or cite.get('botanical_provenance') or {}
+                label=p.get('title',cite.get('name',cite['event_id']))+' — '+p.get('locator',str(cite['start'])+'–'+str(cite['end']))
+                self.source_link(cite['event_id'],cite['start'],label=('Cited: ' if (cite['event_id'],cite['start']) in cited else 'Retrieved: ')+label)
             for error in outcome['errors']:self.show_chat('Limitations: '+error)
             context=(record.get('context') or {}).get('context',{})
             for conflict in context.get('conflicts',[]):self.show_chat('Unresolved source disagreement: '+conflict['subject']+' / '+conflict['predicate'])
@@ -332,8 +338,8 @@ class Desktop:
         view=self.active_planning['planning'];self.call('question_explore',{'id':view['id'],'revision':view['state']['revision'],'approved':True},self.planned_answer)
     def reset_history(self,message):
         self.history_cursor=0;self.shell.reset();self.active_response=None;self.show_chat(message)
-    def source_link(self,identity,start=0):
-        tag='source:'+identity+':'+str(start);self.shell.append('Read original source '+identity,tag)
+    def source_link(self,identity,start=0,label=None):
+        tag='source:'+identity+':'+str(start);self.shell.append('Read original: '+(label or identity),tag)
         self.chat.tag_configure(tag,foreground='#42dfe8',underline=True)
         self.chat.tag_bind(tag,'<Button-1>',lambda event:self.open_resource_reference(identity,start));self.chat.configure(state='disabled')
     def open_resource_reference(self,event_id,start=0):
